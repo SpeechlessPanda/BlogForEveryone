@@ -55,6 +55,14 @@ onMounted(async () => {
 </script>
 
 <template>
+    <section class="panel tutorial-note">
+        <h2>操作教程：发布与备份</h2>
+        <ol>
+            <li>发布：选择工程，填写 GitHub 仓库地址，点击“一键发布”。</li>
+            <li>备份：填写本地备份目录，可选备份仓库地址，点击“生成并推送备份”。</li>
+        </ol>
+    </section>
+
     <section class="panel">
         <h2>发布到 GitHub Pages</h2>
         <p class="muted">默认使用 GitHub Actions 工作流部署，填写仓库地址后一键发布。</p>

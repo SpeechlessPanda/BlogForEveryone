@@ -5,8 +5,10 @@ import ThemeConfigView from './views/ThemeConfigView.vue';
 import PublishBackupView from './views/PublishBackupView.vue';
 import ImportView from './views/ImportView.vue';
 import RssReaderView from './views/RssReaderView.vue';
+import TutorialCenterView from './views/TutorialCenterView.vue';
 
 const tabs = [
+    { key: 'tutorial', label: '教程中心' },
     { key: 'workspace', label: '博客创建' },
     { key: 'theme', label: '主题配置' },
     { key: 'publish', label: '发布与备份' },
@@ -71,6 +73,10 @@ async function handleGithubLogin() {
     }
 }
 
+function fillDemoClientIdGuide() {
+    authLog.value = '这里要填的是你在 GitHub OAuth App 里拿到的 Client ID（形如 Iv1.xxxxx）。如果页面要求设备码，请输入应用日志中的 user code。';
+}
+
 async function handleGithubLogout() {
     await window.bfeApi.githubLogout();
     await refreshAuthState();
@@ -128,6 +134,7 @@ onMounted(async () => {
                 <label>GitHub OAuth Client ID</label>
                 <input v-model="authClientId" placeholder="例如 Iv1.xxxxxxxxxxxxxxxx" />
                 <div class="actions">
+                    <button class="secondary" @click="fillDemoClientIdGuide">这里填什么？</button>
                     <button class="primary" @click="handleGithubLogin">设备码登录</button>
                     <button class="secondary" @click="refreshAuthState">刷新登录状态</button>
                     <button v-if="authState" class="danger" @click="handleGithubLogout">退出登录</button>
@@ -137,6 +144,7 @@ onMounted(async () => {
                 <pre v-if="authLog">{{ authLog }}</pre>
             </section>
 
+            <TutorialCenterView v-if="activeTab === 'tutorial'" />
             <WorkspaceView v-if="activeTab === 'workspace'" />
             <ThemeConfigView v-if="activeTab === 'theme'" />
             <PublishBackupView v-if="activeTab === 'publish'" />

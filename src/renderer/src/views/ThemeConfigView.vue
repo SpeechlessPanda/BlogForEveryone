@@ -100,6 +100,15 @@ onMounted(async () => {
 </script>
 
 <template>
+    <section class="panel tutorial-note">
+        <h2>操作教程：主题配置</h2>
+        <ol>
+            <li>先选择工程与主题。</li>
+            <li>在“配置项”区修改后点击“保存可视化配置”。</li>
+            <li>复杂项可在“高级配置”区修改 JSON 并保存。</li>
+        </ol>
+    </section>
+
     <section class="panel">
         <h2>主题配置（可视化）</h2>
         <p class="muted">你可以先选择工程，再显示该主题可配置项。未覆盖字段可在高级配置中编辑。</p>

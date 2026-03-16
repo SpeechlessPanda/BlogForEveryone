@@ -81,6 +81,18 @@ body {
   margin-top: 0;
 }
 
+.tutorial-panel h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.tutorial-note {
+  border-left: 4px solid var(--brand);
+  background: #f6fbf9;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
 .env-alert {
   border: 1px solid #d8c2a1;
   background: linear-gradient(180deg, #fff8ed, #fff3e2);

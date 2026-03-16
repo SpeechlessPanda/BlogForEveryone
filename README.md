@@ -49,6 +49,11 @@ pnpm run package
 - src/renderer: Vue 前端界面
 - src/shared/data: 主题配置元数据
 - docs/plans: 项目计划文档
+- docs/guides: 操作向导文档
+
+## 快速向导文档
+
+1. GitHub OAuth App 创建与设备码登录：docs/guides/github-oauth-app-setup.md
 
 ## 当前实现说明
 

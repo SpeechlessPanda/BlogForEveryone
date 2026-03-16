@@ -22,8 +22,12 @@ contextBridge.exposeInMainWorld('bfeApi', {
     getThemeConfig: (payload) => ipcRenderer.invoke('theme:getConfig', payload),
     saveThemeConfig: (payload) => ipcRenderer.invoke('theme:saveConfig', payload),
     uploadThemeImageToGithub: (payload) => ipcRenderer.invoke('theme:uploadImageToGithub', payload),
+    saveThemeLocalAsset: (payload) => ipcRenderer.invoke('theme:saveLocalAsset', payload),
 
     publishToGitHub: (payload) => ipcRenderer.invoke('publish:github', payload),
+    createAndOpenContent: (payload) => ipcRenderer.invoke('content:createAndOpen', payload),
+    watchAndAutoPublish: (payload) => ipcRenderer.invoke('content:watchAndAutoPublish', payload),
+    getPublishJobStatus: (payload) => ipcRenderer.invoke('content:getPublishJobStatus', payload),
 
     listSubscriptions: () => ipcRenderer.invoke('rss:listSubscriptions'),
     addSubscription: (payload) => ipcRenderer.invoke('rss:addSubscription', payload),

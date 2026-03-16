@@ -36,22 +36,18 @@ async function exportBundle() {
     message.value = `已导出订阅文件：${filePath}`;
 }
 
+function goTutorialCenter() {
+    window.dispatchEvent(new CustomEvent('bfe:open-tutorial'));
+}
+
 onMounted(refresh);
 </script>
 
 <template>
-    <section class="panel tutorial-note">
-        <h2>操作教程：RSS 订阅</h2>
-        <ol>
-            <li>输入 RSS 地址并点击“添加订阅”。</li>
-            <li>点击“立即同步”获取最新文章和通知。</li>
-            <li>如需迁移，导出 subscriptions.bundle.json。</li>
-        </ol>
-    </section>
-
     <section class="panel">
         <h2>RSS 订阅与阅读</h2>
         <p class="muted">支持订阅、同步、通知与导出订阅文件，便于换设备自动恢复。</p>
+        <p><a href="#" @click.prevent="goTutorialCenter">打开教程中心（RSS 配置指南）</a></p>
 
         <div class="grid-2">
             <div>

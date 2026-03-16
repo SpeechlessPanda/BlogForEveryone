@@ -35,6 +35,10 @@ body {
   border-right: 1px solid var(--line);
   background: linear-gradient(180deg, #f5f1e7, #f0e8d7);
   padding: 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -83,6 +87,50 @@ body {
 
 .tutorial-panel h3 {
   margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.tutorial-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+}
+
+.tutorial-directory {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  height: fit-content;
+  position: sticky;
+  top: 16px;
+}
+
+.tutorial-link {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: left;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.tutorial-link.active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.tutorial-article {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.tutorial-article h4 {
+  margin-top: 14px;
   margin-bottom: 8px;
 }
 
@@ -192,7 +240,18 @@ pre {
   }
 
   .sidebar {
+    position: static;
+    height: auto;
+    overflow: visible;
     border-right: none;
     border-bottom: 1px solid var(--line);
+  }
+
+  .tutorial-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-directory {
+    position: static;
   }
 }

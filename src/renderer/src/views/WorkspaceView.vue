@@ -69,21 +69,17 @@ onMounted(async () => {
     await refreshThemeCatalog();
     await refreshWorkspaces();
 });
+
+function goTutorialCenter() {
+    window.dispatchEvent(new CustomEvent('bfe:open-tutorial'));
+}
 </script>
 
 <template>
-    <section class="panel tutorial-note">
-        <h2>操作教程：新建博客</h2>
-        <ol>
-            <li>先填工程名称与本地路径。</li>
-            <li>选择框架与主题，点击“创建工程”。</li>
-            <li>创建后点击“安装工程依赖（pnpm）”。</li>
-        </ol>
-    </section>
-
     <section class="panel">
         <h2>新建博客工程</h2>
         <p class="muted">通过点击选择框架和主题，不需要写命令。依赖安装统一使用 pnpm，网络问题会自动换源重试。</p>
+        <p><a href="#" @click.prevent="goTutorialCenter">不知道怎么填？打开教程中心（新建博客保姆指南）</a></p>
 
         <div class="grid-2">
             <div>

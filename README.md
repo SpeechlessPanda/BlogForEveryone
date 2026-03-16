@@ -2,62 +2,86 @@
 
 面向新手的博客搭建桌面平台，技术栈为 Electron + Vue + JavaScript。
 
-## 已支持能力
+## 产品定位
 
-1. 可视化创建 Hexo/Hugo 博客工程。
-2. 内置 Hexo/Hugo 各 5 个主流主题配置元数据，并支持可视化编辑。
-3. 默认通过 GitHub Actions 发布到 GitHub Pages。
-4. 本地工程可备份到本地快照目录，并可选推送到备份仓库。
-5. 可导入已有博客目录并继续管理。
-6. 内置 RSS 订阅、同步、阅读和系统通知。
-7. 订阅可导出为工程内 .bfe/subscriptions.bundle.json，便于换设备恢复。
-8. 已接入 GitHub OAuth 设备码登录真实流程（需用户提供 OAuth App Client ID）。
-9. 支持 Git/Node 缺失时一键使用 winget 静默安装（用户确认后执行）。
+1. 目标用户：不熟悉命令行、希望全程可视化操作的博客新手。
+2. 首版平台：Windows。
+3. 当前支持框架：Hexo、Hugo。
+4. 默认发布目标：GitHub Pages。
+
+## 当前已实现功能
+
+1. 可视化创建 Hexo/Hugo 博客工程，并支持依赖安装流程。
+2. 主题配置可视化编辑：基础信息、评论、统计、主题专属字段、全部展开字段。
+3. 背景图与图标支持本地文件转存到工程图片目录（默认 `source/img` 或 `static/img`），自动回填可用路径。
+4. 内容编辑支持四类内容：新博客文章、关于页、友链页、公告页；可自动创建 Markdown 并调用系统默认编辑器。
+5. 发布与备份：支持发布到 GitHub 仓库，支持本地备份与可选推送到备份仓库。
+6. 导入恢复：支持导入现有工程并恢复 RSS 订阅快照。
+7. RSS 阅读：支持订阅、同步、通知、导出与导入。
+8. GitHub OAuth 设备码登录：应用内展示设备码并完成授权。
+9. 环境检查与安装引导：缺失 Git/Node/pnpm 时给出下载与自动安装入口。
+10. 教程中心目录化：按模块分区展示详细步骤和注意事项。
 
 ## 环境要求
 
 1. Node.js 20+
 2. Git
-3. pnpm（应用内可自动安装）
+3. pnpm
 4. Hexo CLI 与 Hugo（二选一或都安装）
 
 Hexo 安装示例：
 
+```bash
 pnpm add -g hexo-cli
+```
 
 Hugo 安装示例（Windows）：
 
+```bash
 choco install hugo-extended -y
+```
 
-## 启动
+## 本地开发
 
-1. 安装依赖
+1. 安装依赖：
 
+```bash
 pnpm install
+```
 
-1. 启动开发模式
+2. 启动开发模式：
 
+```bash
 pnpm run dev
+```
 
-1. 打包 Windows 安装程序
+3. 构建渲染层：
 
+```bash
+pnpm run build:renderer
+```
+
+4. 打包安装程序：
+
+```bash
 pnpm run package
+```
 
-## 目录说明
+## 目录结构
 
-- src/main: Electron 主进程与服务层
-- src/renderer: Vue 前端界面
-- src/shared/data: 主题配置元数据
-- docs/plans: 项目计划文档
-- docs/guides: 操作向导文档
+1. `src/main`：Electron 主进程、IPC、服务层。
+2. `src/renderer`：Vue 前端界面。
+3. `src/shared/data`：主题配置元数据。
+4. `docs/plans`：项目计划与迭代说明。
+5. `docs/guides`：操作向导文档。
 
-## 快速向导文档
+## 文档入口
 
-1. GitHub OAuth App 创建与设备码登录：docs/guides/github-oauth-app-setup.md
+1. 项目计划书：`docs/plans/2026-03-16-blog-builder-platform-plan.md`
+2. GitHub OAuth 教程：`docs/guides/github-oauth-app-setup.md`
 
-## 当前实现说明
+## 当前状态说明
 
-1. GitHub OAuth 设备码登录已接入真实流程（你需要在 GitHub 创建 OAuth App 并提供 Client ID）。
-2. 主题配置提供“可视化字段 + 高级 JSON 编辑”双模式；后续可扩展到完整 YAML/TOML 注释级编辑。
-3. RSS 已支持后台轮询同步与系统通知。
-4. 启动时会检测 Node.js/Git/pnpm，缺失时可一键打开下载入口或使用 winget 静默安装；pnpm 安装和依赖下载失败时会自动切换镜像源重试。
+1. 当前版本聚焦 MVP 可用链路：创建 -> 配置 -> 写作 -> 发布 -> 备份/恢复。
+2. 统计默认推荐“不蒜子”方案（低门槛、零注册）；可选接入 Umami/GA。
+3. 若 `pnpm run dev` 启动失败，优先先执行 `pnpm run build:renderer` 检查前端编译错误。

@@ -22,20 +22,17 @@ async function restoreRssFromProject() {
     });
     result.value = JSON.stringify(data, null, 2);
 }
+
+function goTutorialCenter() {
+    window.dispatchEvent(new CustomEvent('bfe:open-tutorial'));
+}
 </script>
 
 <template>
-    <section class="panel tutorial-note">
-        <h2>操作教程：导入与恢复</h2>
-        <ol>
-            <li>填写已有博客目录，点击“导入工程”。</li>
-            <li>若目录内有 .bfe 订阅文件，可点“恢复 RSS 订阅”。</li>
-        </ol>
-    </section>
-
     <section class="panel">
         <h2>导入已有博客工程</h2>
         <p class="muted">支持导入已有目录后继续可视化编辑与发布。</p>
+        <p><a href="#" @click.prevent="goTutorialCenter">打开教程中心（导入与恢复）</a></p>
 
         <div class="grid-2">
             <div>

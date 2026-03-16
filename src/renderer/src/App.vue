@@ -6,11 +6,13 @@ import PublishBackupView from './views/PublishBackupView.vue';
 import ImportView from './views/ImportView.vue';
 import RssReaderView from './views/RssReaderView.vue';
 import TutorialCenterView from './views/TutorialCenterView.vue';
+import ContentEditorView from './views/ContentEditorView.vue';
 
 const tabs = [
     { key: 'tutorial', label: '教程中心' },
     { key: 'workspace', label: '博客创建' },
     { key: 'theme', label: '主题配置' },
+    { key: 'content', label: '内容编辑' },
     { key: 'publish', label: '发布与备份' },
     { key: 'import', label: '导入恢复' },
     { key: 'rss', label: 'RSS 阅读' }
@@ -113,6 +115,10 @@ onMounted(async () => {
         envStatus.value = appState.value.env || envStatus.value;
         await refreshAuthState();
     }
+
+    window.addEventListener('bfe:open-tutorial', () => {
+        activeTab.value = 'tutorial';
+    });
 });
 </script>
 
@@ -186,6 +192,7 @@ onMounted(async () => {
             <TutorialCenterView v-if="isLoggedIn && activeTab === 'tutorial'" />
             <WorkspaceView v-if="isLoggedIn && activeTab === 'workspace'" />
             <ThemeConfigView v-if="isLoggedIn && activeTab === 'theme'" />
+            <ContentEditorView v-if="isLoggedIn && activeTab === 'content'" />
             <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
             <ImportView v-if="isLoggedIn && activeTab === 'import'" />
             <RssReaderView v-if="isLoggedIn && activeTab === 'rss'" />

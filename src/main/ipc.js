@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { readStore, updateStore } = require('./services/storeService');
 const { detectFramework, initProject } = require('./services/frameworkService');
-const { getThemeCatalog, readThemeConfig, saveThemeConfig } = require('./services/themeService');
+const { getThemeCatalog, readThemeConfig, saveThemeConfig, saveLocalAssetToBlog } = require('./services/themeService');
 const { publishToGitHub } = require('./services/publishService');
 const { uploadImageToRepo } = require('./services/githubRepoService');
 const { backupWorkspace, pushBackupToRepo } = require('./services/backupService');
@@ -15,6 +15,7 @@ const {
     installDependenciesWithRetry
 } = require('./services/envService');
 const { beginDeviceLogin, completeDeviceLogin, loginWithDeviceCode, getAuthState, logout } = require('./services/githubAuthService');
+const { createAndOpenContent, watchSaveAndAutoPublish, getPublishJobStatus } = require('./services/contentService');
 const {
     listSubscriptions,
     addSubscription,
@@ -157,6 +158,10 @@ function registerIpcHandlers() {
         return { success: true };
     });
 
+    ipcMain.handle('theme:saveLocalAsset', async (_event, payload) => {
+        return saveLocalAssetToBlog(payload);
+    });
+
     ipcMain.handle('theme:uploadImageToGithub', async (_event, payload) => {
         return uploadImageToRepo(payload);
     });
@@ -164,6 +169,18 @@ function registerIpcHandlers() {
     ipcMain.handle('publish:github', async (_event, payload) => {
         const result = publishToGitHub(payload);
         return result;
+    });
+
+    ipcMain.handle('content:createAndOpen', async (_event, payload) => {
+        return createAndOpenContent(payload);
+    });
+
+    ipcMain.handle('content:watchAndAutoPublish', async (_event, payload) => {
+        return watchSaveAndAutoPublish(payload);
+    });
+
+    ipcMain.handle('content:getPublishJobStatus', async (_event, payload) => {
+        return getPublishJobStatus(payload.jobId);
     });
 
     ipcMain.handle('rss:listSubscriptions', async () => listSubscriptions());

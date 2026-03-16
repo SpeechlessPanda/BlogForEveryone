@@ -43,6 +43,7 @@
             "buildResources": "build"
         },
         "win": {
+            "signAndEditExecutable": false,
             "target": "nsis"
         }
     }

@@ -46,8 +46,46 @@ function saveThemeConfig(projectDir, framework, nextConfig) {
     }
 }
 
+function saveLocalAssetToBlog(payload) {
+    const {
+        projectDir,
+        framework,
+        localFilePath,
+        assetType = 'image',
+        preferredDir,
+        preferredFileName
+    } = payload;
+    if (!localFilePath || !fs.existsSync(localFilePath)) {
+        throw new Error('本地资源文件不存在');
+    }
+
+    const ext = path.extname(localFilePath) || '.png';
+    const sanitizedName = String(preferredFileName || '').trim().replace(/[\\/:*?"<>|]/g, '');
+    const baseName = sanitizedName
+        ? (path.extname(sanitizedName) ? sanitizedName : `${sanitizedName}${ext}`)
+        : (assetType === 'favicon' ? `favicon${ext}` : `${Date.now()}${ext}`);
+
+    const fallbackDir = framework === 'hexo' ? path.join('source', 'img') : path.join('static', 'img');
+    const normalizedPreferredDir = String(preferredDir || '').trim().replace(/^[/\\]+/, '').replace(/\.\./g, '');
+    const relativeDir = normalizedPreferredDir || fallbackDir;
+    const targetRoot = path.join(projectDir, relativeDir);
+    fs.mkdirSync(targetRoot, { recursive: true });
+
+    const targetPath = path.join(targetRoot, baseName);
+    fs.copyFileSync(localFilePath, targetPath);
+
+    const webPrefix = framework === 'hexo' ? relativeDir.replace(/^source[\\/]/, '') : relativeDir.replace(/^static[\\/]/, '');
+    const webPath = `/${webPrefix.replace(/\\/g, '/')}/${baseName}`.replace(/\/+/g, '/');
+
+    return {
+        savedPath: targetPath,
+        webPath
+    };
+}
+
 module.exports = {
     getThemeCatalog,
     readThemeConfig,
-    saveThemeConfig
+    saveThemeConfig,
+    saveLocalAssetToBlog
 };

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 const { registerIpcHandlers } = require('./ipc');
 const { startAutoSync } = require('./services/rssService');
@@ -12,6 +12,8 @@ function createMainWindow() {
         height: 860,
         minWidth: 1080,
         minHeight: 720,
+        autoHideMenuBar: true,
+        icon: path.join(__dirname, '../img/icon.jpg'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -36,6 +38,7 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
     registerIpcHandlers();
     startAutoSync();
     const win = createMainWindow();

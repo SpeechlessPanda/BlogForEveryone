@@ -28,26 +28,30 @@ async function createAndEdit() {
         return;
     }
 
-    const result = await window.bfeApi.createAndOpenContent({
-        projectDir: ws.projectDir,
-        framework: ws.framework,
-        type: form.type,
-        title: form.title,
-        slug: form.slug
-    });
-
-    state.filePath = result.filePath;
-    state.message = '已打开默认编辑器，请保存文件。';
-
-    if (form.autoPublish && form.repoUrl) {
-        const job = await window.bfeApi.watchAndAutoPublish({
-            filePath: result.filePath,
+    try {
+        const result = await window.bfeApi.createAndOpenContent({
             projectDir: ws.projectDir,
             framework: ws.framework,
-            repoUrl: form.repoUrl
+            type: form.type,
+            title: form.title,
+            slug: form.slug
         });
-        state.jobId = job.jobId;
-        state.jobStatus = job.status;
+
+        state.filePath = result.filePath;
+        state.message = '已打开默认编辑器，请保存文件。';
+
+        if (form.autoPublish && form.repoUrl) {
+            const job = await window.bfeApi.watchAndAutoPublish({
+                filePath: result.filePath,
+                projectDir: ws.projectDir,
+                framework: ws.framework,
+                repoUrl: form.repoUrl
+            });
+            state.jobId = job.jobId;
+            state.jobStatus = job.status;
+        }
+    } catch (error) {
+        state.message = `创建内容失败：${String(error?.message || error)}`;
     }
 }
 
@@ -55,13 +59,17 @@ async function refreshPublishJob() {
     if (!state.jobId) {
         return;
     }
-    const job = await window.bfeApi.getPublishJobStatus({ jobId: state.jobId });
-    if (!job) {
-        state.message = '没有找到自动发布任务。';
-        return;
+    try {
+        const job = await window.bfeApi.getPublishJobStatus({ jobId: state.jobId });
+        if (!job) {
+            state.message = '没有找到自动发布任务。';
+            return;
+        }
+        state.jobStatus = job.status;
+        state.message = job.message;
+    } catch (error) {
+        state.message = `刷新发布状态失败：${String(error?.message || error)}`;
     }
-    state.jobStatus = job.status;
-    state.message = job.message;
 }
 
 onMounted(async () => {

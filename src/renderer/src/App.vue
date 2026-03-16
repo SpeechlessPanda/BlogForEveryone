@@ -23,6 +23,7 @@ const activeTab = ref('workspace');
 const appState = ref({ appName: 'BlogForEveryone', version: '0.1.0' });
 const envStatus = ref({ nodeInstalled: true, gitInstalled: true, pnpmInstalled: true, ready: true });
 const envActionLog = ref('');
+const uiFeedback = ref({ type: 'info', message: '' });
 const updateState = ref({ status: 'idle', message: '未检测更新', downloaded: false, error: null });
 const authClientId = ref('');
 const authState = ref(null);
@@ -53,8 +54,17 @@ function closeInfoModal() {
     infoModal.value = { ...infoModal.value, visible: false };
 }
 
+function setUiFeedback(type, message) {
+    uiFeedback.value = { type, message };
+}
+
 async function refreshEnvStatus() {
-    envStatus.value = await window.bfeApi.getEnvironmentStatus();
+    try {
+        envStatus.value = await window.bfeApi.getEnvironmentStatus();
+        setUiFeedback('success', '环境状态已刷新。');
+    } catch (error) {
+        setUiFeedback('error', `环境状态刷新失败：${String(error?.message || error)}`);
+    }
 }
 
 async function refreshUpdateState() {
@@ -65,6 +75,7 @@ async function handleCheckUpdatesNow() {
     try {
         await window.bfeApi.checkUpdatesNow();
         await refreshUpdateState();
+        setUiFeedback('success', '已触发更新检查。');
     } catch (error) {
         updateState.value = {
             ...updateState.value,
@@ -72,22 +83,38 @@ async function handleCheckUpdatesNow() {
             message: '手动检查更新失败',
             error: String(error?.message || error || 'unknown error')
         };
+        setUiFeedback('error', '检查更新失败，请稍后重试。');
     }
 }
 
 async function handleInstallUpdateNow() {
-    await window.bfeApi.installUpdateNow();
+    try {
+        await window.bfeApi.installUpdateNow();
+        setUiFeedback('success', '更新安装已启动，应用将重启。');
+    } catch (error) {
+        setUiFeedback('error', `安装更新失败：${String(error?.message || error)}`);
+    }
 }
 
 async function handleOpenInstaller(tool) {
-    const result = await window.bfeApi.openInstaller({ tool });
-    envActionLog.value = `已打开 ${tool} 下载页：${result.url}`;
+    try {
+        const result = await window.bfeApi.openInstaller({ tool });
+        envActionLog.value = `已打开 ${tool} 下载页：${result.url}`;
+        setUiFeedback('success', `${tool} 下载页已打开。`);
+    } catch (error) {
+        setUiFeedback('error', `打开 ${tool} 下载页失败：${String(error?.message || error)}`);
+    }
 }
 
 async function handleInstallPnpm() {
-    const result = await window.bfeApi.ensurePnpm();
-    envActionLog.value = JSON.stringify(result, null, 2);
-    await refreshEnvStatus();
+    try {
+        const result = await window.bfeApi.ensurePnpm();
+        envActionLog.value = JSON.stringify(result, null, 2);
+        setUiFeedback('success', 'pnpm 安装流程已执行。');
+        await refreshEnvStatus();
+    } catch (error) {
+        setUiFeedback('error', `pnpm 安装失败：${String(error?.message || error)}`);
+    }
 }
 
 async function handleAutoInstall(tool) {
@@ -96,13 +123,22 @@ async function handleAutoInstall(tool) {
         return;
     }
 
-    const result = await window.bfeApi.autoInstallTool({ tool });
-    envActionLog.value = JSON.stringify(result, null, 2);
-    await refreshEnvStatus();
+    try {
+        const result = await window.bfeApi.autoInstallTool({ tool });
+        envActionLog.value = JSON.stringify(result, null, 2);
+        setUiFeedback('success', `${tool} 自动安装已执行。`);
+        await refreshEnvStatus();
+    } catch (error) {
+        setUiFeedback('error', `${tool} 自动安装失败：${String(error?.message || error)}`);
+    }
 }
 
 async function refreshAuthState() {
-    authState.value = await window.bfeApi.getGithubAuthState();
+    try {
+        authState.value = await window.bfeApi.getGithubAuthState();
+    } catch (error) {
+        setUiFeedback('error', `刷新登录状态失败：${String(error?.message || error)}`);
+    }
 }
 
 async function handleGithubLogin() {
@@ -129,10 +165,12 @@ async function handleGithubLogin() {
         });
 
         authLog.value = `登录成功：${result.user?.login}`;
+        setUiFeedback('success', `登录成功：${result.user?.login}`);
         await refreshAuthState();
     } catch (error) {
         const raw = String(error?.message || error || 'unknown error');
         authLog.value = raw.replace(/Error invoking remote method '[^']+':\s*/i, '');
+        setUiFeedback('error', '登录失败，请检查网络或 Client ID。');
     }
 }
 
@@ -143,6 +181,7 @@ async function copyUserCode() {
 
     await navigator.clipboard.writeText(deviceFlow.value.userCode);
     authLog.value = `设备码已复制：${deviceFlow.value.userCode}`;
+    setUiFeedback('success', '设备码已复制到剪贴板。');
 }
 
 function fillDemoClientIdGuide() {
@@ -150,10 +189,15 @@ function fillDemoClientIdGuide() {
 }
 
 async function handleGithubLogout() {
-    await window.bfeApi.githubLogout();
-    await refreshAuthState();
-    authLog.value = '已退出 GitHub 登录状态。';
-    deviceFlow.value = null;
+    try {
+        await window.bfeApi.githubLogout();
+        await refreshAuthState();
+        authLog.value = '已退出 GitHub 登录状态。';
+        deviceFlow.value = null;
+        setUiFeedback('success', '已退出登录。');
+    } catch (error) {
+        setUiFeedback('error', `退出登录失败：${String(error?.message || error)}`);
+    }
 }
 
 onMounted(async () => {
@@ -205,6 +249,10 @@ onUnmounted(() => {
         </aside>
 
         <main class="content">
+            <section v-if="uiFeedback.message" class="panel" :class="uiFeedback.type === 'error' ? 'feedback-error' : 'feedback-success'">
+                <p class="muted" style="margin:0;">{{ uiFeedback.message }}</p>
+            </section>
+
             <section class="panel">
                 <h2>自动更新</h2>
                 <p class="muted">{{ updateState.message }}</p>

@@ -11,29 +11,51 @@ const list = ref([]);
 const message = ref('');
 
 async function refresh() {
-    list.value = await window.bfeApi.listSubscriptions();
+    try {
+        list.value = await window.bfeApi.listSubscriptions();
+    } catch (error) {
+        message.value = `加载订阅失败：${String(error?.message || error)}`;
+    }
 }
 
 async function add() {
-    await window.bfeApi.addSubscription({ url: form.url, title: form.title });
-    form.url = '';
-    form.title = '';
-    await refresh();
+    try {
+        await window.bfeApi.addSubscription({ url: form.url, title: form.title });
+        form.url = '';
+        form.title = '';
+        message.value = '订阅添加成功。';
+        await refresh();
+    } catch (error) {
+        message.value = `添加订阅失败：${String(error?.message || error)}`;
+    }
 }
 
 async function remove(id) {
-    await window.bfeApi.removeSubscription({ id });
-    await refresh();
+    try {
+        await window.bfeApi.removeSubscription({ id });
+        message.value = '已取消订阅。';
+        await refresh();
+    } catch (error) {
+        message.value = `取消订阅失败：${String(error?.message || error)}`;
+    }
 }
 
 async function syncNow() {
-    list.value = await window.bfeApi.syncSubscriptions();
-    message.value = '已完成同步，若有新内容会触发桌面通知。';
+    try {
+        list.value = await window.bfeApi.syncSubscriptions();
+        message.value = '已完成同步，若有新内容会触发桌面通知。';
+    } catch (error) {
+        message.value = `同步失败：${String(error?.message || error)}`;
+    }
 }
 
 async function exportBundle() {
-    const filePath = await window.bfeApi.exportSubscriptions({ projectDir: form.exportProjectDir });
-    message.value = `已导出订阅文件：${filePath}`;
+    try {
+        const filePath = await window.bfeApi.exportSubscriptions({ projectDir: form.exportProjectDir });
+        message.value = `已导出订阅文件：${filePath}`;
+    } catch (error) {
+        message.value = `导出失败：${String(error?.message || error)}`;
+    }
 }
 
 function goTutorialCenter() {

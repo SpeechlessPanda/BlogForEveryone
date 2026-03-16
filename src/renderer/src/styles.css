@@ -94,6 +94,16 @@ body {
   margin-bottom: 16px;
 }
 
+.feedback-success {
+  border-color: #8bb7a9;
+  background: #eef8f4;
+}
+
+.feedback-error {
+  border-color: #d28a83;
+  background: #fff1ef;
+}
+
 .panel h2 {
   margin-top: 0;
 }

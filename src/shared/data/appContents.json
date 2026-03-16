@@ -1,10 +1,10 @@
 {
-  "about": {
-    "title": "关于 BlogForEveryone",
-    "content": "BlogForEveryone 是面向新手的可视化博客搭建工具，支持 Hexo/Hugo 创建、主题配置、内容编辑与发布。"
-  },
-  "announcement": {
-    "title": "公告",
-    "content": "欢迎使用 BlogForEveryone。若遇到问题，请先查看教程中心与日志信息。"
-  }
+    "about": {
+        "title": "关于 BlogForEveryone",
+        "content": "BlogForEveryone 是面向新手的可视化博客搭建工具，支持 Hexo/Hugo 创建、主题配置、内容编辑与发布。"
+    },
+    "announcement": {
+        "title": "公告",
+        "content": "欢迎使用 BlogForEveryone。若遇到问题，请先查看教程中心与日志信息。"
+    }
 }

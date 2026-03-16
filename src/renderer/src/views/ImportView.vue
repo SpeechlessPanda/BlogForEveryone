@@ -10,17 +10,25 @@ const form = reactive({
 const result = ref('');
 
 async function doImport() {
-    const data = await window.bfeApi.importWorkspace({ ...form });
-    result.value = JSON.stringify(data, null, 2);
-    await refreshWorkspaces();
+    try {
+        const data = await window.bfeApi.importWorkspace({ ...form });
+        result.value = JSON.stringify(data, null, 2);
+        await refreshWorkspaces();
+    } catch (error) {
+        result.value = `导入失败：${String(error?.message || error)}`;
+    }
 }
 
 async function restoreRssFromProject() {
-    const data = await window.bfeApi.importSubscriptions({
-        projectDir: form.projectDir,
-        strategy: 'merge'
-    });
-    result.value = JSON.stringify(data, null, 2);
+    try {
+        const data = await window.bfeApi.importSubscriptions({
+            projectDir: form.projectDir,
+            strategy: 'merge'
+        });
+        result.value = JSON.stringify(data, null, 2);
+    } catch (error) {
+        result.value = `恢复 RSS 失败：${String(error?.message || error)}`;
+    }
 }
 
 function goTutorialCenter() {

@@ -23,15 +23,19 @@ async function publish() {
         return;
     }
 
-    const result = await window.bfeApi.publishToGitHub({
-        projectDir: ws.projectDir,
-        framework: ws.framework,
-        repoUrl: publishForm.repoUrl,
-        useActions: publishForm.useActions
-    });
+    try {
+        const result = await window.bfeApi.publishToGitHub({
+            projectDir: ws.projectDir,
+            framework: ws.framework,
+            repoUrl: publishForm.repoUrl,
+            useActions: publishForm.useActions
+        });
 
-    pagesUrl.value = result.pagesUrl || '';
-    logs.value = JSON.stringify(result.logs || result, null, 2);
+        pagesUrl.value = result.pagesUrl || '';
+        logs.value = JSON.stringify(result.logs || result, null, 2);
+    } catch (error) {
+        logs.value = `发布失败：${String(error?.message || error)}`;
+    }
 }
 
 function openPagesUrl() {
@@ -48,14 +52,18 @@ async function backup() {
         return;
     }
 
-    const result = await window.bfeApi.backupWorkspace({
-        projectDir: ws.projectDir,
-        backupDir: backupForm.backupDir,
-        repoUrl: backupForm.backupRepoUrl,
-        visibility: backupForm.visibility
-    });
+    try {
+        const result = await window.bfeApi.backupWorkspace({
+            projectDir: ws.projectDir,
+            backupDir: backupForm.backupDir,
+            repoUrl: backupForm.backupRepoUrl,
+            visibility: backupForm.visibility
+        });
 
-    logs.value = JSON.stringify(result, null, 2);
+        logs.value = JSON.stringify(result, null, 2);
+    } catch (error) {
+        logs.value = `备份失败：${String(error?.message || error)}`;
+    }
 }
 
 onMounted(async () => {

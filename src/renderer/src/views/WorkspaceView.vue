@@ -47,13 +47,18 @@ async function handleCreateWorkspace() {
         return;
     }
 
-    markStep('init');
-    const result = await window.bfeApi.createWorkspace({ ...form });
-    markStep('save');
-    logs.output = JSON.stringify(result.workspace, null, 2);
-    await refreshWorkspaces();
-    markStep('finish');
-    flow.creating = false;
+    try {
+        markStep('init');
+        const result = await window.bfeApi.createWorkspace({ ...form });
+        markStep('save');
+        logs.output = JSON.stringify(result.workspace, null, 2);
+        await refreshWorkspaces();
+        markStep('finish');
+    } catch (error) {
+        logs.output = `创建工程失败：${String(error?.message || error)}`;
+    } finally {
+        flow.creating = false;
+    }
 }
 
 async function handleInstallDeps() {
@@ -61,8 +66,12 @@ async function handleInstallDeps() {
         logs.output = '请先填写工程目录。';
         return;
     }
-    const result = await window.bfeApi.installProjectDependencies({ projectDir: form.projectDir });
-    logs.output = JSON.stringify(result, null, 2);
+    try {
+        const result = await window.bfeApi.installProjectDependencies({ projectDir: form.projectDir });
+        logs.output = JSON.stringify(result, null, 2);
+    } catch (error) {
+        logs.output = `安装依赖失败：${String(error?.message || error)}`;
+    }
 }
 
 onMounted(async () => {

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import appContents from '../../shared/data/appContents.json';
 import WorkspaceView from './views/WorkspaceView.vue';
 import ThemeConfigView from './views/ThemeConfigView.vue';
 import PublishBackupView from './views/PublishBackupView.vue';
@@ -28,7 +29,29 @@ const authState = ref(null);
 const authLog = ref('');
 const deviceFlow = ref(null);
 const isLoggedIn = computed(() => Boolean(authState.value?.accessToken || authState.value?.user));
+const infoModal = ref({ visible: false, key: 'about' });
 let releaseUpdateListener = null;
+
+const sidebarLoginText = computed(() => {
+    if (!isLoggedIn.value) {
+        return '登录状态：未登录';
+    }
+    const user = authState.value?.user;
+    return `登录状态：${user?.login || '已登录'}`;
+});
+
+const activeInfoModal = computed(() => {
+    const key = infoModal.value.key;
+    return appContents[key] || appContents.about;
+});
+
+function openInfoModal(key) {
+    infoModal.value = { visible: true, key };
+}
+
+function closeInfoModal() {
+    infoModal.value = { ...infoModal.value, visible: false };
+}
 
 async function refreshEnvStatus() {
     envStatus.value = await window.bfeApi.getEnvironmentStatus();
@@ -160,12 +183,25 @@ onUnmounted(() => {
 <template>
     <div class="layout">
         <aside class="sidebar">
-            <h1>{{ appState.appName }}</h1>
-            <p class="version">v{{ appState.version }}</p>
-            <button v-for="tab in tabs" :key="tab.key" :class="['tab', { active: activeTab === tab.key }]"
-                @click="activeTab = tab.key">
-                {{ tab.label }}
-            </button>
+            <div class="sidebar-inner">
+                <div>
+                    <h1>{{ appState.appName }}</h1>
+                    <p class="version">v{{ appState.version }}</p>
+                    <button v-for="tab in tabs" :key="tab.key" :class="['tab', { active: activeTab === tab.key }]"
+                        @click="activeTab = tab.key">
+                        {{ tab.label }}
+                    </button>
+                </div>
+
+                <div class="sidebar-footer">
+                    <p class="muted" style="margin: 0 0 8px 0;">{{ sidebarLoginText }}</p>
+                    <div class="actions" style="margin-top: 0;">
+                        <button class="secondary" @click="openInfoModal('about')">关于</button>
+                        <button class="secondary" @click="openInfoModal('announcement')">公告</button>
+                        <button v-if="isLoggedIn" class="danger" @click="handleGithubLogout">退出登录</button>
+                    </div>
+                </div>
+            </div>
         </aside>
 
         <main class="content">
@@ -227,14 +263,6 @@ onUnmounted(() => {
                 <pre v-if="authLog">{{ authLog }}</pre>
             </section>
 
-            <section class="panel" v-if="isLoggedIn">
-                <h2>登录成功</h2>
-                <p class="muted">当前登录：{{ authState?.user?.login }} ({{ authState?.user?.name || '-' }})</p>
-                <div class="actions">
-                    <button class="danger" @click="handleGithubLogout">退出登录</button>
-                </div>
-            </section>
-
             <TutorialCenterView v-if="isLoggedIn && activeTab === 'tutorial'" />
             <WorkspaceView v-if="isLoggedIn && activeTab === 'workspace'" />
             <ThemeConfigView v-if="isLoggedIn && activeTab === 'theme'" />
@@ -243,5 +271,15 @@ onUnmounted(() => {
             <ImportView v-if="isLoggedIn && activeTab === 'import'" />
             <RssReaderView v-if="isLoggedIn && activeTab === 'rss'" />
         </main>
+
+        <div v-if="infoModal.visible" class="modal-backdrop" @click.self="closeInfoModal">
+            <div class="modal-panel">
+                <h2>{{ activeInfoModal.title }}</h2>
+                <p>{{ activeInfoModal.content }}</p>
+                <div class="actions">
+                    <button class="primary" @click="closeInfoModal">我知道了</button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>

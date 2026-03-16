@@ -1,12 +1,12 @@
 {
     "name": "blog-for-everyone",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Beginner-friendly blog builder platform for Hexo and Hugo",
     "main": "src/main/main.js",
     "author": "BlogForEveryone",
     "license": "MIT",
     "scripts": {
-        "dev": "concurrently -k \"vite --config vite.config.js\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
+        "dev": "concurrently \"vite --config vite.config.js\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
         "dev:renderer": "vite --config vite.config.js",
         "dev:electron": "cross-env NODE_ENV=development electron .",
         "build:renderer": "vite build --config vite.config.js",

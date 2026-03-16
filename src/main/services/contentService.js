@@ -43,7 +43,7 @@ function resolveContentPath({ projectDir, framework, type, title, slug }) {
     if (framework === 'hexo') {
         return path.join(projectDir, 'source', pageName, 'index.md');
     }
-    return path.join(projectDir, 'content', pageName, '_index.md');
+    return path.join(projectDir, 'content', pageName, 'index.md');
 }
 
 function createAndOpenContent(payload) {

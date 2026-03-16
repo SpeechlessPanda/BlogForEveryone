@@ -1,0 +1,49 @@
+{
+    "name": "blog-for-everyone",
+    "version": "0.1.0",
+    "description": "Beginner-friendly blog builder platform for Hexo and Hugo",
+    "main": "src/main/main.js",
+    "author": "BlogForEveryone",
+    "license": "MIT",
+    "scripts": {
+        "dev": "concurrently -k \"vite --config vite.config.js\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
+        "dev:renderer": "vite --config vite.config.js",
+        "dev:electron": "cross-env NODE_ENV=development electron .",
+        "build:renderer": "vite build --config vite.config.js",
+        "start": "cross-env NODE_ENV=production electron .",
+        "lint": "echo \"No linter configured yet\"",
+        "package": "pnpm run build:renderer && electron-builder"
+    },
+    "packageManager": "pnpm@9.15.0",
+    "dependencies": {
+        "rss-parser": "^3.13.0",
+        "vue": "^3.5.17",
+        "yaml": "^2.8.1",
+        "@iarna/toml": "^2.2.5"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.2.4",
+        "concurrently": "^9.1.2",
+        "cross-env": "^7.0.3",
+        "electron": "^37.2.1",
+        "electron-builder": "^25.1.8",
+        "vite": "^5.4.19",
+        "wait-on": "^8.0.3"
+    },
+    "build": {
+        "appId": "com.blogforeveryone.app",
+        "productName": "BlogForEveryone",
+        "files": [
+            "src/main/**/*",
+            "dist/renderer/**/*",
+            "src/shared/**/*",
+            "package.json"
+        ],
+        "directories": {
+            "buildResources": "build"
+        },
+        "win": {
+            "target": "nsis"
+        }
+    }
+}

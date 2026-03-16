@@ -1,0 +1,298 @@
+{
+    "hexo": [
+        {
+            "name": "Landscape",
+            "id": "landscape",
+            "options": [
+                {
+                    "key": "title",
+                    "type": "string",
+                    "label": "站点标题",
+                    "default": "My Hexo Blog"
+                },
+                {
+                    "key": "subtitle",
+                    "type": "string",
+                    "label": "副标题",
+                    "default": "A simple blog"
+                },
+                {
+                    "key": "theme_config.menu",
+                    "type": "array",
+                    "label": "导航菜单",
+                    "default": [
+                        "Home",
+                        "Archives",
+                        "About"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Next",
+            "id": "next",
+            "options": [
+                {
+                    "key": "theme_config.scheme",
+                    "type": "enum",
+                    "label": "配色方案",
+                    "default": "Muse",
+                    "enumValues": [
+                        "Muse",
+                        "Mist",
+                        "Pisces",
+                        "Gemini"
+                    ]
+                },
+                {
+                    "key": "theme_config.sidebar.position",
+                    "type": "enum",
+                    "label": "侧边栏位置",
+                    "default": "left",
+                    "enumValues": [
+                        "left",
+                        "right"
+                    ]
+                },
+                {
+                    "key": "theme_config.favicon",
+                    "type": "string",
+                    "label": "站点图标",
+                    "default": ""
+                }
+            ]
+        },
+        {
+            "name": "Butterfly",
+            "id": "butterfly",
+            "options": [
+                {
+                    "key": "theme_config.nav.enable",
+                    "type": "boolean",
+                    "label": "启用导航栏",
+                    "default": true
+                },
+                {
+                    "key": "theme_config.cover.index_enable",
+                    "type": "boolean",
+                    "label": "启用首页封面",
+                    "default": true
+                },
+                {
+                    "key": "theme_config.footer.owner.enable",
+                    "type": "boolean",
+                    "label": "显示版权",
+                    "default": true
+                }
+            ]
+        },
+        {
+            "name": "Fluid",
+            "id": "fluid",
+            "options": [
+                {
+                    "key": "theme_config.banner_img",
+                    "type": "string",
+                    "label": "首页横幅图",
+                    "default": ""
+                },
+                {
+                    "key": "theme_config.fun_features.typing",
+                    "type": "boolean",
+                    "label": "打字机特效",
+                    "default": false
+                },
+                {
+                    "key": "theme_config.post.default_index_img",
+                    "type": "string",
+                    "label": "默认文章封面",
+                    "default": ""
+                }
+            ]
+        },
+        {
+            "name": "Volantis",
+            "id": "volantis",
+            "options": [
+                {
+                    "key": "theme_config.cover.type",
+                    "type": "enum",
+                    "label": "封面类型",
+                    "default": "half",
+                    "enumValues": [
+                        "none",
+                        "half",
+                        "full"
+                    ]
+                },
+                {
+                    "key": "theme_config.search.enable",
+                    "type": "boolean",
+                    "label": "启用搜索",
+                    "default": true
+                },
+                {
+                    "key": "theme_config.sidebar.for_page",
+                    "type": "array",
+                    "label": "页面侧栏模块",
+                    "default": [
+                        "blogger",
+                        "category",
+                        "tagcloud"
+                    ]
+                }
+            ]
+        }
+    ],
+    "hugo": [
+        {
+            "name": "PaperMod",
+            "id": "papermod",
+            "options": [
+                {
+                    "key": "params.homeInfoParams.Title",
+                    "type": "string",
+                    "label": "首页标题",
+                    "default": "Hello"
+                },
+                {
+                    "key": "params.ShowReadingTime",
+                    "type": "boolean",
+                    "label": "显示阅读时间",
+                    "default": true
+                },
+                {
+                    "key": "params.defaultTheme",
+                    "type": "enum",
+                    "label": "默认主题",
+                    "default": "auto",
+                    "enumValues": [
+                        "light",
+                        "dark",
+                        "auto"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "LoveIt",
+            "id": "loveit",
+            "options": [
+                {
+                    "key": "params.title",
+                    "type": "string",
+                    "label": "站点标题",
+                    "default": "LoveIt Blog"
+                },
+                {
+                    "key": "params.header.desktopMode",
+                    "type": "enum",
+                    "label": "桌面头部模式",
+                    "default": "fixed",
+                    "enumValues": [
+                        "fixed",
+                        "normal",
+                        "auto"
+                    ]
+                },
+                {
+                    "key": "params.page.share.enable",
+                    "type": "boolean",
+                    "label": "启用分享",
+                    "default": true
+                }
+            ]
+        },
+        {
+            "name": "Stack",
+            "id": "stack",
+            "options": [
+                {
+                    "key": "params.mainSections",
+                    "type": "array",
+                    "label": "主内容分区",
+                    "default": [
+                        "post"
+                    ]
+                },
+                {
+                    "key": "params.sidebar.subtitle",
+                    "type": "string",
+                    "label": "侧栏副标题",
+                    "default": ""
+                },
+                {
+                    "key": "params.article.math",
+                    "type": "boolean",
+                    "label": "启用公式",
+                    "default": false
+                }
+            ]
+        },
+        {
+            "name": "Mainroad",
+            "id": "mainroad",
+            "options": [
+                {
+                    "key": "Params.description",
+                    "type": "string",
+                    "label": "站点描述",
+                    "default": ""
+                },
+                {
+                    "key": "Params.highlightColor",
+                    "type": "enum",
+                    "label": "高亮色",
+                    "default": "blue",
+                    "enumValues": [
+                        "blue",
+                        "green",
+                        "red",
+                        "orange"
+                    ]
+                },
+                {
+                    "key": "Params.post_meta",
+                    "type": "array",
+                    "label": "文章元信息",
+                    "default": [
+                        "date",
+                        "categories"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Anatole",
+            "id": "anatole",
+            "options": [
+                {
+                    "key": "params.profilePicture",
+                    "type": "string",
+                    "label": "头像地址",
+                    "default": ""
+                },
+                {
+                    "key": "params.displayMode",
+                    "type": "enum",
+                    "label": "显示模式",
+                    "default": "auto",
+                    "enumValues": [
+                        "light",
+                        "dark",
+                        "auto"
+                    ]
+                },
+                {
+                    "key": "params.socialIcons",
+                    "type": "array",
+                    "label": "社交图标",
+                    "default": [
+                        "github",
+                        "rss"
+                    ]
+                }
+            ]
+        }
+    ]
+}

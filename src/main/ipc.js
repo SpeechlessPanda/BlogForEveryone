@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron');
+const { app, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { readStore, updateStore } = require('./services/storeService');
@@ -16,6 +16,7 @@ const {
 } = require('./services/envService');
 const { beginDeviceLogin, completeDeviceLogin, loginWithDeviceCode, getAuthState, logout } = require('./services/githubAuthService');
 const { createAndOpenContent, watchSaveAndAutoPublish, getPublishJobStatus } = require('./services/contentService');
+const { checkForUpdatesNow, quitAndInstallUpdate, getUpdateState } = require('./services/updateService');
 const {
     listSubscriptions,
     addSubscription,
@@ -29,9 +30,22 @@ function registerIpcHandlers() {
     ipcMain.handle('app:getState', async () => {
         return {
             appName: 'BlogForEveryone',
-            version: '0.1.0',
+            version: app.getVersion(),
             env: checkEnvironment()
         };
+    });
+
+    ipcMain.handle('app:getUpdateState', async () => {
+        return getUpdateState();
+    });
+
+    ipcMain.handle('app:checkUpdatesNow', async () => {
+        return checkForUpdatesNow();
+    });
+
+    ipcMain.handle('app:installUpdateNow', async () => {
+        quitAndInstallUpdate();
+        return { ok: true };
     });
 
     ipcMain.handle('env:status', async () => checkEnvironment());

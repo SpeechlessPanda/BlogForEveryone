@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import WorkspaceView from './views/WorkspaceView.vue';
 import ThemeConfigView from './views/ThemeConfigView.vue';
 import PublishBackupView from './views/PublishBackupView.vue';
@@ -22,14 +22,38 @@ const activeTab = ref('workspace');
 const appState = ref({ appName: 'BlogForEveryone', version: '0.1.0' });
 const envStatus = ref({ nodeInstalled: true, gitInstalled: true, pnpmInstalled: true, ready: true });
 const envActionLog = ref('');
+const updateState = ref({ status: 'idle', message: '未检测更新', downloaded: false, error: null });
 const authClientId = ref('');
 const authState = ref(null);
 const authLog = ref('');
 const deviceFlow = ref(null);
 const isLoggedIn = computed(() => Boolean(authState.value?.accessToken || authState.value?.user));
+let releaseUpdateListener = null;
 
 async function refreshEnvStatus() {
     envStatus.value = await window.bfeApi.getEnvironmentStatus();
+}
+
+async function refreshUpdateState() {
+    updateState.value = await window.bfeApi.getUpdateState();
+}
+
+async function handleCheckUpdatesNow() {
+    try {
+        await window.bfeApi.checkUpdatesNow();
+        await refreshUpdateState();
+    } catch (error) {
+        updateState.value = {
+            ...updateState.value,
+            status: 'error',
+            message: '手动检查更新失败',
+            error: String(error?.message || error || 'unknown error')
+        };
+    }
+}
+
+async function handleInstallUpdateNow() {
+    await window.bfeApi.installUpdateNow();
 }
 
 async function handleOpenInstaller(tool) {
@@ -113,12 +137,23 @@ onMounted(async () => {
     if (window.bfeApi) {
         appState.value = await window.bfeApi.getAppState();
         envStatus.value = appState.value.env || envStatus.value;
+        await refreshUpdateState();
         await refreshAuthState();
+
+        releaseUpdateListener = window.bfeApi.onUpdateStatus((payload) => {
+            updateState.value = payload;
+        });
     }
 
     window.addEventListener('bfe:open-tutorial', () => {
         activeTab.value = 'tutorial';
     });
+});
+
+onUnmounted(() => {
+    if (typeof releaseUpdateListener === 'function') {
+        releaseUpdateListener();
+    }
 });
 </script>
 
@@ -134,6 +169,17 @@ onMounted(async () => {
         </aside>
 
         <main class="content">
+            <section class="panel">
+                <h2>自动更新</h2>
+                <p class="muted">{{ updateState.message }}</p>
+                <p class="muted" v-if="updateState.error">错误：{{ updateState.error }}</p>
+                <div class="actions">
+                    <button class="secondary" @click="handleCheckUpdatesNow">立即检查更新</button>
+                    <button class="primary" v-if="updateState.downloaded"
+                        @click="handleInstallUpdateNow">立即重启并安装</button>
+                </div>
+            </section>
+
             <section v-if="!envStatus.ready" class="panel env-alert">
                 <h2>环境检查</h2>
                 <p class="muted">检测到当前环境不完整。你只需要确认按钮，应用会引导下载安装。</p>

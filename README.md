@@ -21,6 +21,8 @@
 8. GitHub OAuth 设备码登录：应用内展示设备码并完成授权。
 9. 环境检查与安装引导：缺失 Git/Node/pnpm 时给出下载与自动安装入口。
 10. 教程中心目录化：按模块分区展示详细步骤和注意事项。
+11. 自动更新：应用启动自动检查 Release 新版本，后台下载并支持一键重启安装。
+12. 代码签名发布流程：支持通过证书环境变量进行签名打包，降低安全提示。
 
 ## 环境要求
 
@@ -67,6 +69,18 @@ pnpm run build:renderer
 pnpm run package
 ```
 
+5. 签名打包（需预先配置证书环境变量）：
+
+```bash
+pnpm run package:signed
+```
+
+6. 发布到 GitHub Release（自动更新所需）：
+
+```bash
+pnpm run release
+```
+
 ## 目录结构
 
 1. `src/main`：Electron 主进程、IPC、服务层。
@@ -79,9 +93,12 @@ pnpm run package
 
 1. 项目计划书：`docs/plans/2026-03-16-blog-builder-platform-plan.md`
 2. GitHub OAuth 教程：`docs/guides/github-oauth-app-setup.md`
+3. 发布、签名与自动更新：`docs/guides/release-signing-auto-update.md`
 
 ## 当前状态说明
 
 1. 当前版本聚焦 MVP 可用链路：创建 -> 配置 -> 写作 -> 发布 -> 备份/恢复。
 2. 统计默认推荐“不蒜子”方案（低门槛、零注册）；可选接入 Umami/GA。
 3. 若 `pnpm run dev` 启动失败，优先先执行 `pnpm run build:renderer` 检查前端编译错误。
+4. 自动更新依赖 Release 资产（安装包、blockmap、latest.yml）完整上传。
+5. 若要减少“未知发布者”提示，需要使用有效代码签名证书执行签名发布。

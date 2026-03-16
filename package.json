@@ -12,14 +12,17 @@
         "build:renderer": "vite build --config vite.config.js",
         "start": "cross-env NODE_ENV=production electron .",
         "lint": "echo \"No linter configured yet\"",
-        "package": "pnpm run build:renderer && electron-builder"
+        "package": "pnpm run build:renderer && electron-builder",
+        "package:signed": "pnpm run build:renderer && electron-builder --publish never",
+        "release": "pnpm run build:renderer && electron-builder --publish always"
     },
     "packageManager": "pnpm@9.15.0",
     "dependencies": {
+        "@iarna/toml": "^2.2.5",
+        "electron-updater": "^6.8.3",
         "rss-parser": "^3.13.0",
         "vue": "^3.5.17",
-        "yaml": "^2.8.1",
-        "@iarna/toml": "^2.2.5"
+        "yaml": "^2.8.1"
     },
     "devDependencies": {
         "@vitejs/plugin-vue": "^5.2.4",
@@ -42,8 +45,19 @@
         "directories": {
             "buildResources": "build"
         },
+        "publish": [
+            {
+                "provider": "github",
+                "owner": "SpeechlessPanda",
+                "repo": "BlogForEveryone"
+            }
+        ],
         "win": {
             "signAndEditExecutable": false,
+            "verifyUpdateCodeSignature": false,
+            "signtoolOptions": {
+                "publisherName": "SpeechlessPanda"
+            },
             "target": "nsis"
         }
     }

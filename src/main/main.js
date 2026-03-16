@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const { registerIpcHandlers } = require('./ipc');
 const { startAutoSync } = require('./services/rssService');
+const { initAutoUpdate } = require('./services/updateService');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -27,20 +28,23 @@ function createMainWindow() {
     if (isDev) {
         win.loadURL('http://localhost:5173');
         win.webContents.openDevTools({ mode: 'detach' });
-        return;
+        return win;
     }
 
     win.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+    return win;
 }
 
 app.whenReady().then(() => {
     registerIpcHandlers();
     startAutoSync();
-    createMainWindow();
+    const win = createMainWindow();
+    initAutoUpdate(win);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createMainWindow();
+            const nextWin = createMainWindow();
+            initAutoUpdate(nextWin);
         }
     });
 });

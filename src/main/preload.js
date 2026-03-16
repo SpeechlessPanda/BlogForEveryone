@@ -2,6 +2,16 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('bfeApi', {
     getAppState: () => ipcRenderer.invoke('app:getState'),
+    getUpdateState: () => ipcRenderer.invoke('app:getUpdateState'),
+    checkUpdatesNow: () => ipcRenderer.invoke('app:checkUpdatesNow'),
+    installUpdateNow: () => ipcRenderer.invoke('app:installUpdateNow'),
+    onUpdateStatus: (listener) => {
+        const handler = (_event, payload) => listener(payload);
+        ipcRenderer.on('app:updateStatus', handler);
+        return () => {
+            ipcRenderer.removeListener('app:updateStatus', handler);
+        };
+    },
     getEnvironmentStatus: () => ipcRenderer.invoke('env:status'),
     openInstaller: (payload) => ipcRenderer.invoke('env:openInstaller', payload),
     autoInstallTool: (payload) => ipcRenderer.invoke('env:autoInstallTool', payload),

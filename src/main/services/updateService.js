@@ -1,5 +1,8 @@
 const { app } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const fs = require('fs');
+const path = require('path');
+const { DATA_DIR } = require('./storeService');
 
 const isDev = process.env.NODE_ENV === 'development';
 const updatesDisabled = isDev || !app.isPackaged;
@@ -17,6 +20,45 @@ const updateState = {
 
 let boundWindow = null;
 let initialized = false;
+const STARTUP_META_FILE = path.join(DATA_DIR, 'startup-meta.json');
+const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+function ensureStartupMeta() {
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
+    if (!fs.existsSync(STARTUP_META_FILE)) {
+        const initialMeta = {
+            initializedAt: new Date().toISOString(),
+            lastAutoUpdateCheckAt: 0
+        };
+        fs.writeFileSync(STARTUP_META_FILE, JSON.stringify(initialMeta, null, 2), 'utf-8');
+    }
+}
+
+function readStartupMeta() {
+    ensureStartupMeta();
+    const raw = fs.readFileSync(STARTUP_META_FILE, 'utf-8');
+    return JSON.parse(raw);
+}
+
+function writeStartupMeta(nextMeta) {
+    ensureStartupMeta();
+    fs.writeFileSync(STARTUP_META_FILE, JSON.stringify(nextMeta, null, 2), 'utf-8');
+}
+
+function markAutoUpdateCheckedNow() {
+    const meta = readStartupMeta();
+    meta.lastAutoUpdateCheckAt = Date.now();
+    writeStartupMeta(meta);
+}
+
+function shouldAutoCheckNow() {
+    const meta = readStartupMeta();
+    const lastCheckAt = Number(meta.lastAutoUpdateCheckAt || 0);
+    return Date.now() - lastCheckAt >= AUTO_CHECK_INTERVAL_MS;
+}
 
 function snapshot() {
     return {
@@ -100,6 +142,7 @@ function setupUpdaterEvents() {
 
 function initAutoUpdate(mainWindow) {
     boundWindow = mainWindow;
+    ensureStartupMeta();
 
     if (updatesDisabled) {
         setState({
@@ -112,7 +155,8 @@ function initAutoUpdate(mainWindow) {
 
     if (!initialized) {
         autoUpdater.autoDownload = true;
-        autoUpdater.autoInstallOnAppQuit = true;
+        // Keep update installation fully explicit to avoid perceived re-install popups.
+        autoUpdater.autoInstallOnAppQuit = false;
         setupUpdaterEvents();
         initialized = true;
     }
@@ -123,6 +167,15 @@ function initAutoUpdate(mainWindow) {
         error: null
     });
 
+    if (!shouldAutoCheckNow()) {
+        setState({
+            status: 'ready',
+            message: '自动更新已启用（本次启动跳过自动检查，加速启动）',
+            error: null
+        });
+        return;
+    }
+
     autoUpdater.checkForUpdates().catch((error) => {
         setState({
             status: 'error',
@@ -130,6 +183,7 @@ function initAutoUpdate(mainWindow) {
             error: String(error?.message || error || 'unknown error')
         });
     });
+    markAutoUpdateCheckedNow();
 }
 
 async function checkForUpdatesNow() {
@@ -143,6 +197,7 @@ async function checkForUpdatesNow() {
     }
 
     await autoUpdater.checkForUpdates();
+    markAutoUpdateCheckedNow();
     return snapshot();
 }
 

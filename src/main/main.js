@@ -7,6 +7,16 @@ const { initAutoUpdate } = require('./services/updateService');
 
 const isDev = process.env.NODE_ENV === 'development';
 
+function resolveAppIconPath() {
+    const devPath = path.join(__dirname, '../img/icon.jpg');
+    if (isDev) {
+        return devPath;
+    }
+
+    const packedPath = path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.jpg');
+    return packedPath;
+}
+
 function createMainWindow() {
     const win = new BrowserWindow({
         width: 1280,
@@ -14,7 +24,7 @@ function createMainWindow() {
         minWidth: 1080,
         minHeight: 720,
         autoHideMenuBar: true,
-        icon: path.join(__dirname, '../img/icon.jpg'),
+        icon: resolveAppIconPath(),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,

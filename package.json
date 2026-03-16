@@ -1,6 +1,6 @@
 {
     "name": "blog-for-everyone",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Beginner-friendly blog builder platform for Hexo and Hugo",
     "main": "src/main/main.js",
     "author": "BlogForEveryone",
@@ -10,11 +10,12 @@
         "dev:renderer": "vite --config vite.config.js",
         "dev:electron": "cross-env NODE_ENV=development electron .",
         "build:renderer": "vite build --config vite.config.js",
+        "sanitize:release": "node scripts/sanitize-release.js",
         "start": "cross-env NODE_ENV=production electron .",
         "lint": "echo \"No linter configured yet\"",
-        "package": "pnpm run build:renderer && electron-builder",
-        "package:signed": "pnpm run build:renderer && electron-builder --publish never",
-        "release": "pnpm run build:renderer && electron-builder --publish always"
+        "package": "pnpm run sanitize:release && pnpm run build:renderer && electron-builder",
+        "package:signed": "pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish never",
+        "release": "pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish always"
     },
     "packageManager": "pnpm@9.15.0",
     "dependencies": {
@@ -36,9 +37,11 @@
     "build": {
         "appId": "com.blogforeveryone.app",
         "productName": "BlogForEveryone",
+        "copyright": "Copyright (c) BlogForEveryone",
         "files": [
             "src/main/**/*",
             "dist/renderer/**/*",
+            "src/img/**/*",
             "src/shared/**/*",
             "package.json"
         ],
@@ -53,12 +56,19 @@
             }
         ],
         "win": {
+            "icon": "build/icon.ico",
             "signAndEditExecutable": false,
             "verifyUpdateCodeSignature": false,
-            "signtoolOptions": {
-                "publisherName": "SpeechlessPanda"
-            },
             "target": "nsis"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "runAfterFinish": true,
+            "installerIcon": "build/icon.ico",
+            "uninstallerIcon": "build/icon.ico"
         }
     }
 }

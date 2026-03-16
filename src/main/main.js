@@ -1,7 +1,8 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 const { registerIpcHandlers } = require('./ipc');
-const { startAutoSync } = require('./services/rssService');
+const { setAutoSyncEnabled } = require('./services/rssService');
+const { readStore } = require('./services/storeService');
 const { initAutoUpdate } = require('./services/updateService');
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -40,7 +41,8 @@ function createMainWindow() {
 app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
     registerIpcHandlers();
-    startAutoSync();
+    const state = readStore();
+    setAutoSyncEnabled(state.preferences?.autoSyncRssSubscriptions !== false);
     const win = createMainWindow();
     initAutoUpdate(win);
 

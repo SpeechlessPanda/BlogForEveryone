@@ -14,7 +14,11 @@ function ensureStore() {
         const initial = {
             workspaces: [],
             subscriptions: [],
-            notifications: []
+            notifications: [],
+            preferences: {
+                generateBlogRss: true,
+                autoSyncRssSubscriptions: true
+            }
         };
         fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf-8');
     }

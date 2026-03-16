@@ -6,6 +6,7 @@ const { readStore, writeStore } = require('./storeService');
 
 const parser = new Parser();
 let syncTimer = null;
+let syncEnabled = true;
 
 function listSubscriptions() {
     const state = readStore();
@@ -109,6 +110,7 @@ function importSubscriptions({ projectDir, strategy = 'merge' }) {
 }
 
 function startAutoSync(intervalMs = 10 * 60 * 1000) {
+    syncEnabled = true;
     if (syncTimer) {
         clearInterval(syncTimer);
     }
@@ -122,6 +124,29 @@ function startAutoSync(intervalMs = 10 * 60 * 1000) {
     }, intervalMs);
 }
 
+function stopAutoSync() {
+    syncEnabled = false;
+    if (syncTimer) {
+        clearInterval(syncTimer);
+        syncTimer = null;
+    }
+}
+
+function setAutoSyncEnabled(enabled, intervalMs = 10 * 60 * 1000) {
+    if (enabled) {
+        startAutoSync(intervalMs);
+        return;
+    }
+    stopAutoSync();
+}
+
+function getAutoSyncState() {
+    return {
+        enabled: syncEnabled,
+        running: Boolean(syncTimer)
+    };
+}
+
 module.exports = {
     listSubscriptions,
     addSubscription,
@@ -129,5 +154,8 @@ module.exports = {
     syncSubscriptions,
     exportSubscriptions,
     importSubscriptions,
-    startAutoSync
+    startAutoSync,
+    stopAutoSync,
+    setAutoSyncEnabled,
+    getAutoSyncState
 };

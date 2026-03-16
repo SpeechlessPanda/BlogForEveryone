@@ -23,7 +23,9 @@ const {
     removeSubscription,
     syncSubscriptions,
     exportSubscriptions,
-    importSubscriptions
+    importSubscriptions,
+    setAutoSyncEnabled,
+    getAutoSyncState
 } = require('./services/rssService');
 
 function registerIpcHandlers() {
@@ -37,6 +39,31 @@ function registerIpcHandlers() {
 
     ipcMain.handle('app:getUpdateState', async () => {
         return getUpdateState();
+    });
+
+    ipcMain.handle('app:getPreferences', async () => {
+        const state = readStore();
+        return state.preferences || {
+            generateBlogRss: true,
+            autoSyncRssSubscriptions: true
+        };
+    });
+
+    ipcMain.handle('app:savePreferences', async (_event, payload) => {
+        const next = updateStore((state) => {
+            const current = state.preferences || {};
+            state.preferences = {
+                generateBlogRss: payload.generateBlogRss ?? current.generateBlogRss ?? true,
+                autoSyncRssSubscriptions: payload.autoSyncRssSubscriptions ?? current.autoSyncRssSubscriptions ?? true
+            };
+            return state;
+        });
+
+        setAutoSyncEnabled(next.preferences.autoSyncRssSubscriptions !== false);
+        return {
+            preferences: next.preferences,
+            rssAutoSync: getAutoSyncState()
+        };
     });
 
     ipcMain.handle('app:checkUpdatesNow', async () => {

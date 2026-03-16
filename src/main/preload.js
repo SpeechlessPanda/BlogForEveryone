@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('bfeApi', {
     getAppState: () => ipcRenderer.invoke('app:getState'),
+    getPreferences: () => ipcRenderer.invoke('app:getPreferences'),
+    savePreferences: (payload) => ipcRenderer.invoke('app:savePreferences', payload),
     getUpdateState: () => ipcRenderer.invoke('app:getUpdateState'),
     checkUpdatesNow: () => ipcRenderer.invoke('app:checkUpdatesNow'),
     installUpdateNow: () => ipcRenderer.invoke('app:installUpdateNow'),

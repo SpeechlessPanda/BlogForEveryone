@@ -113,48 +113,111 @@ body {
   margin-bottom: 8px;
 }
 
-.tutorial-layout {
+.tutorial-layout-full {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 16px;
+  gap: 20px;
+  height: calc(100vh - 48px);
 }
 
 .tutorial-directory {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
   border-radius: 12px;
-  padding: 12px;
-  height: fit-content;
-  position: sticky;
-  top: 16px;
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.tutorial-directory h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
 }
 
 .tutorial-link {
   width: 100%;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 12px 14px;
   text-align: left;
   margin-bottom: 8px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.tutorial-link:hover {
+  background: var(--bg);
+  transform: translateY(-1px);
 }
 
 .tutorial-link.active {
   border-color: var(--brand);
   background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 600;
 }
 
 .tutorial-article {
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 12px 14px;
-  background: #fff;
+  padding: 24px 32px;
+  background: var(--panel);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.tutorial-article h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 22px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
 }
 
 .tutorial-article h4 {
-  margin-top: 14px;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: var(--brand);
+}
+
+.tutorial-article p {
+  line-height: 1.6;
+}
+
+.tutorial-article ol,
+.tutorial-article ul {
+  line-height: 1.8;
+  padding-left: 20px;
+}
+
+.tutorial-article li {
   margin-bottom: 8px;
+}
+
+.tutorial-directory::-webkit-scrollbar,
+.tutorial-article::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tutorial-directory::-webkit-scrollbar-track,
+.tutorial-article::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tutorial-directory::-webkit-scrollbar-thumb,
+.tutorial-article::-webkit-scrollbar-thumb {
+  background-color: var(--line);
+  border-radius: 4px;
+}
+
+.tutorial-directory:hover::-webkit-scrollbar-thumb,
+.tutorial-article:hover::-webkit-scrollbar-thumb {
+  background-color: var(--muted);
 }
 
 .tutorial-note {
@@ -207,10 +270,17 @@ textarea {
 button.primary,
 button.secondary,
 button.danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border-radius: 10px;
   border: none;
   padding: 9px 14px;
   cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
 }
 
 button.primary {
@@ -219,13 +289,54 @@ button.primary {
 }
 
 button.secondary {
-  background: #ece4d6;
-  color: #27231d;
+  background: #dbeef4;
+  color: #163540;
 }
 
 button.danger {
   background: var(--danger);
   color: #fff;
+}
+
+button.primary:hover,
+button.secondary:hover,
+button.danger:hover {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+button.is-success {
+  background: #2f7d6a;
+  color: #fff;
+}
+
+button.is-fail {
+  background: #a2362b;
+  color: #fff;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-top-color: #ffffff;
+  animation: bfe-spin 0.8s linear infinite;
+}
+
+button.secondary .btn-spinner {
+  border-color: rgba(22, 53, 64, 0.28);
+  border-top-color: #163540;
+}
+
+@keyframes bfe-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .list {

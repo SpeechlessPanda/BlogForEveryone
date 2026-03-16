@@ -1,10 +1,12 @@
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive } from "vue";
 import {
   getSelectedWorkspace,
   workspaceState,
   refreshWorkspaces,
 } from "../stores/workspaceStore";
+
+const ACTION_IDLE_RESET_MS = 1400;
 
 const form = reactive({
   type: "post",
@@ -18,6 +20,16 @@ const state = reactive({
   filePath: "",
   jobId: "",
   jobStatus: "",
+});
+
+const actionState = reactive({
+  create: "idle",
+  refresh: "idle",
+});
+
+const errorModal = reactive({
+  visible: false,
+  title: "操作失败",
   message: "",
 });
 
@@ -28,52 +40,99 @@ function goTutorialCenter() {
 async function createAndEdit() {
   const ws = getSelectedWorkspace();
   if (!ws) {
-    state.message = "请先选择工程。";
+    openErrorModal("创建失败", "请先选择工程。");
     return;
   }
 
-  try {
-    const result = await window.bfeApi.createAndOpenContent({
-      projectDir: ws.projectDir,
-      framework: ws.framework,
-      type: form.type,
-      title: form.title,
-      slug: form.slug,
-    });
-
-    state.filePath = result.filePath;
-    state.message = "已打开默认编辑器，请保存文件。";
-
-    if (form.autoPublish && form.repoUrl) {
-      const job = await window.bfeApi.watchAndAutoPublish({
-        filePath: result.filePath,
+  await runActionWithFeedback(
+    "create",
+    async () => {
+      const result = await window.bfeApi.createAndOpenContent({
         projectDir: ws.projectDir,
         framework: ws.framework,
-        repoUrl: form.repoUrl,
+        type: form.type,
+        title: form.title,
+        slug: form.slug,
       });
-      state.jobId = job.jobId;
-      state.jobStatus = job.status;
-    }
-  } catch (error) {
-    state.message = `创建内容失败：${String(error?.message || error)}`;
-  }
+
+      state.filePath = result.filePath;
+
+      if (form.autoPublish && form.repoUrl) {
+        const job = await window.bfeApi.watchAndAutoPublish({
+          filePath: result.filePath,
+          projectDir: ws.projectDir,
+          framework: ws.framework,
+          repoUrl: form.repoUrl,
+        });
+        state.jobId = job.jobId;
+        state.jobStatus = job.status;
+      }
+    },
+    "创建内容失败",
+  );
 }
 
 async function refreshPublishJob() {
   if (!state.jobId) {
+    openErrorModal("刷新失败", "当前没有自动发布任务可刷新。");
     return;
   }
-  try {
-    const job = await window.bfeApi.getPublishJobStatus({ jobId: state.jobId });
-    if (!job) {
-      state.message = "没有找到自动发布任务。";
-      return;
+
+  await runActionWithFeedback(
+    "refresh",
+    async () => {
+      const job = await window.bfeApi.getPublishJobStatus({
+        jobId: state.jobId,
+      });
+      if (!job) {
+        throw new Error("没有找到自动发布任务。");
+        return;
+      }
+      state.jobStatus = job.status;
+    },
+    "刷新发布状态失败",
+  );
+}
+
+function openErrorModal(title, error) {
+  errorModal.visible = true;
+  errorModal.title = title;
+  errorModal.message = String(error?.message || error || "未知错误");
+}
+
+function closeErrorModal() {
+  errorModal.visible = false;
+}
+
+function scheduleActionReset(key) {
+  window.setTimeout(() => {
+    if (actionState[key] !== "loading") {
+      actionState[key] = "idle";
     }
-    state.jobStatus = job.status;
-    state.message = job.message;
+  }, ACTION_IDLE_RESET_MS);
+}
+
+async function runActionWithFeedback(key, task, failTitle) {
+  actionState[key] = "loading";
+  try {
+    await task();
+    actionState[key] = "success";
   } catch (error) {
-    state.message = `刷新发布状态失败：${String(error?.message || error)}`;
+    actionState[key] = "fail";
+    openErrorModal(failTitle, error);
+  } finally {
+    scheduleActionReset(key);
   }
+}
+
+function getActionLabel(key, idleLabel) {
+  if (actionState[key] === "success") {
+    return "success";
+  }
+  if (actionState[key] === "fail") {
+    return "fail";
+  }
+  return idleLabel;
 }
 
 onMounted(async () => {
@@ -141,17 +200,64 @@ onMounted(async () => {
     </div>
 
     <div class="actions">
-      <button class="primary" @click="createAndEdit">创建并打开编辑器</button>
-      <button class="secondary" @click="refreshPublishJob">
-        刷新自动发布状态
+      <button
+        class="primary"
+        :class="{
+          'is-loading': actionState.create === 'loading',
+          'is-success': actionState.create === 'success',
+          'is-fail': actionState.create === 'fail',
+        }"
+        :disabled="actionState.create === 'loading'"
+        @click="createAndEdit"
+      >
+        <span
+          v-if="actionState.create === 'loading'"
+          class="btn-spinner"
+          aria-hidden="true"
+        ></span>
+        {{ getActionLabel("create", "创建并打开编辑器") }}
+      </button>
+      <button
+        class="secondary"
+        :class="{
+          'is-loading': actionState.refresh === 'loading',
+          'is-success': actionState.refresh === 'success',
+          'is-fail': actionState.refresh === 'fail',
+        }"
+        :disabled="actionState.refresh === 'loading'"
+        @click="refreshPublishJob"
+      >
+        <span
+          v-if="actionState.refresh === 'loading'"
+          class="btn-spinner"
+          aria-hidden="true"
+        ></span>
+        {{ getActionLabel("refresh", "刷新自动发布状态") }}
       </button>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>执行状态</h2>
+    <div
+      v-if="state.filePath || state.jobStatus"
+      class="panel"
+      style="margin-top: 12px"
+    >
+      <h2>最近一次任务</h2>
       <p class="muted">文件路径：{{ state.filePath || "-" }}</p>
       <p class="muted">任务状态：{{ state.jobStatus || "-" }}</p>
-      <p class="muted">消息：{{ state.message || "-" }}</p>
+    </div>
+
+    <div
+      v-if="errorModal.visible"
+      class="modal-backdrop"
+      @click.self="closeErrorModal"
+    >
+      <div class="modal-panel">
+        <h2>{{ errorModal.title }}</h2>
+        <p class="muted" style="font-size: 14px">{{ errorModal.message }}</p>
+        <div class="actions">
+          <button class="danger" @click="closeErrorModal">关闭</button>
+        </div>
+      </div>
     </div>
   </section>
 </template>

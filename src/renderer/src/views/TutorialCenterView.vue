@@ -149,7 +149,7 @@ const activeSection = computed(() => {
 </script>
 
 <template>
-  <section class="panel tutorial-panel tutorial-layout">
+  <section class="tutorial-layout-full">
     <aside class="tutorial-directory">
       <h2>教程中心</h2>
       <p class="muted">点击左侧目录进入详细教程。</p>
@@ -173,7 +173,7 @@ const activeSection = computed(() => {
       </ol>
 
       <h4>注意事项</h4>
-      <ul>
+      <ul class="tutorial-note">
         <li v-for="note in activeSection.notes" :key="note">{{ note }}</li>
       </ul>
     </article>

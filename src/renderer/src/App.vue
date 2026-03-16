@@ -9,6 +9,8 @@ import RssReaderView from "./views/RssReaderView.vue";
 import TutorialCenterView from "./views/TutorialCenterView.vue";
 import ContentEditorView from "./views/ContentEditorView.vue";
 
+const ACTION_IDLE_RESET_MS = 1400;
+
 const tabs = [
   { key: "tutorial", label: "教程中心" },
   { key: "workspace", label: "博客创建" },
@@ -28,7 +30,6 @@ const envStatus = ref({
   ready: true,
 });
 const envActionLog = ref("");
-const uiFeedback = ref({ type: "info", message: "" });
 const updateState = ref({
   status: "idle",
   message: "未检测更新",
@@ -43,6 +44,15 @@ const isLoggedIn = computed(() =>
   Boolean(authState.value?.accessToken || authState.value?.user),
 );
 const infoModal = ref({ visible: false, key: "about" });
+const actionState = ref({
+  checkUpdate: "idle",
+  installUpdate: "idle",
+});
+const errorModal = ref({
+  visible: false,
+  title: "操作失败",
+  message: "",
+});
 let releaseUpdateListener = null;
 
 const sidebarLoginText = computed(() => {
@@ -66,19 +76,58 @@ function closeInfoModal() {
   infoModal.value = { ...infoModal.value, visible: false };
 }
 
-function setUiFeedback(type, message) {
-  uiFeedback.value = { type, message };
+function openErrorModal(title, error) {
+  errorModal.value = {
+    visible: true,
+    title,
+    message: String(error?.message || error || "未知错误"),
+  };
+}
+
+function closeErrorModal() {
+  errorModal.value = {
+    ...errorModal.value,
+    visible: false,
+  };
+}
+
+function scheduleActionReset(key) {
+  window.setTimeout(() => {
+    if (actionState.value[key] !== "loading") {
+      actionState.value[key] = "idle";
+    }
+  }, ACTION_IDLE_RESET_MS);
+}
+
+async function runActionWithFeedback(key, task, failTitle) {
+  actionState.value[key] = "loading";
+  try {
+    await task();
+    actionState.value[key] = "success";
+  } catch (error) {
+    actionState.value[key] = "fail";
+    openErrorModal(failTitle, error);
+  } finally {
+    scheduleActionReset(key);
+  }
+}
+
+function getActionLabel(key, idleLabel) {
+  const state = actionState.value[key];
+  if (state === "success") {
+    return "success";
+  }
+  if (state === "fail") {
+    return "fail";
+  }
+  return idleLabel;
 }
 
 async function refreshEnvStatus() {
   try {
     envStatus.value = await window.bfeApi.getEnvironmentStatus();
-    setUiFeedback("success", "环境状态已刷新。");
   } catch (error) {
-    setUiFeedback(
-      "error",
-      `环境状态刷新失败：${String(error?.message || error)}`,
-    );
+    openErrorModal("环境状态刷新失败", error);
   }
 }
 
@@ -87,40 +136,32 @@ async function refreshUpdateState() {
 }
 
 async function handleCheckUpdatesNow() {
-  try {
-    await window.bfeApi.checkUpdatesNow();
-    await refreshUpdateState();
-    setUiFeedback("success", "已触发更新检查。");
-  } catch (error) {
-    updateState.value = {
-      ...updateState.value,
-      status: "error",
-      message: "手动检查更新失败",
-      error: String(error?.message || error || "unknown error"),
-    };
-    setUiFeedback("error", "检查更新失败，请稍后重试。");
-  }
+  await runActionWithFeedback(
+    "checkUpdate",
+    async () => {
+      await window.bfeApi.checkUpdatesNow();
+      await refreshUpdateState();
+    },
+    "检查更新失败",
+  );
 }
 
 async function handleInstallUpdateNow() {
-  try {
-    await window.bfeApi.installUpdateNow();
-    setUiFeedback("success", "更新安装已启动，应用将重启。");
-  } catch (error) {
-    setUiFeedback("error", `安装更新失败：${String(error?.message || error)}`);
-  }
+  await runActionWithFeedback(
+    "installUpdate",
+    async () => {
+      await window.bfeApi.installUpdateNow();
+    },
+    "安装更新失败",
+  );
 }
 
 async function handleOpenInstaller(tool) {
   try {
     const result = await window.bfeApi.openInstaller({ tool });
     envActionLog.value = `已打开 ${tool} 下载页：${result.url}`;
-    setUiFeedback("success", `${tool} 下载页已打开。`);
   } catch (error) {
-    setUiFeedback(
-      "error",
-      `打开 ${tool} 下载页失败：${String(error?.message || error)}`,
-    );
+    openErrorModal(`打开 ${tool} 下载页失败`, error);
   }
 }
 
@@ -128,10 +169,9 @@ async function handleInstallPnpm() {
   try {
     const result = await window.bfeApi.ensurePnpm();
     envActionLog.value = JSON.stringify(result, null, 2);
-    setUiFeedback("success", "pnpm 安装流程已执行。");
     await refreshEnvStatus();
   } catch (error) {
-    setUiFeedback("error", `pnpm 安装失败：${String(error?.message || error)}`);
+    openErrorModal("pnpm 安装失败", error);
   }
 }
 
@@ -146,13 +186,9 @@ async function handleAutoInstall(tool) {
   try {
     const result = await window.bfeApi.autoInstallTool({ tool });
     envActionLog.value = JSON.stringify(result, null, 2);
-    setUiFeedback("success", `${tool} 自动安装已执行。`);
     await refreshEnvStatus();
   } catch (error) {
-    setUiFeedback(
-      "error",
-      `${tool} 自动安装失败：${String(error?.message || error)}`,
-    );
+    openErrorModal(`${tool} 自动安装失败`, error);
   }
 }
 
@@ -160,10 +196,7 @@ async function refreshAuthState() {
   try {
     authState.value = await window.bfeApi.getGithubAuthState();
   } catch (error) {
-    setUiFeedback(
-      "error",
-      `刷新登录状态失败：${String(error?.message || error)}`,
-    );
+    openErrorModal("刷新登录状态失败", error);
   }
 }
 
@@ -191,7 +224,6 @@ async function handleGithubLogin() {
     });
 
     authLog.value = `登录成功：${result.user?.login}`;
-    setUiFeedback("success", `登录成功：${result.user?.login}`);
     await refreshAuthState();
   } catch (error) {
     const raw = String(error?.message || error || "unknown error");
@@ -199,7 +231,7 @@ async function handleGithubLogin() {
       /Error invoking remote method '[^']+':\s*/i,
       "",
     );
-    setUiFeedback("error", "登录失败，请检查网络或 Client ID。");
+    openErrorModal("登录失败，请检查网络或 Client ID", error);
   }
 }
 
@@ -210,7 +242,6 @@ async function copyUserCode() {
 
   await navigator.clipboard.writeText(deviceFlow.value.userCode);
   authLog.value = `设备码已复制：${deviceFlow.value.userCode}`;
-  setUiFeedback("success", "设备码已复制到剪贴板。");
 }
 
 function fillDemoClientIdGuide() {
@@ -224,9 +255,8 @@ async function handleGithubLogout() {
     await refreshAuthState();
     authLog.value = "已退出 GitHub 登录状态。";
     deviceFlow.value = null;
-    setUiFeedback("success", "已退出登录。");
   } catch (error) {
-    setUiFeedback("error", `退出登录失败：${String(error?.message || error)}`);
+    openErrorModal("退出登录失败", error);
   }
 }
 
@@ -273,7 +303,45 @@ onUnmounted(() => {
 
         <div class="sidebar-footer">
           <p class="muted" style="margin: 0 0 8px 0">{{ sidebarLoginText }}</p>
+          <p class="muted" style="margin: 0 0 8px 0">
+            {{ updateState.message }}
+          </p>
           <div class="actions" style="margin-top: 0">
+            <button
+              class="secondary"
+              :class="{
+                'is-loading': actionState.checkUpdate === 'loading',
+                'is-success': actionState.checkUpdate === 'success',
+                'is-fail': actionState.checkUpdate === 'fail',
+              }"
+              :disabled="actionState.checkUpdate === 'loading'"
+              @click="handleCheckUpdatesNow"
+            >
+              <span
+                v-if="actionState.checkUpdate === 'loading'"
+                class="btn-spinner"
+                aria-hidden="true"
+              ></span>
+              {{ getActionLabel("checkUpdate", "检查更新") }}
+            </button>
+            <button
+              class="primary"
+              v-if="updateState.downloaded"
+              :class="{
+                'is-loading': actionState.installUpdate === 'loading',
+                'is-success': actionState.installUpdate === 'success',
+                'is-fail': actionState.installUpdate === 'fail',
+              }"
+              :disabled="actionState.installUpdate === 'loading'"
+              @click="handleInstallUpdateNow"
+            >
+              <span
+                v-if="actionState.installUpdate === 'loading'"
+                class="btn-spinner"
+                aria-hidden="true"
+              ></span>
+              {{ getActionLabel("installUpdate", "立即安装更新") }}
+            </button>
             <button class="secondary" @click="openInfoModal('about')">
               关于
             </button>
@@ -293,36 +361,6 @@ onUnmounted(() => {
     </aside>
 
     <main class="content">
-      <section
-        v-if="uiFeedback.message"
-        class="panel"
-        :class="
-          uiFeedback.type === 'error' ? 'feedback-error' : 'feedback-success'
-        "
-      >
-        <p class="muted" style="margin: 0">{{ uiFeedback.message }}</p>
-      </section>
-
-      <section class="panel">
-        <h2>自动更新</h2>
-        <p class="muted">{{ updateState.message }}</p>
-        <p class="muted" v-if="updateState.error">
-          错误：{{ updateState.error }}
-        </p>
-        <div class="actions">
-          <button class="secondary" @click="handleCheckUpdatesNow">
-            立即检查更新
-          </button>
-          <button
-            class="primary"
-            v-if="updateState.downloaded"
-            @click="handleInstallUpdateNow"
-          >
-            立即重启并安装
-          </button>
-        </div>
-      </section>
-
       <section v-if="!envStatus.ready" class="panel env-alert">
         <h2>环境检查</h2>
         <p class="muted">
@@ -437,6 +475,20 @@ onUnmounted(() => {
         <p>{{ activeInfoModal.content }}</p>
         <div class="actions">
           <button class="primary" @click="closeInfoModal">我知道了</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="errorModal.visible"
+      class="modal-backdrop"
+      @click.self="closeErrorModal"
+    >
+      <div class="modal-panel">
+        <h2>{{ errorModal.title }}</h2>
+        <p class="muted" style="font-size: 14px">{{ errorModal.message }}</p>
+        <div class="actions">
+          <button class="danger" @click="closeErrorModal">关闭</button>
         </div>
       </div>
     </div>

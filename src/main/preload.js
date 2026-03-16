@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('bfeApi', {
     autoInstallTool: (payload) => ipcRenderer.invoke('env:autoInstallTool', payload),
     ensurePnpm: () => ipcRenderer.invoke('env:ensurePnpm'),
     installProjectDependencies: (payload) => ipcRenderer.invoke('project:installDependencies', payload),
+    beginGithubDeviceLogin: (payload) => ipcRenderer.invoke('githubAuth:beginDeviceLogin', payload),
+    completeGithubDeviceLogin: (payload) => ipcRenderer.invoke('githubAuth:completeDeviceLogin', payload),
     githubLoginWithDeviceCode: (payload) => ipcRenderer.invoke('githubAuth:loginWithDeviceCode', payload),
     getGithubAuthState: () => ipcRenderer.invoke('githubAuth:getState'),
     githubLogout: () => ipcRenderer.invoke('githubAuth:logout'),
@@ -19,6 +21,7 @@ contextBridge.exposeInMainWorld('bfeApi', {
     getThemeCatalog: () => ipcRenderer.invoke('theme:catalog'),
     getThemeConfig: (payload) => ipcRenderer.invoke('theme:getConfig', payload),
     saveThemeConfig: (payload) => ipcRenderer.invoke('theme:saveConfig', payload),
+    uploadThemeImageToGithub: (payload) => ipcRenderer.invoke('theme:uploadImageToGithub', payload),
 
     publishToGitHub: (payload) => ipcRenderer.invoke('publish:github', payload),
 

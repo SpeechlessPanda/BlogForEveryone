@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import WorkspaceView from './views/WorkspaceView.vue';
 import ThemeConfigView from './views/ThemeConfigView.vue';
 import PublishBackupView from './views/PublishBackupView.vue';
@@ -23,6 +23,8 @@ const envActionLog = ref('');
 const authClientId = ref('');
 const authState = ref(null);
 const authLog = ref('');
+const deviceFlow = ref(null);
+const isLoggedIn = computed(() => Boolean(authState.value?.accessToken || authState.value?.user));
 
 async function refreshEnvStatus() {
     envStatus.value = await window.bfeApi.getEnvironmentStatus();
@@ -60,17 +62,38 @@ async function handleGithubLogin() {
         return;
     }
 
-    authLog.value = '正在拉起 GitHub 设备码登录，请在浏览器确认授权...';
+    authLog.value = '正在申请设备码...';
     try {
-        const result = await window.bfeApi.githubLoginWithDeviceCode({
+        const begin = await window.bfeApi.beginGithubDeviceLogin({
             clientId: authClientId.value,
             scope: 'repo read:user user:email'
         });
-        authLog.value = JSON.stringify(result, null, 2);
+
+        deviceFlow.value = begin;
+        authLog.value = `请在 GitHub 页面输入设备码：${begin.userCode}。应用正在等待你授权完成...`;
+
+        const result = await window.bfeApi.completeGithubDeviceLogin({
+            clientId: authClientId.value,
+            deviceCode: begin.deviceCode,
+            interval: begin.interval,
+            expiresIn: begin.expiresIn
+        });
+
+        authLog.value = `登录成功：${result.user?.login}`;
         await refreshAuthState();
     } catch (error) {
-        authLog.value = String(error?.message || error);
+        const raw = String(error?.message || error || 'unknown error');
+        authLog.value = raw.replace(/Error invoking remote method '[^']+':\s*/i, '');
     }
+}
+
+async function copyUserCode() {
+    if (!deviceFlow.value?.userCode) {
+        return;
+    }
+
+    await navigator.clipboard.writeText(deviceFlow.value.userCode);
+    authLog.value = `设备码已复制：${deviceFlow.value.userCode}`;
 }
 
 function fillDemoClientIdGuide() {
@@ -81,6 +104,7 @@ async function handleGithubLogout() {
     await window.bfeApi.githubLogout();
     await refreshAuthState();
     authLog.value = '已退出 GitHub 登录状态。';
+    deviceFlow.value = null;
 }
 
 onMounted(async () => {
@@ -128,7 +152,7 @@ onMounted(async () => {
                 <pre v-if="envActionLog">{{ envActionLog }}</pre>
             </section>
 
-            <section class="panel">
+            <section class="panel" v-if="!isLoggedIn">
                 <h2>GitHub 登录（OAuth 设备码）</h2>
                 <p class="muted">填写你的 GitHub OAuth App Client ID 后，点击登录会自动打开浏览器并进入设备码授权流程。</p>
                 <label>GitHub OAuth Client ID</label>
@@ -139,17 +163,32 @@ onMounted(async () => {
                     <button class="secondary" @click="refreshAuthState">刷新登录状态</button>
                     <button v-if="authState" class="danger" @click="handleGithubLogout">退出登录</button>
                 </div>
-                <div class="muted" v-if="authState">当前登录：{{ authState.user?.login }} ({{ authState.user?.name || '-' }})
+                <div v-if="deviceFlow?.userCode" class="panel tutorial-note" style="margin-top: 10px;">
+                    <h2>当前设备码</h2>
+                    <p style="font-size: 24px; letter-spacing: 3px; margin: 8px 0; font-weight: 700;">{{
+                        deviceFlow.userCode }}</p>
+                    <p class="muted">如果 GitHub 页面提示输入 code，请填这个码。</p>
+                    <div class="actions">
+                        <button class="secondary" @click="copyUserCode">复制设备码</button>
+                    </div>
                 </div>
                 <pre v-if="authLog">{{ authLog }}</pre>
             </section>
 
-            <TutorialCenterView v-if="activeTab === 'tutorial'" />
-            <WorkspaceView v-if="activeTab === 'workspace'" />
-            <ThemeConfigView v-if="activeTab === 'theme'" />
-            <PublishBackupView v-if="activeTab === 'publish'" />
-            <ImportView v-if="activeTab === 'import'" />
-            <RssReaderView v-if="activeTab === 'rss'" />
+            <section class="panel" v-if="isLoggedIn">
+                <h2>登录成功</h2>
+                <p class="muted">当前登录：{{ authState?.user?.login }} ({{ authState?.user?.name || '-' }})</p>
+                <div class="actions">
+                    <button class="danger" @click="handleGithubLogout">退出登录</button>
+                </div>
+            </section>
+
+            <TutorialCenterView v-if="isLoggedIn && activeTab === 'tutorial'" />
+            <WorkspaceView v-if="isLoggedIn && activeTab === 'workspace'" />
+            <ThemeConfigView v-if="isLoggedIn && activeTab === 'theme'" />
+            <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
+            <ImportView v-if="isLoggedIn && activeTab === 'import'" />
+            <RssReaderView v-if="isLoggedIn && activeTab === 'rss'" />
         </main>
     </div>
 </template>

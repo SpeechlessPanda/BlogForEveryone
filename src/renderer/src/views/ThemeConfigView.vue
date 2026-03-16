@@ -5,6 +5,22 @@ import { workspaceState, refreshThemeCatalog, refreshWorkspaces, getSelectedWork
 const rawConfig = ref('{}');
 const status = ref('');
 const selectedThemeId = ref('');
+const showAdvanced = ref(false);
+const allConfigEntries = ref([]);
+
+const basicFields = reactive({
+    siteTitle: '',
+    subtitle: '',
+    backgroundImage: ''
+});
+
+const imageUpload = reactive({
+    localFilePath: '',
+    owner: '',
+    repo: '',
+    branch: 'main',
+    targetDir: 'assets/images'
+});
 
 const selectedWorkspace = computed(() => getSelectedWorkspace());
 
@@ -32,6 +48,82 @@ function setByPath(target, path, value) {
     pointer[keys[keys.length - 1]] = value;
 }
 
+function getByPath(source, path) {
+    const keys = path.split('.');
+    let pointer = source;
+    for (const key of keys) {
+        if (pointer == null || typeof pointer !== 'object') {
+            return undefined;
+        }
+        pointer = pointer[key];
+    }
+    return pointer;
+}
+
+function flattenObject(obj, parent = '') {
+    const entries = [];
+    if (!obj || typeof obj !== 'object') {
+        return entries;
+    }
+
+    for (const [key, value] of Object.entries(obj)) {
+        const fullKey = parent ? `${parent}.${key}` : key;
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            entries.push(...flattenObject(value, fullKey));
+        } else {
+            entries.push({
+                key: fullKey,
+                value: Array.isArray(value) ? JSON.stringify(value) : String(value ?? '')
+            });
+        }
+    }
+    return entries;
+}
+
+function parseInputValue(value) {
+    if (value === 'true') {
+        return true;
+    }
+    if (value === 'false') {
+        return false;
+    }
+    if (/^\d+(\.\d+)?$/.test(value)) {
+        return Number(value);
+    }
+    if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
+        try {
+            return JSON.parse(value);
+        } catch {
+            return value;
+        }
+    }
+    return value;
+}
+
+function applyBasicFields(config, framework) {
+    if (framework === 'hexo') {
+        if (basicFields.siteTitle) {
+            config.title = basicFields.siteTitle;
+        }
+        if (basicFields.subtitle) {
+            config.subtitle = basicFields.subtitle;
+        }
+        if (basicFields.backgroundImage) {
+            setByPath(config, 'theme_config.background_image', basicFields.backgroundImage);
+        }
+    } else if (framework === 'hugo') {
+        if (basicFields.siteTitle) {
+            config.title = basicFields.siteTitle;
+        }
+        if (basicFields.subtitle) {
+            setByPath(config, 'params.description', basicFields.subtitle);
+        }
+        if (basicFields.backgroundImage) {
+            setByPath(config, 'params.backgroundImage', basicFields.backgroundImage);
+        }
+    }
+}
+
 async function loadConfig() {
     const ws = selectedWorkspace.value;
     if (!ws) {
@@ -39,6 +131,12 @@ async function loadConfig() {
     }
     const config = await window.bfeApi.getThemeConfig({ projectDir: ws.projectDir, framework: ws.framework });
     rawConfig.value = JSON.stringify(config, null, 2);
+    allConfigEntries.value = flattenObject(config);
+    basicFields.siteTitle = String(config.title || '');
+    basicFields.subtitle = String(config.subtitle || getByPath(config, 'params.description') || '');
+    basicFields.backgroundImage = String(
+        getByPath(config, 'theme_config.background_image') || getByPath(config, 'params.backgroundImage') || ''
+    );
 }
 
 async function saveConfigBySchema() {
@@ -49,6 +147,7 @@ async function saveConfigBySchema() {
     }
 
     const nextConfig = JSON.parse(rawConfig.value || '{}');
+    applyBasicFields(nextConfig, ws.framework);
     for (const option of schema.options) {
         let value = optionValues[option.key];
         if (option.type === 'boolean') {
@@ -63,6 +162,10 @@ async function saveConfigBySchema() {
         setByPath(nextConfig, option.key, value);
     }
 
+    for (const item of allConfigEntries.value) {
+        setByPath(nextConfig, item.key, parseInputValue(item.value));
+    }
+
     await window.bfeApi.saveThemeConfig({
         projectDir: ws.projectDir,
         framework: ws.framework,
@@ -71,6 +174,19 @@ async function saveConfigBySchema() {
 
     status.value = '配置已保存。';
     rawConfig.value = JSON.stringify(nextConfig, null, 2);
+    allConfigEntries.value = flattenObject(nextConfig);
+}
+
+async function uploadBackgroundToGithub() {
+    const result = await window.bfeApi.uploadThemeImageToGithub({
+        owner: imageUpload.owner,
+        repo: imageUpload.repo,
+        branch: imageUpload.branch,
+        targetDir: imageUpload.targetDir,
+        localFilePath: imageUpload.localFilePath
+    });
+    basicFields.backgroundImage = result.cdnUrl;
+    status.value = `背景图已上传：${result.cdnUrl}`;
 }
 
 async function saveRawConfig() {
@@ -104,8 +220,9 @@ onMounted(async () => {
         <h2>操作教程：主题配置</h2>
         <ol>
             <li>先选择工程与主题。</li>
-            <li>在“配置项”区修改后点击“保存可视化配置”。</li>
-            <li>复杂项可在“高级配置”区修改 JSON 并保存。</li>
+            <li>优先在“通用配置 + 配置项 + 全量配置项”三个可视化区域修改。</li>
+            <li>需要背景图时，先上传到 GitHub 图床并自动回填 URL。</li>
+            <li>高级 JSON 只在特殊场景使用。</li>
         </ol>
     </section>
 
@@ -130,6 +247,53 @@ onMounted(async () => {
                         {{ item.name }}
                     </option>
                 </select>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 12px;">
+            <h2>通用配置（推荐）</h2>
+            <div class="grid-2">
+                <div>
+                    <label>博客标题</label>
+                    <input v-model="basicFields.siteTitle" placeholder="例如 我的博客" />
+                </div>
+                <div>
+                    <label>博客副标题</label>
+                    <input v-model="basicFields.subtitle" placeholder="例如 记录学习与生活" />
+                </div>
+                <div>
+                    <label>背景图 URL</label>
+                    <input v-model="basicFields.backgroundImage" placeholder="https://..." />
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 12px;">
+            <h2>背景图上传（GitHub 图床）</h2>
+            <div class="grid-2">
+                <div>
+                    <label>本地图片路径</label>
+                    <input v-model="imageUpload.localFilePath" placeholder="例如 D:/images/bg.jpg" />
+                </div>
+                <div>
+                    <label>GitHub Owner</label>
+                    <input v-model="imageUpload.owner" placeholder="例如 SpeechlessPanda" />
+                </div>
+                <div>
+                    <label>GitHub Repo</label>
+                    <input v-model="imageUpload.repo" placeholder="例如 blog-assets" />
+                </div>
+                <div>
+                    <label>分支</label>
+                    <input v-model="imageUpload.branch" placeholder="main" />
+                </div>
+                <div>
+                    <label>目标目录</label>
+                    <input v-model="imageUpload.targetDir" placeholder="assets/images" />
+                </div>
+            </div>
+            <div class="actions">
+                <button class="secondary" @click="uploadBackgroundToGithub">上传并回填背景图 URL</button>
             </div>
         </div>
 
@@ -159,14 +323,33 @@ onMounted(async () => {
                 <button class="primary" @click="saveConfigBySchema">保存可视化配置</button>
             </div>
         </div>
+
+        <div class="panel" style="margin-top: 12px;">
+            <h2>全量配置项（无需 JSON）</h2>
+            <p class="muted">这里会显示当前配置文件里的全部叶子字段。你修改后点击“保存可视化配置”即可写回。</p>
+            <div class="grid-2">
+                <div v-for="item in allConfigEntries" :key="item.key">
+                    <label>{{ item.key }}</label>
+                    <input v-model="item.value" />
+                </div>
+            </div>
+        </div>
     </section>
 
-    <section class="panel">
+    <section class="panel" v-if="showAdvanced">
         <h2>高级配置（完整 JSON 编辑）</h2>
         <textarea v-model="rawConfig"></textarea>
         <div class="actions">
             <button class="secondary" @click="loadConfig">重新加载</button>
             <button class="primary" @click="saveRawConfig">保存高级配置</button>
+        </div>
+        <p class="muted">{{ status }}</p>
+    </section>
+
+    <section class="panel">
+        <div class="actions">
+            <button class="secondary" @click="showAdvanced = !showAdvanced">{{ showAdvanced ? '隐藏高级 JSON 配置' : '显示高级
+                JSON 配置' }}</button>
         </div>
         <p class="muted">{{ status }}</p>
     </section>

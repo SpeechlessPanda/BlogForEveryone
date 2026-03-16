@@ -5,6 +5,7 @@ const { readStore, updateStore } = require('./services/storeService');
 const { detectFramework, initProject } = require('./services/frameworkService');
 const { getThemeCatalog, readThemeConfig, saveThemeConfig } = require('./services/themeService');
 const { publishToGitHub } = require('./services/publishService');
+const { uploadImageToRepo } = require('./services/githubRepoService');
 const { backupWorkspace, pushBackupToRepo } = require('./services/backupService');
 const {
     checkEnvironment,
@@ -13,7 +14,7 @@ const {
     ensurePnpm,
     installDependenciesWithRetry
 } = require('./services/envService');
-const { loginWithDeviceCode, getAuthState, logout } = require('./services/githubAuthService');
+const { beginDeviceLogin, completeDeviceLogin, loginWithDeviceCode, getAuthState, logout } = require('./services/githubAuthService');
 const {
     listSubscriptions,
     addSubscription,
@@ -50,6 +51,14 @@ function registerIpcHandlers() {
         return installDependenciesWithRetry(payload.projectDir);
     });
 
+    ipcMain.handle('githubAuth:beginDeviceLogin', async (_event, payload) => {
+        return beginDeviceLogin(payload);
+    });
+
+    ipcMain.handle('githubAuth:completeDeviceLogin', async (_event, payload) => {
+        return completeDeviceLogin(payload);
+    });
+
     ipcMain.handle('githubAuth:loginWithDeviceCode', async (_event, payload) => {
         return loginWithDeviceCode(payload);
     });
@@ -68,7 +77,7 @@ function registerIpcHandlers() {
 
     ipcMain.handle('workspace:create', async (_event, payload) => {
         const { name, projectDir, framework, theme } = payload;
-        const initResult = initProject({ framework, projectDir });
+        const initResult = await initProject({ framework, projectDir });
 
         const workspace = {
             id: Date.now().toString(),
@@ -79,7 +88,8 @@ function registerIpcHandlers() {
             createdAt: new Date().toISOString(),
             initCode: initResult.status,
             initStdout: initResult.stdout,
-            initStderr: initResult.stderr
+            initStderr: initResult.stderr,
+            initLogs: initResult.logs || []
         };
 
         const next = updateStore((state) => {
@@ -145,6 +155,10 @@ function registerIpcHandlers() {
         const { projectDir, framework, nextConfig } = payload;
         saveThemeConfig(projectDir, framework, nextConfig);
         return { success: true };
+    });
+
+    ipcMain.handle('theme:uploadImageToGithub', async (_event, payload) => {
+        return uploadImageToRepo(payload);
     });
 
     ipcMain.handle('publish:github', async (_event, payload) => {

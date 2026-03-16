@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { runPnpmDlxWithRetry, checkEnvironment } = require('./envService');
+const { spawn } = require('child_process');
+const { checkEnvironment } = require('./envService');
 
 function detectFramework(projectDir) {
     const hasHexoConfig = fs.existsSync(path.join(projectDir, '_config.yml'));
@@ -16,7 +16,50 @@ function detectFramework(projectDir) {
     return 'unknown';
 }
 
-function initProject({ framework, projectDir }) {
+function runSpawnCommand(command, args, options = {}) {
+    return new Promise((resolve) => {
+        const child = spawn(command, args, {
+            shell: true,
+            ...options
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout?.on('data', (chunk) => {
+            stdout += chunk.toString();
+        });
+
+        child.stderr?.on('data', (chunk) => {
+            stderr += chunk.toString();
+        });
+
+        child.on('close', (code) => {
+            resolve({ status: code ?? 1, stdout, stderr });
+        });
+
+        child.on('error', (error) => {
+            resolve({ status: 1, stdout, stderr: `${stderr}\n${error.message}`.trim() });
+        });
+    });
+}
+
+async function runWithMirrorRetry(command, args, options = {}) {
+    const first = await runSpawnCommand(command, args, options);
+    const logs = [{ command: `${command} ${args.join(' ')}`, status: first.status, stdout: first.stdout, stderr: first.stderr }];
+
+    if (first.status === 0) {
+        return { result: first, logs, retried: false };
+    }
+
+    await runSpawnCommand('pnpm', ['config', 'set', 'registry', 'https://registry.npmmirror.com'], options);
+    const second = await runSpawnCommand(command, args, options);
+    logs.push({ command: `${command} ${args.join(' ')} (retry)`, status: second.status, stdout: second.stdout, stderr: second.stderr });
+
+    return { result: second, logs, retried: true };
+}
+
+async function initProject({ framework, projectDir }) {
     fs.mkdirSync(projectDir, { recursive: true });
 
     const env = checkEnvironment();
@@ -30,9 +73,8 @@ function initProject({ framework, projectDir }) {
     }
 
     if (framework === 'hexo') {
-        const execute = runPnpmDlxWithRetry(['hexo', 'init', projectDir], {
-            shell: true,
-            encoding: 'utf-8'
+        const execute = await runWithMirrorRetry('pnpm', ['dlx', 'hexo', 'init', projectDir], {
+            cwd: process.cwd()
         });
         return {
             ...execute.result,
@@ -42,9 +84,8 @@ function initProject({ framework, projectDir }) {
     }
 
     if (framework === 'hugo') {
-        return spawnSync('hugo', ['new', 'site', projectDir], {
-            shell: true,
-            encoding: 'utf-8'
+        return runSpawnCommand('hugo', ['new', 'site', projectDir], {
+            cwd: process.cwd()
         });
     }
 

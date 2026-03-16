@@ -10,11 +10,50 @@ const form = reactive({
 });
 
 const logs = reactive({ output: '' });
+const flow = reactive({
+    creating: false,
+    currentStep: 'idle',
+    steps: [
+        { key: 'validate', label: '校验输入', done: false },
+        { key: 'init', label: '初始化博客工程', done: false },
+        { key: 'save', label: '写入工作区记录', done: false },
+        { key: 'finish', label: '完成', done: false }
+    ]
+});
+
+function resetFlow() {
+    flow.currentStep = 'idle';
+    for (const item of flow.steps) {
+        item.done = false;
+    }
+}
+
+function markStep(stepKey) {
+    flow.currentStep = stepKey;
+    const target = flow.steps.find((x) => x.key === stepKey);
+    if (target) {
+        target.done = true;
+    }
+}
 
 async function handleCreateWorkspace() {
+    resetFlow();
+    flow.creating = true;
+    markStep('validate');
+
+    if (!form.name || !form.projectDir) {
+        logs.output = '请先填写工程名称和本地路径。';
+        flow.creating = false;
+        return;
+    }
+
+    markStep('init');
     const result = await window.bfeApi.createWorkspace({ ...form });
+    markStep('save');
     logs.output = JSON.stringify(result.workspace, null, 2);
     await refreshWorkspaces();
+    markStep('finish');
+    flow.creating = false;
 }
 
 async function handleInstallDeps() {
@@ -74,8 +113,16 @@ onMounted(async () => {
         </div>
 
         <div class="actions">
-            <button class="primary" @click="handleCreateWorkspace">创建工程</button>
+            <button class="primary" :disabled="flow.creating" @click="handleCreateWorkspace">{{ flow.creating ? '创建中...'
+                : '创建工程' }}</button>
             <button class="secondary" @click="handleInstallDeps">安装工程依赖（pnpm）</button>
+        </div>
+
+        <div class="panel" style="margin-top: 12px;">
+            <h2>创建流程进度</h2>
+            <div v-for="step in flow.steps" :key="step.key" class="muted" style="margin-bottom:6px;">
+                {{ step.done ? '✓' : (flow.currentStep === step.key ? '⏳' : '○') }} {{ step.label }}
+            </div>
         </div>
     </section>
 

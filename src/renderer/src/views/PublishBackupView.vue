@@ -14,6 +14,7 @@ const backupForm = reactive({
 });
 
 const logs = ref('');
+const pagesUrl = ref('');
 
 async function publish() {
     const ws = getSelectedWorkspace();
@@ -29,7 +30,15 @@ async function publish() {
         useActions: publishForm.useActions
     });
 
-    logs.value = JSON.stringify(result, null, 2);
+    pagesUrl.value = result.pagesUrl || '';
+    logs.value = JSON.stringify(result.logs || result, null, 2);
+}
+
+function openPagesUrl() {
+    if (!pagesUrl.value) {
+        return;
+    }
+    window.open(pagesUrl.value, '_blank');
 }
 
 async function backup() {
@@ -83,6 +92,13 @@ onMounted(async () => {
 
         <div class="actions">
             <button class="primary" @click="publish">一键发布</button>
+        </div>
+        <div v-if="pagesUrl" class="panel" style="margin-top: 12px;">
+            <h2>博客访问地址</h2>
+            <p class="muted">{{ pagesUrl }}</p>
+            <div class="actions">
+                <button class="secondary" @click="openPagesUrl">打开博客地址</button>
+            </div>
         </div>
     </section>
 

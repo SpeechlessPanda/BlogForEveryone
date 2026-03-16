@@ -88,7 +88,30 @@ function runGitCommands(projectDir, repoUrl) {
 function publishToGitHub(payload) {
     const { projectDir, framework, repoUrl } = payload;
     ensureWorkflow(projectDir, framework);
-    return runGitCommands(projectDir, repoUrl);
+    const logs = runGitCommands(projectDir, repoUrl);
+    return {
+        logs,
+        pagesUrl: inferPagesUrl(repoUrl)
+    };
+}
+
+function inferPagesUrl(repoUrl) {
+    if (!repoUrl) {
+        return '';
+    }
+
+    const clean = repoUrl.replace(/\.git$/, '');
+    const match = clean.match(/github\.com[/:]([^/]+)\/([^/]+)$/i);
+    if (!match) {
+        return '';
+    }
+
+    const owner = match[1];
+    const repo = match[2];
+    if (repo.toLowerCase() === `${owner.toLowerCase()}.github.io`) {
+        return `https://${owner}.github.io/`;
+    }
+    return `https://${owner}.github.io/${repo}/`;
 }
 
 module.exports = {

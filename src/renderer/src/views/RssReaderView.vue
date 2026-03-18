@@ -1,11 +1,15 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import AsyncActionButton from "../components/AsyncActionButton.vue";
+import { useAsyncAction } from "../composables/useAsyncAction";
 
 const form = reactive({
   url: "",
   title: "",
   exportProjectDir: "",
 });
+
+const { run, isBusy } = useAsyncAction();
 
 const list = ref([]);
 const message = ref("");
@@ -40,15 +44,20 @@ async function refresh() {
 }
 
 async function add() {
-  try {
-    await window.bfeApi.addSubscription({ url: form.url, title: form.title });
-    form.url = "";
-    form.title = "";
-    message.value = "订阅添加成功。";
-    await refresh();
-  } catch (error) {
-    message.value = `添加订阅失败：${String(error?.message || error)}`;
-  }
+  await run("add", async () => {
+    try {
+      const next = await window.bfeApi.addSubscription({
+        url: form.url,
+        title: form.title,
+      });
+      setSubscriptions(next);
+      form.url = "";
+      form.title = "";
+      message.value = "订阅添加成功，并已自动完成首次同步。";
+    } catch (error) {
+      message.value = `添加订阅失败：${String(error?.message || error)}`;
+    }
+  });
 }
 
 async function remove(id) {
@@ -61,12 +70,14 @@ async function remove(id) {
 }
 
 async function syncNow() {
-  try {
-    setSubscriptions(await window.bfeApi.syncSubscriptions());
-    message.value = "已完成同步，若有新内容会触发桌面通知。";
-  } catch (error) {
-    message.value = `同步失败：${String(error?.message || error)}`;
-  }
+  await run("refresh", async () => {
+    try {
+      setSubscriptions(await window.bfeApi.syncSubscriptions());
+      message.value = "已完成同步，若有新内容会触发桌面通知。";
+    } catch (error) {
+      message.value = `同步失败：${String(error?.message || error)}`;
+    }
+  });
 }
 
 async function markPostAsRead(subscription, post) {
@@ -109,14 +120,16 @@ async function pickExportDirectory() {
 }
 
 async function exportBundle() {
-  try {
-    const filePath = await window.bfeApi.exportSubscriptions({
-      projectDir: form.exportProjectDir,
-    });
-    message.value = `已导出订阅文件：${filePath}`;
-  } catch (error) {
-    message.value = `导出失败：${String(error?.message || error)}`;
-  }
+  await run("export", async () => {
+    try {
+      const filePath = await window.bfeApi.exportSubscriptions({
+        projectDir: form.exportProjectDir,
+      });
+      message.value = `已导出订阅文件：${filePath}`;
+    } catch (error) {
+      message.value = `导出失败：${String(error?.message || error)}`;
+    }
+  });
 }
 
 function goTutorialCenter() {
@@ -130,7 +143,7 @@ onMounted(refresh);
   <section class="panel">
     <h2>RSS 订阅与阅读</h2>
     <p class="muted">
-      支持订阅、同步、通知与导出订阅文件，便于换设备自动恢复。
+      支持订阅、同步、通知与导出订阅文件，便于换设备自动恢复。新增订阅会自动首次同步，后台每小时自动同步一次。
     </p>
     <p>
       <a href="#" @click.prevent="goTutorialCenter"
@@ -150,8 +163,13 @@ onMounted(refresh);
     </div>
 
     <div class="actions">
-      <button class="primary" @click="add">添加订阅</button>
-      <button class="secondary" @click="syncNow">立即同步</button>
+      <AsyncActionButton
+        kind="primary"
+        label="添加订阅"
+        busy-label="添加中..."
+        :busy="isBusy('add')"
+        @click="add"
+      />
     </div>
 
     <div class="panel" style="margin-top: 12px">
@@ -167,15 +185,37 @@ onMounted(refresh);
         </button>
       </div>
       <div class="actions">
-        <button class="secondary" @click="exportBundle">
-          导出 subscriptions.bundle.json
-        </button>
+        <AsyncActionButton
+          kind="secondary"
+          label="导出 subscriptions.bundle.json"
+          busy-label="导出中..."
+          :busy="isBusy('export')"
+          @click="exportBundle"
+        />
       </div>
     </div>
   </section>
 
   <section class="panel">
-    <h2>订阅列表</h2>
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      "
+    >
+      <h2>订阅列表</h2>
+      <div class="actions" style="margin: 0">
+        <AsyncActionButton
+          kind="secondary"
+          label="刷新订阅列表"
+          busy-label="刷新中..."
+          :busy="isBusy('refresh')"
+          @click="syncNow"
+        />
+      </div>
+    </div>
     <div class="list" v-if="list.length">
       <div class="list-item" v-for="item in list" :key="item.id">
         <div

@@ -1,10 +1,12 @@
 <script setup>
-import { computed, onMounted, reactive } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
   getSelectedWorkspace,
   workspaceState,
   refreshWorkspaces,
 } from "../stores/workspaceStore";
+import AsyncActionButton from "../components/AsyncActionButton.vue";
+import { useAsyncAction } from "../composables/useAsyncAction";
 
 const ACTION_IDLE_RESET_MS = 1400;
 
@@ -23,6 +25,13 @@ const state = reactive({
 });
 
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+const existingList = ref([]);
+const selectedExistingPath = ref("");
+const existingEditor = reactive({
+  title: "",
+  body: "",
+});
+const { run, isBusy } = useAsyncAction();
 
 const actionState = reactive({
   create: "idle",
@@ -58,6 +67,7 @@ async function createAndEdit() {
       });
 
       state.filePath = result.filePath;
+      await refreshExistingContents();
 
       if (form.autoPublish && form.repoUrl) {
         const job = await window.bfeApi.watchAndAutoPublish({
@@ -72,6 +82,85 @@ async function createAndEdit() {
     },
     "创建内容失败",
   );
+}
+
+async function refreshExistingContents() {
+  const ws = getSelectedWorkspace();
+  if (!ws) {
+    existingList.value = [];
+    selectedExistingPath.value = "";
+    existingEditor.title = "";
+    existingEditor.body = "";
+    return;
+  }
+
+  await run("load-existing", async () => {
+    const list = await window.bfeApi.listExistingContents({
+      projectDir: ws.projectDir,
+      framework: ws.framework,
+    });
+    existingList.value = list || [];
+    if (!existingList.value.length) {
+      selectedExistingPath.value = "";
+      existingEditor.title = "";
+      existingEditor.body = "";
+      return;
+    }
+
+    if (
+      !existingList.value.some(
+        (item) => item.filePath === selectedExistingPath.value,
+      )
+    ) {
+      selectedExistingPath.value = existingList.value[0].filePath;
+    }
+
+    await loadSelectedExistingContent();
+  });
+}
+
+async function loadSelectedExistingContent() {
+  const filePath = selectedExistingPath.value;
+  if (!filePath) {
+    existingEditor.title = "";
+    existingEditor.body = "";
+    return;
+  }
+
+  await run("read-existing", async () => {
+    const detail = await window.bfeApi.readExistingContent({ filePath });
+    existingEditor.title = detail.title || "";
+    existingEditor.body = detail.body || "";
+  });
+}
+
+async function saveExistingContentChanges() {
+  if (!selectedExistingPath.value) {
+    openErrorModal("保存失败", "请先选择要编辑的内容。");
+    return;
+  }
+
+  await run("save-existing", async () => {
+    await window.bfeApi.saveExistingContent({
+      filePath: selectedExistingPath.value,
+      title: existingEditor.title,
+      body: existingEditor.body,
+    });
+    await refreshExistingContents();
+  });
+}
+
+async function openSelectedExistingInEditor() {
+  if (!selectedExistingPath.value) {
+    openErrorModal("打开失败", "请先选择要打开的内容。");
+    return;
+  }
+
+  await run("open-existing", async () => {
+    await window.bfeApi.openExistingContent({
+      filePath: selectedExistingPath.value,
+    });
+  });
 }
 
 async function refreshPublishJob() {
@@ -139,7 +228,22 @@ function getActionLabel(key, idleLabel) {
 
 onMounted(async () => {
   await refreshWorkspaces();
+  await refreshExistingContents();
 });
+
+watch(
+  () => workspaceState.selectedWorkspaceId,
+  async () => {
+    await refreshExistingContents();
+  },
+);
+
+watch(
+  () => selectedExistingPath.value,
+  async () => {
+    await loadSelectedExistingContent();
+  },
+);
 </script>
 
 <template>
@@ -205,23 +309,13 @@ onMounted(async () => {
     </div>
 
     <div class="actions">
-      <button
-        class="primary"
-        :class="{
-          'is-loading': actionState.create === 'loading',
-          'is-success': actionState.create === 'success',
-          'is-fail': actionState.create === 'fail',
-        }"
-        :disabled="actionState.create === 'loading'"
+      <AsyncActionButton
+        kind="primary"
+        label="创建并打开编辑器"
+        busy-label="创建中..."
+        :busy="actionState.create === 'loading' || isBusy('create')"
         @click="createAndEdit"
-      >
-        <span
-          v-if="actionState.create === 'loading'"
-          class="btn-spinner"
-          aria-hidden="true"
-        ></span>
-        {{ getActionLabel("create", "创建并打开编辑器") }}
-      </button>
+      />
       <button
         class="secondary"
         :class="{
@@ -239,6 +333,63 @@ onMounted(async () => {
         ></span>
         {{ getActionLabel("refresh", "刷新自动发布状态") }}
       </button>
+    </div>
+
+    <div class="panel" style="margin-top: 12px">
+      <h2>已有内容二次编辑</h2>
+      <p class="muted">
+        读取当前工程已有文章/页面，支持直接修改标题与正文后保存，也可以一键用外部编辑器打开。
+      </p>
+      <div class="grid-2">
+        <div>
+          <label>选择已有内容</label>
+          <select v-model="selectedExistingPath">
+            <option value="">请选择</option>
+            <option
+              v-for="item in existingList"
+              :key="item.filePath"
+              :value="item.filePath"
+            >
+              {{ item.type }} | {{ item.title }} | {{ item.relativePath }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label>标题</label>
+          <input v-model="existingEditor.title" placeholder="文章标题" />
+        </div>
+      </div>
+      <div style="margin-top: 10px">
+        <label>正文（Markdown）</label>
+        <textarea
+          v-model="existingEditor.body"
+          rows="14"
+          placeholder="在这里编辑正文内容"
+        ></textarea>
+      </div>
+      <div class="actions">
+        <AsyncActionButton
+          kind="secondary"
+          label="刷新内容列表"
+          busy-label="刷新中..."
+          :busy="isBusy('load-existing')"
+          @click="refreshExistingContents"
+        />
+        <AsyncActionButton
+          kind="primary"
+          label="保存标题与正文"
+          busy-label="保存中..."
+          :busy="isBusy('save-existing')"
+          @click="saveExistingContentChanges"
+        />
+        <AsyncActionButton
+          kind="secondary"
+          label="用外部编辑器打开"
+          busy-label="打开中..."
+          :busy="isBusy('open-existing')"
+          @click="openSelectedExistingInEditor"
+        />
+      </div>
     </div>
 
     <div

@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { registerIpcHandlers } = require('./ipc');
 const { setAutoSyncEnabled } = require('./services/rssService');
 const { readStore } = require('./services/storeService');
@@ -10,26 +11,38 @@ const isDev = process.env.NODE_ENV === 'development';
 
 app.setPath('sessionData', path.join(app.getPath('userData'), 'session-data'));
 
-function resolveAppIconPath() {
-    if (process.platform === 'win32') {
-        if (isDev) {
-            return path.join(app.getAppPath(), 'src', 'img', 'icon.ico');
+function resolveAppIcon() {
+    const iconCandidates = process.platform === 'win32'
+        ? [
+            path.join(app.getAppPath(), 'build', 'icon.ico'),
+            path.join(app.getAppPath(), 'src', 'img', 'icon.ico'),
+            path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.ico')
+        ]
+        : [path.join(__dirname, '../img/icon.jpg')];
+
+    for (const iconPath of iconCandidates) {
+        if (!fs.existsSync(iconPath)) {
+            continue;
         }
 
-        return path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.ico');
+        const image = nativeImage.createFromPath(iconPath);
+        if (!image.isEmpty()) {
+            return { image, iconPath };
+        }
     }
 
-    return path.join(__dirname, '../img/icon.jpg');
+    return { image: undefined, iconPath: undefined };
 }
 
 function createMainWindow() {
+    const resolvedIcon = resolveAppIcon();
     const win = new BrowserWindow({
         width: 1280,
         height: 860,
         minWidth: 1080,
         minHeight: 720,
         autoHideMenuBar: true,
-        icon: resolveAppIconPath(),
+        icon: resolvedIcon.image,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -37,6 +50,10 @@ function createMainWindow() {
             sandbox: false
         }
     });
+
+    if (process.platform === 'win32' && resolvedIcon.image) {
+        win.setIcon(resolvedIcon.image);
+    }
 
     win.webContents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url);

@@ -10,12 +10,13 @@
         "dev:renderer": "vite --config vite.config.js",
         "dev:electron": "cross-env NODE_ENV=development electron .",
         "build:renderer": "vite build --config vite.config.js",
+        "generate:icon": "node scripts/generate-win-icon.js",
         "sanitize:release": "node scripts/sanitize-release.js",
         "start": "cross-env NODE_ENV=production electron .",
         "lint": "echo \"No linter configured yet\"",
-        "package": "pnpm run sanitize:release && pnpm run build:renderer && electron-builder",
-        "package:signed": "pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish never",
-        "release": "pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish always"
+        "package": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder",
+        "package:signed": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish never",
+        "release": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish always"
     },
     "packageManager": "pnpm@9.15.0",
     "dependencies": {
@@ -31,7 +32,9 @@
         "cross-env": "^7.0.3",
         "electron": "^37.2.1",
         "electron-builder": "^25.1.8",
+        "png-to-ico": "^2.1.8",
         "rcedit": "2.0.0",
+        "sharp": "^0.34.3",
         "vite": "^5.4.19",
         "wait-on": "^8.0.3"
     },

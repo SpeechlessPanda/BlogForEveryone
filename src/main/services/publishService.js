@@ -1,6 +1,96 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const YAML = require('yaml');
+
+function runGit(projectDir, args) {
+    return spawnSync('git', args, {
+        cwd: projectDir,
+        shell: false,
+        encoding: 'utf-8'
+    });
+}
+
+function getGitConfigValue(projectDir, key, globalFallback = false) {
+    const local = runGit(projectDir, ['config', '--get', key]);
+    const localValue = String(local.stdout || '').trim();
+    if (local.status === 0 && localValue) {
+        return localValue;
+    }
+
+    if (!globalFallback) {
+        return '';
+    }
+
+    const global = runGit(projectDir, ['config', '--global', '--get', key]);
+    const globalValue = String(global.stdout || '').trim();
+    if (global.status === 0 && globalValue) {
+        return globalValue;
+    }
+
+    return '';
+}
+
+function ensureGitIdentity(projectDir, payload = {}) {
+    const logs = [];
+
+    const localName = getGitConfigValue(projectDir, 'user.name', false);
+    const localEmail = getGitConfigValue(projectDir, 'user.email', false);
+
+    if (localName && localEmail) {
+        return {
+            ok: true,
+            logs,
+            identity: { name: localName, email: localEmail, source: 'local' }
+        };
+    }
+
+    const nextName = String(payload.gitUserName || '').trim() || getGitConfigValue(projectDir, 'user.name', true);
+    const nextEmail = String(payload.gitUserEmail || '').trim() || getGitConfigValue(projectDir, 'user.email', true);
+
+    if (!nextName || !nextEmail) {
+        return {
+            ok: false,
+            reason: 'GIT_IDENTITY_MISSING',
+            message:
+                '发布前需要 Git 身份信息。请填写 Git 提交用户名和邮箱（例如用户名与 noreply 邮箱），软件会自动写入当前工程。',
+            action:
+                '在发布页填写“Git 提交用户名”“Git 提交邮箱”后重试；或先在终端执行 git config --global user.name 和 git config --global user.email。',
+            tutorial: 'docs/guides/git-first-publish-identity.md',
+            logs
+        };
+    }
+
+    const setName = runGit(projectDir, ['config', 'user.name', nextName]);
+    logs.push({ command: `git config user.name ${nextName}`, code: setName.status, stdout: setName.stdout, stderr: setName.stderr });
+    if (setName.status !== 0) {
+        return {
+            ok: false,
+            reason: 'GIT_IDENTITY_SET_FAILED',
+            message: '设置 Git 提交用户名失败，请检查目录权限后重试。',
+            tutorial: 'docs/guides/git-first-publish-identity.md',
+            logs
+        };
+    }
+
+    const setEmail = runGit(projectDir, ['config', 'user.email', nextEmail]);
+    logs.push({ command: `git config user.email ${nextEmail}`, code: setEmail.status, stdout: setEmail.stdout, stderr: setEmail.stderr });
+    if (setEmail.status !== 0) {
+        return {
+            ok: false,
+            reason: 'GIT_IDENTITY_SET_FAILED',
+            message: '设置 Git 提交邮箱失败，请检查邮箱格式后重试。',
+            tutorial: 'docs/guides/git-first-publish-identity.md',
+            logs
+        };
+    }
+
+    return {
+        ok: true,
+        logs,
+        identity: { name: nextName, email: nextEmail, source: 'payload-or-global' }
+    };
+}
 
 function ensureWorkflow(projectDir, framework) {
     const workflowDir = path.join(projectDir, '.github', 'workflows');
@@ -60,9 +150,111 @@ function ensureWorkflow(projectDir, framework) {
     fs.writeFileSync(path.join(workflowDir, 'deploy.yml'), workflow, 'utf-8');
 }
 
-function runGitCommands(projectDir, repoUrl) {
+function ensureHexoDeployConfig(projectDir, repoUrl) {
+    const configPath = path.join(projectDir, '_config.yml');
+    const raw = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf-8') : '';
+    const config = raw ? (YAML.parse(raw) || {}) : {};
+
+    config.deploy = {
+        type: 'git',
+        repo: repoUrl,
+        branch: 'gh-pages'
+    };
+
+    fs.writeFileSync(configPath, YAML.stringify(config), 'utf-8');
+}
+
+function runShellCommand(projectDir, command, args) {
+    const result = spawnSync(command, args, {
+        cwd: projectDir,
+        shell: true,
+        encoding: 'utf-8'
+    });
+    return {
+        command: `${command} ${args.join(' ')}`,
+        code: result.status,
+        stdout: result.stdout,
+        stderr: result.stderr
+    };
+}
+
+function publishWithHexoDeploy(payload) {
+    const { projectDir, repoUrl } = payload;
+    const logs = [];
+
+    ensureHexoDeployConfig(projectDir, repoUrl);
+    logs.push({ stage: 'hexo-deploy-config', message: '已写入 _config.yml deploy 配置（type: git / branch: gh-pages）' });
+
+    const installDeployer = runShellCommand(projectDir, 'pnpm', ['add', 'hexo-deployer-git']);
+    logs.push(installDeployer);
+    if (installDeployer.code !== 0) {
+        const error = new Error('安装 hexo-deployer-git 失败。请检查网络后重试。');
+        error.logs = logs;
+        throw error;
+    }
+
+    const cleanResult = runShellCommand(projectDir, 'pnpm', ['exec', 'hexo', 'clean']);
+    logs.push(cleanResult);
+    if (cleanResult.code !== 0) {
+        const error = new Error('Hexo clean 失败。');
+        error.logs = logs;
+        throw error;
+    }
+
+    const generateResult = runShellCommand(projectDir, 'pnpm', ['exec', 'hexo', 'generate']);
+    logs.push(generateResult);
+    if (generateResult.code !== 0) {
+        const error = new Error('Hexo generate 失败。');
+        error.logs = logs;
+        throw error;
+    }
+
+    const deployResult = runShellCommand(projectDir, 'pnpm', ['exec', 'hexo', 'deploy']);
+    logs.push(deployResult);
+    if (deployResult.code !== 0) {
+        const error = new Error('Hexo deploy 失败。请检查仓库权限、SSH/PAT 凭据后重试。');
+        error.logs = logs;
+        throw error;
+    }
+
+    return {
+        logs,
+        pagesUrl: inferPagesUrl(repoUrl),
+        mode: 'hexo-deploy'
+    };
+}
+
+function runGitCommands(projectDir, repoUrl, payload) {
+    const outputs = [];
+
+    const initResult = spawnSync('git', ['init'], {
+        cwd: projectDir,
+        shell: false,
+        encoding: 'utf-8'
+    });
+    outputs.push({ bin: 'git', args: ['init'], code: initResult.status, stderr: initResult.stderr, stdout: initResult.stdout });
+    if (initResult.status !== 0) {
+        return outputs;
+    }
+
+    const identityResult = ensureGitIdentity(projectDir, payload);
+    if (!identityResult.ok) {
+        const error = new Error(identityResult.message);
+        error.code = identityResult.reason;
+        error.hint = identityResult.action;
+        error.tutorial = identityResult.tutorial;
+        error.logs = identityResult.logs;
+        throw error;
+    }
+
+    outputs.push({
+        stage: 'git-identity',
+        message: `Git 身份已就绪：${identityResult.identity.name} <${identityResult.identity.email}>`,
+        source: identityResult.identity.source
+    });
+    outputs.push(...(identityResult.logs || []));
+
     const commands = [
-        ['git', ['init']],
         ['git', ['add', '.']],
         ['git', ['commit', '-m', 'chore: initialize blog project']],
         ['git', ['branch', '-M', 'main']],
@@ -70,11 +262,10 @@ function runGitCommands(projectDir, repoUrl) {
         ['git', ['push', '-u', 'origin', 'main']]
     ];
 
-    const outputs = [];
     for (const [bin, args] of commands) {
         const result = spawnSync(bin, args, {
             cwd: projectDir,
-            shell: true,
+            shell: false,
             encoding: 'utf-8'
         });
         outputs.push({ bin, args, code: result.status, stderr: result.stderr, stdout: result.stdout });
@@ -87,11 +278,21 @@ function runGitCommands(projectDir, repoUrl) {
 
 function publishToGitHub(payload) {
     const { projectDir, framework, repoUrl } = payload;
+    const mode = payload.publishMode || 'actions';
+
+    if (mode === 'hexo-deploy') {
+        if (framework !== 'hexo') {
+            throw new Error('Hexo 命令发布仅支持 Hexo 工程。');
+        }
+        return publishWithHexoDeploy(payload);
+    }
+
     ensureWorkflow(projectDir, framework);
-    const logs = runGitCommands(projectDir, repoUrl);
+    const logs = runGitCommands(projectDir, repoUrl, payload);
     return {
         logs,
-        pagesUrl: inferPagesUrl(repoUrl)
+        pagesUrl: inferPagesUrl(repoUrl),
+        mode: 'actions'
     };
 }
 

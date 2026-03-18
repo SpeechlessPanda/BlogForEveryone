@@ -17,7 +17,8 @@ function ensureStore() {
             notifications: [],
             preferences: {
                 generateBlogRss: true,
-                autoSyncRssSubscriptions: true
+                autoSyncRssSubscriptions: true,
+                launchAtStartup: false
             }
         };
         fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf-8');

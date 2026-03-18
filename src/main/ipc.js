@@ -17,6 +17,7 @@ const {
 const { beginDeviceLogin, completeDeviceLogin, loginWithDeviceCode, getAuthState, logout } = require('./services/githubAuthService');
 const { createAndOpenContent, watchSaveAndAutoPublish, getPublishJobStatus } = require('./services/contentService');
 const { checkForUpdatesNow, quitAndInstallUpdate, getUpdateState } = require('./services/updateService');
+const { getLaunchAtStartup, setLaunchAtStartup } = require('./services/startupService');
 const {
     listSubscriptions,
     addSubscription,
@@ -43,9 +44,13 @@ function registerIpcHandlers() {
 
     ipcMain.handle('app:getPreferences', async () => {
         const state = readStore();
-        return state.preferences || {
-            generateBlogRss: true,
-            autoSyncRssSubscriptions: true
+        const launchAtStartup = getLaunchAtStartup();
+        const current = state.preferences || {};
+        return {
+            ...current,
+            generateBlogRss: current.generateBlogRss ?? true,
+            autoSyncRssSubscriptions: current.autoSyncRssSubscriptions ?? true,
+            launchAtStartup: current.launchAtStartup ?? launchAtStartup
         };
     });
 
@@ -54,15 +59,23 @@ function registerIpcHandlers() {
             const current = state.preferences || {};
             state.preferences = {
                 generateBlogRss: payload.generateBlogRss ?? current.generateBlogRss ?? true,
-                autoSyncRssSubscriptions: payload.autoSyncRssSubscriptions ?? current.autoSyncRssSubscriptions ?? true
+                autoSyncRssSubscriptions: payload.autoSyncRssSubscriptions ?? current.autoSyncRssSubscriptions ?? true,
+                launchAtStartup: payload.launchAtStartup ?? current.launchAtStartup ?? false
             };
             return state;
         });
 
+        let launchSetting = { launchAtStartup: getLaunchAtStartup(), effective: app.isPackaged };
+        if (typeof payload.launchAtStartup === 'boolean') {
+            launchSetting = setLaunchAtStartup(payload.launchAtStartup);
+            next.preferences.launchAtStartup = launchSetting.launchAtStartup;
+        }
+
         setAutoSyncEnabled(next.preferences.autoSyncRssSubscriptions !== false);
         return {
             preferences: next.preferences,
-            rssAutoSync: getAutoSyncState()
+            rssAutoSync: getAutoSyncState(),
+            launchAtStartup: launchSetting
         };
     });
 

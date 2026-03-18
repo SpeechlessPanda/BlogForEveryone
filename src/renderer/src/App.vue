@@ -21,7 +21,7 @@ const tabs = [
   { key: "rss", label: "RSS 阅读" },
 ];
 
-const activeTab = ref("workspace");
+const activeTab = ref("tutorial");
 const appState = ref({ appName: "BlogForEveryone", version: "0.1.0" });
 const envStatus = ref({
   nodeInstalled: true,
@@ -40,13 +40,20 @@ const authClientId = ref("");
 const authState = ref(null);
 const authLog = ref("");
 const deviceFlow = ref(null);
+const preferences = ref({
+  launchAtStartup: false,
+});
 const isLoggedIn = computed(() =>
   Boolean(authState.value?.accessToken || authState.value?.user),
+);
+const launchAtStartupEnabled = computed(
+  () => preferences.value.launchAtStartup === true,
 );
 const infoModal = ref({ visible: false, key: "about" });
 const actionState = ref({
   checkUpdate: "idle",
   installUpdate: "idle",
+  launchAtStartup: "idle",
 });
 const errorModal = ref({
   visible: false,
@@ -135,6 +142,19 @@ async function refreshUpdateState() {
   updateState.value = await window.bfeApi.getUpdateState();
 }
 
+async function refreshPreferences() {
+  try {
+    const next = await window.bfeApi.getPreferences();
+    preferences.value = {
+      ...preferences.value,
+      ...next,
+      launchAtStartup: next.launchAtStartup === true,
+    };
+  } catch (error) {
+    openErrorModal("读取偏好设置失败", error);
+  }
+}
+
 async function handleCheckUpdatesNow() {
   await runActionWithFeedback(
     "checkUpdate",
@@ -153,6 +173,25 @@ async function handleInstallUpdateNow() {
       await window.bfeApi.installUpdateNow();
     },
     "安装更新失败",
+  );
+}
+
+async function handleToggleLaunchAtStartup() {
+  const nextValue = !launchAtStartupEnabled.value;
+  await runActionWithFeedback(
+    "launchAtStartup",
+    async () => {
+      const result = await window.bfeApi.savePreferences({
+        launchAtStartup: nextValue,
+      });
+
+      preferences.value = {
+        ...preferences.value,
+        ...(result.preferences || {}),
+        launchAtStartup: (result.preferences || {}).launchAtStartup === true,
+      };
+    },
+    nextValue ? "开启开机自启动失败" : "关闭开机自启动失败",
   );
 }
 
@@ -266,6 +305,7 @@ onMounted(async () => {
     envStatus.value = appState.value.env || envStatus.value;
     await refreshUpdateState();
     await refreshAuthState();
+    await refreshPreferences();
 
     releaseUpdateListener = window.bfeApi.onUpdateStatus((payload) => {
       updateState.value = payload;
@@ -305,6 +345,9 @@ onUnmounted(() => {
           <p class="muted" style="margin: 0 0 8px 0">{{ sidebarLoginText }}</p>
           <p class="muted" style="margin: 0 0 8px 0">
             {{ updateState.message }}
+          </p>
+          <p class="muted" style="margin: 0 0 8px 0">
+            开机自启动：{{ launchAtStartupEnabled ? "已开启" : "已关闭" }}
           </p>
           <div class="actions" style="margin-top: 0">
             <button
@@ -347,6 +390,28 @@ onUnmounted(() => {
             </button>
             <button class="secondary" @click="openInfoModal('announcement')">
               公告
+            </button>
+            <button
+              class="secondary"
+              :class="{
+                'is-loading': actionState.launchAtStartup === 'loading',
+                'is-success': actionState.launchAtStartup === 'success',
+                'is-fail': actionState.launchAtStartup === 'fail',
+              }"
+              :disabled="actionState.launchAtStartup === 'loading'"
+              @click="handleToggleLaunchAtStartup"
+            >
+              <span
+                v-if="actionState.launchAtStartup === 'loading'"
+                class="btn-spinner"
+                aria-hidden="true"
+              ></span>
+              {{
+                getActionLabel(
+                  "launchAtStartup",
+                  launchAtStartupEnabled ? "关闭开机自启动" : "开启开机自启动",
+                )
+              }}
             </button>
             <button
               v-if="isLoggedIn"
@@ -412,7 +477,7 @@ onUnmounted(() => {
         <pre v-if="envActionLog">{{ envActionLog }}</pre>
       </section>
 
-      <section class="panel" v-if="!isLoggedIn">
+      <section class="panel" v-if="!isLoggedIn && activeTab !== 'tutorial'">
         <h2>GitHub 登录（OAuth 设备码）</h2>
         <p class="muted">
           填写你的 GitHub OAuth App Client ID
@@ -456,7 +521,7 @@ onUnmounted(() => {
         <pre v-if="authLog">{{ authLog }}</pre>
       </section>
 
-      <TutorialCenterView v-if="isLoggedIn && activeTab === 'tutorial'" />
+      <TutorialCenterView v-if="activeTab === 'tutorial'" />
       <WorkspaceView v-if="isLoggedIn && activeTab === 'workspace'" />
       <ThemeConfigView v-if="isLoggedIn && activeTab === 'theme'" />
       <ContentEditorView v-if="isLoggedIn && activeTab === 'content'" />

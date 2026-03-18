@@ -1,6 +1,6 @@
 {
     "name": "blog-for-everyone",
-    "version": "0.2.2",
+    "version": "0.3.0",
     "description": "Beginner-friendly blog builder platform for Hexo and Hugo",
     "main": "src/main/main.js",
     "author": "BlogForEveryone",
@@ -57,7 +57,7 @@
         ],
         "win": {
             "icon": "build/icon.ico",
-            "signAndEditExecutable": false,
+            "signAndEditExecutable": true,
             "verifyUpdateCodeSignature": false,
             "target": "nsis"
         },

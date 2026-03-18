@@ -4,17 +4,22 @@ const { registerIpcHandlers } = require('./ipc');
 const { setAutoSyncEnabled } = require('./services/rssService');
 const { readStore } = require('./services/storeService');
 const { initAutoUpdate } = require('./services/updateService');
+const { applyLaunchAtStartupPreference } = require('./services/startupService');
 
 const isDev = process.env.NODE_ENV === 'development';
 
+app.setPath('sessionData', path.join(app.getPath('userData'), 'session-data'));
+
 function resolveAppIconPath() {
-    const devPath = path.join(__dirname, '../img/icon.jpg');
-    if (isDev) {
-        return devPath;
+    if (process.platform === 'win32') {
+        if (isDev) {
+            return path.join(app.getAppPath(), 'build', 'icon.ico');
+        }
+
+        return undefined;
     }
 
-    const packedPath = path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.jpg');
-    return packedPath;
+    return path.join(__dirname, '../img/icon.jpg');
 }
 
 function createMainWindow() {
@@ -49,10 +54,12 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+    app.setAppUserModelId('com.blogforeveryone.app');
     Menu.setApplicationMenu(null);
     registerIpcHandlers();
     const state = readStore();
     setAutoSyncEnabled(state.preferences?.autoSyncRssSubscriptions !== false);
+    applyLaunchAtStartupPreference(state.preferences || {});
     const win = createMainWindow();
     initAutoUpdate(win);
 

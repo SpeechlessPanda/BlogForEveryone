@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
   workspaceState,
   refreshThemeCatalog,
@@ -53,6 +53,13 @@ const backgroundTransfer = reactive({
 const faviconUploadPath = ref("");
 
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+
+const selectedThemeName = computed(() => {
+  if (!selectedThemeSchema.value) {
+    return selectedThemeId.value || "未识别";
+  }
+  return `${selectedThemeSchema.value.name} (${selectedThemeSchema.value.id})`;
+});
 
 const selectedThemeSchema = computed(() => {
   const ws = selectedWorkspace.value;
@@ -510,15 +517,77 @@ async function uploadLocalFavicon() {
   status.value = `图标已保存到博客目录：${result.webPath}`;
 }
 
+function applyThemeFromWorkspace() {
+  const ws = selectedWorkspace.value;
+  if (!ws) {
+    selectedThemeId.value = "";
+    return;
+  }
+
+  const list = workspaceState.themeCatalog?.[ws.framework] || [];
+  if (!list.length) {
+    selectedThemeId.value = ws.theme || "";
+    return;
+  }
+
+  const preferred = list.find((item) => item.id === ws.theme);
+  selectedThemeId.value = preferred ? preferred.id : list[0].id;
+}
+
+async function pickBackgroundImageFile() {
+  const result = await window.bfeApi.pickFile({
+    title: "选择背景图文件",
+    defaultPath: backgroundTransfer.localFilePath || undefined,
+    filters: [
+      {
+        name: "Images",
+        extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"],
+      },
+    ],
+  });
+  if (!result.canceled && result.path) {
+    backgroundTransfer.localFilePath = result.path;
+  }
+}
+
+async function pickFaviconImageFile() {
+  const result = await window.bfeApi.pickFile({
+    title: "选择博客图标文件",
+    defaultPath: faviconUploadPath.value || undefined,
+    filters: [
+      { name: "Icon", extensions: ["ico", "png", "jpg", "jpeg", "svg"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+  if (!result.canceled && result.path) {
+    faviconUploadPath.value = result.path;
+  }
+}
+
 onMounted(async () => {
   await refreshThemeCatalog();
   await refreshWorkspaces();
+  applyThemeFromWorkspace();
   const ws = selectedWorkspace.value;
   if (ws) {
-    selectedThemeId.value = ws.theme || "";
     await loadConfig();
   }
 });
+
+watch(
+  () => workspaceState.selectedWorkspaceId,
+  async () => {
+    applyThemeFromWorkspace();
+    await loadConfig();
+  },
+);
+
+watch(
+  () => workspaceState.themeCatalog,
+  () => {
+    applyThemeFromWorkspace();
+  },
+);
 </script>
 
 <template>
@@ -534,10 +603,7 @@ onMounted(async () => {
     <div class="grid-2">
       <div>
         <label>选择工程</label>
-        <select
-          v-model="workspaceState.selectedWorkspaceId"
-          @change="loadConfig"
-        >
+        <select v-model="workspaceState.selectedWorkspaceId">
           <option value="">请选择</option>
           <option
             v-for="ws in workspaceState.workspaces"
@@ -549,19 +615,8 @@ onMounted(async () => {
         </select>
       </div>
       <div>
-        <label>主题</label>
-        <select v-model="selectedThemeId">
-          <option value="">请选择</option>
-          <option
-            v-for="item in workspaceState.themeCatalog?.[
-              selectedWorkspace?.framework
-            ] || []"
-            :key="item.id"
-            :value="item.id"
-          >
-            {{ item.name }}
-          </option>
-        </select>
+        <label>主题（由工程自动确定）</label>
+        <input :value="selectedThemeName" readonly />
       </div>
     </div>
 
@@ -604,11 +659,20 @@ onMounted(async () => {
           ><input v-model="basicFields.favicon" />
         </div>
         <div>
-          <label>本地图标路径（自动保存到博客文件夹）</label
-          ><input
-            v-model="faviconUploadPath"
-            placeholder="例如 D:/images/favicon.png"
-          />
+          <label>本地图标路径（自动保存到博客文件夹）</label>
+          <div class="path-input-row">
+            <input
+              v-model="faviconUploadPath"
+              placeholder="例如 D:/images/favicon.png"
+            />
+            <button
+              class="secondary"
+              type="button"
+              @click="pickFaviconImageFile"
+            >
+              选择文件
+            </button>
+          </div>
         </div>
         <div class="actions">
           <button class="secondary" @click="uploadLocalFavicon">
@@ -618,11 +682,20 @@ onMounted(async () => {
       </div>
       <div class="grid-2" style="margin-top: 8px">
         <div>
-          <label>本地背景图路径</label
-          ><input
-            v-model="backgroundTransfer.localFilePath"
-            placeholder="例如 D:/images/hero.jpg"
-          />
+          <label>本地背景图路径</label>
+          <div class="path-input-row">
+            <input
+              v-model="backgroundTransfer.localFilePath"
+              placeholder="例如 D:/images/hero.jpg"
+            />
+            <button
+              class="secondary"
+              type="button"
+              @click="pickBackgroundImageFile"
+            >
+              选择文件
+            </button>
+          </div>
         </div>
         <div>
           <label>工程内图片目录</label

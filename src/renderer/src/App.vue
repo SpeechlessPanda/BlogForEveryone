@@ -40,6 +40,7 @@ const authClientId = ref("");
 const authState = ref(null);
 const authLog = ref("");
 const deviceFlow = ref(null);
+const rssUnreadTotal = ref(0);
 const preferences = ref({
   launchAtStartup: false,
 });
@@ -61,6 +62,10 @@ const errorModal = ref({
   message: "",
 });
 let releaseUpdateListener = null;
+let openTutorialListener = null;
+let openTabListener = null;
+let rssUpdatedListener = null;
+let rssSummaryTimer = null;
 
 const sidebarLoginText = computed(() => {
   if (!isLoggedIn.value) {
@@ -130,6 +135,13 @@ function getActionLabel(key, idleLabel) {
   return idleLabel;
 }
 
+function getTabLabel(tab) {
+  if (tab.key === "rss" && rssUnreadTotal.value > 0) {
+    return `${tab.label} (${rssUnreadTotal.value})`;
+  }
+  return tab.label;
+}
+
 async function refreshEnvStatus() {
   try {
     envStatus.value = await window.bfeApi.getEnvironmentStatus();
@@ -152,6 +164,15 @@ async function refreshPreferences() {
     };
   } catch (error) {
     openErrorModal("读取偏好设置失败", error);
+  }
+}
+
+async function refreshRssUnreadSummary() {
+  try {
+    const summary = await window.bfeApi.getRssUnreadSummary();
+    rssUnreadTotal.value = Number(summary?.totalUnread || 0);
+  } catch {
+    rssUnreadTotal.value = 0;
   }
 }
 
@@ -306,20 +327,52 @@ onMounted(async () => {
     await refreshUpdateState();
     await refreshAuthState();
     await refreshPreferences();
+    await refreshRssUnreadSummary();
 
     releaseUpdateListener = window.bfeApi.onUpdateStatus((payload) => {
       updateState.value = payload;
     });
   }
 
-  window.addEventListener("bfe:open-tutorial", () => {
+  openTutorialListener = () => {
     activeTab.value = "tutorial";
-  });
+  };
+
+  openTabListener = (event) => {
+    const tabKey = event?.detail?.tabKey;
+    if (tabs.some((item) => item.key === tabKey)) {
+      activeTab.value = tabKey;
+    }
+  };
+
+  rssUpdatedListener = () => {
+    refreshRssUnreadSummary();
+  };
+
+  window.addEventListener("bfe:open-tutorial", openTutorialListener);
+  window.addEventListener("bfe:open-tab", openTabListener);
+  window.addEventListener("bfe:rss-updated", rssUpdatedListener);
+
+  rssSummaryTimer = window.setInterval(() => {
+    refreshRssUnreadSummary();
+  }, 30000);
 });
 
 onUnmounted(() => {
   if (typeof releaseUpdateListener === "function") {
     releaseUpdateListener();
+  }
+  if (openTutorialListener) {
+    window.removeEventListener("bfe:open-tutorial", openTutorialListener);
+  }
+  if (openTabListener) {
+    window.removeEventListener("bfe:open-tab", openTabListener);
+  }
+  if (rssUpdatedListener) {
+    window.removeEventListener("bfe:rss-updated", rssUpdatedListener);
+  }
+  if (rssSummaryTimer) {
+    window.clearInterval(rssSummaryTimer);
   }
 });
 </script>
@@ -337,7 +390,7 @@ onUnmounted(() => {
             :class="['tab', { active: activeTab === tab.key }]"
             @click="activeTab = tab.key"
           >
-            {{ tab.label }}
+            {{ getTabLabel(tab) }}
           </button>
         </div>
 
@@ -348,6 +401,9 @@ onUnmounted(() => {
           </p>
           <p class="muted" style="margin: 0 0 8px 0">
             开机自启动：{{ launchAtStartupEnabled ? "已开启" : "已关闭" }}
+          </p>
+          <p class="muted" style="margin: 0 0 8px 0">
+            RSS 新文章：{{ rssUnreadTotal }}
           </p>
           <div class="actions" style="margin-top: 0">
             <button

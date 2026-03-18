@@ -1,4 +1,4 @@
-const { app, ipcMain } = require('electron');
+const { app, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { readStore, updateStore } = require('./services/storeService');
@@ -25,6 +25,8 @@ const {
     syncSubscriptions,
     exportSubscriptions,
     importSubscriptions,
+    markItemRead,
+    getUnreadSummary,
     setAutoSyncEnabled,
     getAutoSyncState
 } = require('./services/rssService');
@@ -127,12 +129,26 @@ function registerIpcHandlers() {
     });
 
     ipcMain.handle('workspace:list', async () => {
-        return readStore().workspaces || [];
+        const list = readStore().workspaces || [];
+        return list.map((ws) => ({
+            ...ws,
+            localExists: fs.existsSync(ws.projectDir)
+        }));
     });
 
     ipcMain.handle('workspace:create', async (_event, payload) => {
         const { name, projectDir, framework, theme } = payload;
         const initResult = await initProject({ framework, projectDir });
+
+        if (initResult.status !== 0) {
+            const detail = [initResult.stderr, initResult.stdout].filter(Boolean).join('\n').trim();
+            throw new Error(`初始化工程失败（${framework}）：${detail || '未知错误'}`);
+        }
+
+        const state = readStore();
+        if ((state.workspaces || []).some((item) => item.projectDir === projectDir)) {
+            throw new Error('该路径已存在管理记录，请勿重复创建。');
+        }
 
         const workspace = {
             id: Date.now().toString(),
@@ -153,6 +169,34 @@ function registerIpcHandlers() {
         });
 
         return { workspace, workspaces: next.workspaces };
+    });
+
+    ipcMain.handle('workspace:remove', async (_event, payload) => {
+        const { id, deleteLocal } = payload || {};
+        if (!id) {
+            throw new Error('缺少工程 ID');
+        }
+
+        const state = readStore();
+        const target = (state.workspaces || []).find((item) => item.id === id);
+        if (!target) {
+            return { removed: false, reason: 'not-found', workspaces: state.workspaces || [] };
+        }
+
+        if (deleteLocal && target.projectDir && fs.existsSync(target.projectDir)) {
+            fs.rmSync(target.projectDir, { recursive: true, force: true });
+        }
+
+        const next = updateStore((draft) => {
+            draft.workspaces = (draft.workspaces || []).filter((item) => item.id !== id);
+            return draft;
+        });
+
+        return {
+            removed: true,
+            deletedLocal: Boolean(deleteLocal),
+            workspaces: next.workspaces || []
+        };
     });
 
     ipcMain.handle('workspace:import', async (_event, payload) => {
@@ -201,6 +245,33 @@ function registerIpcHandlers() {
 
     ipcMain.handle('theme:catalog', async () => getThemeCatalog());
 
+    ipcMain.handle('app:pickDirectory', async (_event, payload) => {
+        const result = await dialog.showOpenDialog({
+            title: payload?.title || '选择文件夹',
+            defaultPath: payload?.defaultPath,
+            properties: ['openDirectory', 'createDirectory']
+        });
+
+        if (result.canceled || !result.filePaths?.length) {
+            return { canceled: true, path: '' };
+        }
+        return { canceled: false, path: result.filePaths[0] };
+    });
+
+    ipcMain.handle('app:pickFile', async (_event, payload) => {
+        const result = await dialog.showOpenDialog({
+            title: payload?.title || '选择文件',
+            defaultPath: payload?.defaultPath,
+            filters: payload?.filters,
+            properties: ['openFile']
+        });
+
+        if (result.canceled || !result.filePaths?.length) {
+            return { canceled: true, path: '' };
+        }
+        return { canceled: false, path: result.filePaths[0] };
+    });
+
     ipcMain.handle('theme:getConfig', async (_event, payload) => {
         const { projectDir, framework } = payload;
         return readThemeConfig(projectDir, framework);
@@ -241,6 +312,8 @@ function registerIpcHandlers() {
     ipcMain.handle('rss:addSubscription', async (_event, payload) => addSubscription(payload));
     ipcMain.handle('rss:removeSubscription', async (_event, payload) => removeSubscription(payload));
     ipcMain.handle('rss:syncSubscriptions', async () => syncSubscriptions());
+    ipcMain.handle('rss:markItemRead', async (_event, payload) => markItemRead(payload));
+    ipcMain.handle('rss:getUnreadSummary', async () => getUnreadSummary());
     ipcMain.handle('rss:exportSubscriptions', async (_event, payload) => exportSubscriptions(payload));
     ipcMain.handle('rss:importSubscriptions', async (_event, payload) => importSubscriptions(payload));
 }

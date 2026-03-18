@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive } from "vue";
+import { computed, onMounted, reactive } from "vue";
 import {
   getSelectedWorkspace,
   workspaceState,
@@ -21,6 +21,8 @@ const state = reactive({
   jobId: "",
   jobStatus: "",
 });
+
+const selectedWorkspace = computed(() => getSelectedWorkspace());
 
 const actionState = reactive({
   create: "idle",
@@ -165,6 +167,9 @@ onMounted(async () => {
             {{ ws.name }}
           </option>
         </select>
+        <p class="muted" style="margin: 6px 0 0 0">
+          当前主题：{{ selectedWorkspace?.theme || "未识别" }}
+        </p>
       </div>
       <div>
         <label>内容类型</label>

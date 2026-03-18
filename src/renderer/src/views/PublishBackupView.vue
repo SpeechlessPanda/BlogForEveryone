@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted } from "vue";
+import { computed, reactive, ref, onMounted } from "vue";
 import {
   getSelectedWorkspace,
   workspaceState,
@@ -19,6 +19,7 @@ const backupForm = reactive({
 
 const logs = ref("");
 const pagesUrl = ref("");
+const selectedWorkspace = computed(() => getSelectedWorkspace());
 
 async function publish() {
   const ws = getSelectedWorkspace();
@@ -70,6 +71,20 @@ async function backup() {
   }
 }
 
+async function pickBackupDirectory() {
+  try {
+    const result = await window.bfeApi.pickDirectory({
+      title: "选择备份目录",
+      defaultPath: backupForm.backupDir || undefined,
+    });
+    if (!result.canceled && result.path) {
+      backupForm.backupDir = result.path;
+    }
+  } catch (error) {
+    logs.value = `选择备份目录失败：${String(error?.message || error)}`;
+  }
+}
+
 onMounted(async () => {
   await refreshWorkspaces();
 });
@@ -104,6 +119,9 @@ function goTutorialCenter() {
             {{ ws.name }}
           </option>
         </select>
+        <p class="muted" style="margin: 6px 0 0 0">
+          当前主题：{{ selectedWorkspace?.theme || "未识别" }}
+        </p>
       </div>
       <div>
         <label>GitHub 仓库地址</label>
@@ -135,10 +153,15 @@ function goTutorialCenter() {
     <div class="grid-2">
       <div>
         <label>本地备份目录</label>
-        <input
-          v-model="backupForm.backupDir"
-          placeholder="例如 D:/blog-backups"
-        />
+        <div class="path-input-row">
+          <input
+            v-model="backupForm.backupDir"
+            placeholder="例如 D:/blog-backups"
+          />
+          <button class="secondary" type="button" @click="pickBackupDirectory">
+            选择目录
+          </button>
+        </div>
       </div>
       <div>
         <label>备份仓库地址（可选）</label>

@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, onMounted } from "vue";
+import { reactive, onMounted, watch } from "vue";
 import {
   workspaceState,
   refreshWorkspaces,
@@ -32,6 +32,17 @@ function resetFlow() {
   }
 }
 
+function applyDefaultThemeForFramework(framework) {
+  const list = workspaceState.themeCatalog?.[framework] || [];
+  if (!list.length) {
+    form.theme = "";
+    return;
+  }
+  if (!list.some((item) => item.id === form.theme)) {
+    form.theme = list[0].id;
+  }
+}
+
 function markStep(stepKey) {
   flow.currentStep = stepKey;
   const target = flow.steps.find((x) => x.key === stepKey);
@@ -55,7 +66,8 @@ async function handleCreateWorkspace() {
     markStep("init");
     const result = await window.bfeApi.createWorkspace({ ...form });
     markStep("save");
-    logs.output = JSON.stringify(result.workspace, null, 2);
+    workspaceState.selectedWorkspaceId = result.workspace.id;
+    logs.output = JSON.stringify(result, null, 2);
     await refreshWorkspaces();
     markStep("finish");
   } catch (error) {
@@ -63,6 +75,47 @@ async function handleCreateWorkspace() {
   } finally {
     flow.creating = false;
   }
+}
+
+async function pickProjectDirectory() {
+  try {
+    const result = await window.bfeApi.pickDirectory({
+      title: "选择博客工程目录",
+      defaultPath: form.projectDir || undefined,
+    });
+    if (!result.canceled && result.path) {
+      form.projectDir = result.path;
+    }
+  } catch (error) {
+    logs.output = `选择目录失败：${String(error?.message || error)}`;
+  }
+}
+
+async function removeWorkspaceRecord(id, deleteLocal = false) {
+  try {
+    const result = await window.bfeApi.removeWorkspace({ id, deleteLocal });
+    logs.output = JSON.stringify(result, null, 2);
+    if (workspaceState.selectedWorkspaceId === id) {
+      workspaceState.selectedWorkspaceId = "";
+    }
+    await refreshWorkspaces();
+  } catch (error) {
+    logs.output = `删除工程失败：${String(error?.message || error)}`;
+  }
+}
+
+function jumpToThemeConfig(ws) {
+  workspaceState.selectedWorkspaceId = ws.id;
+  window.dispatchEvent(
+    new CustomEvent("bfe:open-tab", { detail: { tabKey: "theme" } }),
+  );
+}
+
+function jumpToContentEditor(ws) {
+  workspaceState.selectedWorkspaceId = ws.id;
+  window.dispatchEvent(
+    new CustomEvent("bfe:open-tab", { detail: { tabKey: "content" } }),
+  );
 }
 
 async function handleInstallDeps() {
@@ -82,8 +135,23 @@ async function handleInstallDeps() {
 
 onMounted(async () => {
   await refreshThemeCatalog();
+  applyDefaultThemeForFramework(form.framework);
   await refreshWorkspaces();
 });
+
+watch(
+  () => form.framework,
+  (framework) => {
+    applyDefaultThemeForFramework(framework);
+  },
+);
+
+watch(
+  () => workspaceState.themeCatalog,
+  () => {
+    applyDefaultThemeForFramework(form.framework);
+  },
+);
 
 function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
@@ -110,10 +178,15 @@ function goTutorialCenter() {
       </div>
       <div>
         <label>本地路径</label>
-        <input
-          v-model="form.projectDir"
-          placeholder="例如 D:/blogs/my-first-blog"
-        />
+        <div class="path-input-row">
+          <input
+            v-model="form.projectDir"
+            placeholder="例如 D:/blogs/my-first-blog"
+          />
+          <button class="secondary" type="button" @click="pickProjectDirectory">
+            选择目录
+          </button>
+        </div>
       </div>
       <div>
         <label>框架</label>
@@ -173,6 +246,23 @@ function goTutorialCenter() {
       >
         <strong>{{ ws.name }}</strong>
         <div class="muted">{{ ws.framework }} | {{ ws.projectDir }}</div>
+        <div class="muted">
+          {{ ws.localExists ? "本地存在" : "本地不存在" }}
+        </div>
+        <div class="actions" style="margin-top: 8px">
+          <button class="secondary" @click="jumpToThemeConfig(ws)">
+            去主题配置
+          </button>
+          <button class="secondary" @click="jumpToContentEditor(ws)">
+            去发布内容
+          </button>
+          <button class="danger" @click="removeWorkspaceRecord(ws.id, false)">
+            仅删记录
+          </button>
+          <button class="danger" @click="removeWorkspaceRecord(ws.id, true)">
+            删除本地并移除
+          </button>
+        </div>
       </div>
     </div>
     <p class="muted" v-else>暂无工程。</p>

@@ -260,6 +260,20 @@ textarea {
   resize: vertical;
 }
 
+.path-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.path-input-row input {
+  flex: 1;
+}
+
+.path-input-row button {
+  flex: 0 0 auto;
+}
+
 .actions {
   display: flex;
   gap: 8px;

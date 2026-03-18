@@ -8,9 +8,26 @@ const parser = new Parser();
 let syncTimer = null;
 let syncEnabled = true;
 
+function getItemKey(item) {
+    return item?.guid || item?.id || item?.link || item?.title || '';
+}
+
+function normalizeSubscription(sub) {
+    if (!Array.isArray(sub.readItemKeys)) {
+        sub.readItemKeys = [];
+    }
+    if (!Array.isArray(sub.unreadItemKeys)) {
+        sub.unreadItemKeys = [];
+    }
+    sub.unreadCount = sub.unreadItemKeys.length;
+    return sub;
+}
+
 function listSubscriptions() {
     const state = readStore();
-    return state.subscriptions || [];
+    const list = state.subscriptions || [];
+    list.forEach(normalizeSubscription);
+    return list;
 }
 
 function addSubscription({ url, title }) {
@@ -26,6 +43,8 @@ function addSubscription({ url, title }) {
         title: title || url,
         lastItemGuid: null,
         unreadCount: 0,
+        unreadItemKeys: [],
+        readItemKeys: [],
         latestItems: []
     });
 
@@ -44,27 +63,52 @@ async function syncSubscriptions() {
     const state = readStore();
 
     for (const sub of state.subscriptions) {
+        normalizeSubscription(sub);
         try {
             const feed = await parser.parseURL(sub.url);
             const items = (feed.items || []).slice(0, 20);
             const newest = items[0];
             const newestGuid = newest ? newest.guid || newest.link || newest.title : null;
 
-            if (newestGuid && sub.lastItemGuid && newestGuid !== sub.lastItemGuid) {
-                sub.unreadCount += 1;
-                new Notification({
-                    title: 'BlogForEveryone 订阅更新',
-                    body: `${sub.title} 发布了新内容`
-                }).show();
-            }
+            const previousLastGuid = sub.lastItemGuid;
+            const readSet = new Set(sub.readItemKeys || []);
+            const unreadSet = new Set(sub.unreadItemKeys || []);
 
-            sub.lastItemGuid = newestGuid;
-            sub.latestItems = items.map((item) => ({
+            const latestItemRecords = items.map((item) => ({
+                key: getItemKey(item),
                 title: item.title,
                 link: item.link,
                 pubDate: item.pubDate,
                 contentSnippet: item.contentSnippet || ''
             }));
+
+            let newCount = 0;
+            if (newestGuid && previousLastGuid && newestGuid !== previousLastGuid) {
+                for (const post of latestItemRecords) {
+                    if (!post.key) {
+                        continue;
+                    }
+                    if (post.key === previousLastGuid) {
+                        break;
+                    }
+                    if (!readSet.has(post.key) && !unreadSet.has(post.key)) {
+                        unreadSet.add(post.key);
+                        newCount += 1;
+                    }
+                }
+            }
+
+            if (newCount > 0) {
+                new Notification({
+                    title: 'BlogForEveryone 订阅更新',
+                    body: `${sub.title} 新增 ${newCount} 篇文章`
+                }).show();
+            }
+
+            sub.lastItemGuid = newestGuid;
+            sub.latestItems = latestItemRecords;
+            sub.unreadItemKeys = Array.from(unreadSet);
+            sub.unreadCount = sub.unreadItemKeys.length;
         } catch (error) {
             sub.lastError = error.message;
         }
@@ -72,6 +116,37 @@ async function syncSubscriptions() {
 
     writeStore(state);
     return state.subscriptions;
+}
+
+function markItemRead({ subscriptionId, itemKey }) {
+    if (!subscriptionId || !itemKey) {
+        throw new Error('缺少标记已读参数');
+    }
+
+    const state = readStore();
+    const target = (state.subscriptions || []).find((item) => item.id === subscriptionId);
+    if (!target) {
+        return listSubscriptions();
+    }
+
+    normalizeSubscription(target);
+    target.unreadItemKeys = target.unreadItemKeys.filter((key) => key !== itemKey);
+    if (!target.readItemKeys.includes(itemKey)) {
+        target.readItemKeys.push(itemKey);
+    }
+    target.unreadCount = target.unreadItemKeys.length;
+
+    writeStore(state);
+    return state.subscriptions;
+}
+
+function getUnreadSummary() {
+    const subs = listSubscriptions();
+    const totalUnread = subs.reduce((sum, item) => sum + Number(item.unreadCount || 0), 0);
+    return {
+        totalUnread,
+        subscriptionCount: subs.length
+    };
 }
 
 function exportSubscriptions({ projectDir }) {
@@ -154,6 +229,8 @@ module.exports = {
     syncSubscriptions,
     exportSubscriptions,
     importSubscriptions,
+    markItemRead,
+    getUnreadSummary,
     startAutoSync,
     stopAutoSync,
     setAutoSyncEnabled,

@@ -27,8 +27,11 @@ contextBridge.exposeInMainWorld('bfeApi', {
 
     listWorkspaces: () => ipcRenderer.invoke('workspace:list'),
     createWorkspace: (payload) => ipcRenderer.invoke('workspace:create', payload),
+    removeWorkspace: (payload) => ipcRenderer.invoke('workspace:remove', payload),
     importWorkspace: (payload) => ipcRenderer.invoke('workspace:import', payload),
     backupWorkspace: (payload) => ipcRenderer.invoke('workspace:backup', payload),
+    pickDirectory: (payload) => ipcRenderer.invoke('app:pickDirectory', payload),
+    pickFile: (payload) => ipcRenderer.invoke('app:pickFile', payload),
 
     getThemeCatalog: () => ipcRenderer.invoke('theme:catalog'),
     getThemeConfig: (payload) => ipcRenderer.invoke('theme:getConfig', payload),
@@ -45,6 +48,8 @@ contextBridge.exposeInMainWorld('bfeApi', {
     addSubscription: (payload) => ipcRenderer.invoke('rss:addSubscription', payload),
     removeSubscription: (payload) => ipcRenderer.invoke('rss:removeSubscription', payload),
     syncSubscriptions: () => ipcRenderer.invoke('rss:syncSubscriptions'),
+    markSubscriptionItemRead: (payload) => ipcRenderer.invoke('rss:markItemRead', payload),
+    getRssUnreadSummary: () => ipcRenderer.invoke('rss:getUnreadSummary'),
     exportSubscriptions: (payload) => ipcRenderer.invoke('rss:exportSubscriptions', payload),
     importSubscriptions: (payload) => ipcRenderer.invoke('rss:importSubscriptions', payload)
 });

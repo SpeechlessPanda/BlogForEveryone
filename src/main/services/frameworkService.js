@@ -84,9 +84,14 @@ async function initProject({ framework, projectDir }) {
     }
 
     if (framework === 'hugo') {
-        return runSpawnCommand('hugo', ['new', 'site', projectDir], {
+        const result = await runSpawnCommand('hugo', ['new', 'site', projectDir], {
             cwd: process.cwd()
         });
+        return {
+            ...result,
+            logs: [{ command: `hugo new site ${projectDir}`, status: result.status, stdout: result.stdout, stderr: result.stderr }],
+            retried: false
+        };
     }
 
     throw new Error('Unsupported framework');

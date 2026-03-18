@@ -19,6 +19,20 @@ async function doImport() {
   }
 }
 
+async function pickProjectDirectory() {
+  try {
+    const data = await window.bfeApi.pickDirectory({
+      title: "选择已存在的博客工程目录",
+      defaultPath: form.projectDir || undefined,
+    });
+    if (!data.canceled && data.path) {
+      form.projectDir = data.path;
+    }
+  } catch (error) {
+    result.value = `选择目录失败：${String(error?.message || error)}`;
+  }
+}
+
 async function restoreRssFromProject() {
   try {
     const data = await window.bfeApi.importSubscriptions({
@@ -53,7 +67,12 @@ function goTutorialCenter() {
       </div>
       <div>
         <label>工程目录</label>
-        <input v-model="form.projectDir" placeholder="例如 D:/old-blog" />
+        <div class="path-input-row">
+          <input v-model="form.projectDir" placeholder="例如 D:/old-blog" />
+          <button class="secondary" type="button" @click="pickProjectDirectory">
+            选择目录
+          </button>
+        </div>
       </div>
     </div>
 

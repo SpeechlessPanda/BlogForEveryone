@@ -13,10 +13,10 @@ app.setPath('sessionData', path.join(app.getPath('userData'), 'session-data'));
 function resolveAppIconPath() {
     if (process.platform === 'win32') {
         if (isDev) {
-            return path.join(app.getAppPath(), 'build', 'icon.ico');
+            return path.join(app.getAppPath(), 'src', 'img', 'icon.ico');
         }
 
-        return undefined;
+        return path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.ico');
     }
 
     return path.join(__dirname, '../img/icon.jpg');

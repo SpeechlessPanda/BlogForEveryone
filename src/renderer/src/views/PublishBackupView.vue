@@ -5,10 +5,15 @@ import {
   workspaceState,
   refreshWorkspaces,
 } from "../stores/workspaceStore";
+import AsyncActionButton from "../components/AsyncActionButton.vue";
+import { useAsyncAction } from "../composables/useAsyncAction";
+import { useOperationEvents } from "../composables/useOperationEvents";
 
 const publishForm = reactive({
   repoUrl: "",
-  useActions: true,
+  publishMode: "actions",
+  gitUserName: "",
+  gitUserEmail: "",
 });
 
 const backupForm = reactive({
@@ -19,28 +24,55 @@ const backupForm = reactive({
 
 const logs = ref("");
 const pagesUrl = ref("");
+const { run, isBusy } = useAsyncAction();
+const { events } = useOperationEvents(["publish"]);
 const selectedWorkspace = computed(() => getSelectedWorkspace());
 
+function parseGithubRepo(repoUrl) {
+  const clean = String(repoUrl || "")
+    .trim()
+    .replace(/\.git$/i, "");
+  const match = clean.match(/github\.com[/:]([^/]+)\/([^/]+)$/i);
+  if (!match) {
+    return null;
+  }
+  return {
+    owner: match[1],
+    repo: match[2],
+  };
+}
+
 async function publish() {
-  const ws = getSelectedWorkspace();
-  if (!ws) {
-    logs.value = "请先在其他页面选择或创建工程。";
-    return;
-  }
+  await run("publish", async () => {
+    const ws = getSelectedWorkspace();
+    if (!ws) {
+      logs.value = "请先在其他页面选择或创建工程。";
+      return;
+    }
 
-  try {
-    const result = await window.bfeApi.publishToGitHub({
-      projectDir: ws.projectDir,
-      framework: ws.framework,
-      repoUrl: publishForm.repoUrl,
-      useActions: publishForm.useActions,
-    });
+    const parsedRepo = parseGithubRepo(publishForm.repoUrl);
+    if (!parsedRepo) {
+      logs.value =
+        "发布仓库地址格式错误。请填写完整地址，例如 https://github.com/你的用户名/你的用户名.github.io.git";
+      return;
+    }
 
-    pagesUrl.value = result.pagesUrl || "";
-    logs.value = JSON.stringify(result.logs || result, null, 2);
-  } catch (error) {
-    logs.value = `发布失败：${String(error?.message || error)}`;
-  }
+    try {
+      const result = await window.bfeApi.publishToGitHub({
+        projectDir: ws.projectDir,
+        framework: ws.framework,
+        repoUrl: publishForm.repoUrl,
+        publishMode: publishForm.publishMode,
+        gitUserName: publishForm.gitUserName,
+        gitUserEmail: publishForm.gitUserEmail,
+      });
+
+      pagesUrl.value = result.pagesUrl || "";
+      logs.value = JSON.stringify(result.logs || result, null, 2);
+    } catch (error) {
+      logs.value = `发布失败：${String(error?.message || error)}`;
+    }
+  });
 }
 
 function openPagesUrl() {
@@ -51,24 +83,26 @@ function openPagesUrl() {
 }
 
 async function backup() {
-  const ws = getSelectedWorkspace();
-  if (!ws) {
-    logs.value = "请先在其他页面选择或创建工程。";
-    return;
-  }
+  await run("backup", async () => {
+    const ws = getSelectedWorkspace();
+    if (!ws) {
+      logs.value = "请先在其他页面选择或创建工程。";
+      return;
+    }
 
-  try {
-    const result = await window.bfeApi.backupWorkspace({
-      projectDir: ws.projectDir,
-      backupDir: backupForm.backupDir,
-      repoUrl: backupForm.backupRepoUrl,
-      visibility: backupForm.visibility,
-    });
+    try {
+      const result = await window.bfeApi.backupWorkspace({
+        projectDir: ws.projectDir,
+        backupDir: backupForm.backupDir,
+        repoUrl: backupForm.backupRepoUrl,
+        visibility: backupForm.visibility,
+      });
 
-    logs.value = JSON.stringify(result, null, 2);
-  } catch (error) {
-    logs.value = `备份失败：${String(error?.message || error)}`;
-  }
+      logs.value = JSON.stringify(result, null, 2);
+    } catch (error) {
+      logs.value = `备份失败：${String(error?.message || error)}`;
+    }
+  });
 }
 
 async function pickBackupDirectory() {
@@ -87,6 +121,17 @@ async function pickBackupDirectory() {
 
 onMounted(async () => {
   await refreshWorkspaces();
+  try {
+    const auth = await window.bfeApi.getGithubAuthState();
+    if (auth?.user?.login && !publishForm.gitUserName) {
+      publishForm.gitUserName = auth.user.login;
+    }
+    if (auth?.user?.email && !publishForm.gitUserEmail) {
+      publishForm.gitUserEmail = auth.user.email;
+    }
+  } catch {
+    // Ignore auth prefill failures.
+  }
 });
 
 function goTutorialCenter() {
@@ -127,13 +172,54 @@ function goTutorialCenter() {
         <label>GitHub 仓库地址</label>
         <input
           v-model="publishForm.repoUrl"
-          placeholder="https://github.com/you/your-blog.git"
+          placeholder="https://github.com/yourname/yourname.github.io.git"
         />
+        <p class="muted" style="margin: 6px 0 0 0">
+          既支持 用户名.github.io（根域名），也支持 project
+          page（会自动推断子路径）。
+        </p>
+      </div>
+      <div>
+        <label>发布模式</label>
+        <select v-model="publishForm.publishMode">
+          <option value="actions">GitHub Actions（推荐）</option>
+          <option
+            v-if="selectedWorkspace?.framework === 'hexo'"
+            value="hexo-deploy"
+          >
+            Hexo 命令发布（hexo deploy）
+          </option>
+        </select>
+        <p class="muted" style="margin: 6px 0 0 0">
+          Actions 适配 Hexo/Hugo；Hexo 命令发布会自动配置 deploy 并执行
+          clean/generate/deploy。
+        </p>
+      </div>
+      <div>
+        <label>Git 提交用户名</label>
+        <input v-model="publishForm.gitUserName" placeholder="例如 ming" />
+      </div>
+      <div>
+        <label>Git 提交邮箱</label>
+        <input
+          v-model="publishForm.gitUserEmail"
+          placeholder="例如 123456+ming@users.noreply.github.com"
+        />
+        <p class="muted" style="margin: 6px 0 0 0">
+          首次发布若未配置 Git 身份，软件会用这里的信息自动写入当前工程。
+        </p>
       </div>
     </div>
 
     <div class="actions">
-      <button class="primary" @click="publish">一键发布</button>
+      <AsyncActionButton
+        kind="primary"
+        label="开始发布"
+        busy-label="发布中..."
+        :busy="isBusy('publish')"
+        @click="publish"
+      />
+      <button class="secondary" @click="goTutorialCenter">查看发布教程</button>
     </div>
     <div v-if="pagesUrl" class="panel" style="margin-top: 12px">
       <h2>博客访问地址</h2>
@@ -180,7 +266,28 @@ function goTutorialCenter() {
     </div>
 
     <div class="actions">
-      <button class="secondary" @click="backup">生成并推送备份</button>
+      <AsyncActionButton
+        kind="secondary"
+        label="生成并推送备份"
+        busy-label="备份中..."
+        :busy="isBusy('backup')"
+        @click="backup"
+      />
+    </div>
+  </section>
+
+  <section class="panel" v-if="events.length">
+    <h2>发布链路事件</h2>
+    <div class="list">
+      <div
+        class="list-item"
+        v-for="evt in events"
+        :key="`${evt.opId}-${evt.ts}`"
+      >
+        <strong>{{ evt.phase }}</strong>
+        <div class="muted">{{ evt.message }}</div>
+        <div class="muted">{{ evt.ts }}</div>
+      </div>
     </div>
   </section>
 

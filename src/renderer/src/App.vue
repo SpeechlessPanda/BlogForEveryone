@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import appContents from "../../shared/data/appContents.json";
 import WorkspaceView from "./views/WorkspaceView.vue";
 import ThemeConfigView from "./views/ThemeConfigView.vue";
+import PreviewView from "./views/PreviewView.vue";
 import PublishBackupView from "./views/PublishBackupView.vue";
 import ImportView from "./views/ImportView.vue";
 import RssReaderView from "./views/RssReaderView.vue";
@@ -15,6 +16,7 @@ const tabs = [
   { key: "tutorial", label: "教程中心" },
   { key: "workspace", label: "博客创建" },
   { key: "theme", label: "主题配置" },
+  { key: "preview", label: "本地预览" },
   { key: "content", label: "内容编辑" },
   { key: "publish", label: "发布与备份" },
   { key: "import", label: "导入恢复" },
@@ -30,6 +32,8 @@ const envStatus = ref({
   ready: true,
 });
 const envActionLog = ref("");
+const pnpmProgress = ref([]);
+const pnpmInstalling = ref(false);
 const updateState = ref({
   status: "idle",
   message: "未检测更新",
@@ -226,12 +230,38 @@ async function handleOpenInstaller(tool) {
 }
 
 async function handleInstallPnpm() {
+  pnpmInstalling.value = true;
+  pnpmProgress.value = [{ label: "检查现有 pnpm", status: "running" }];
   try {
     const result = await window.bfeApi.ensurePnpm();
+    const mapped = [];
+    const logs = Array.isArray(result?.logs) ? result.logs : [];
+    for (const item of logs) {
+      if (item.event === "mirror-fallback") {
+        mapped.push({
+          label: item.message,
+          status: "success",
+        });
+        continue;
+      }
+      if (item.command) {
+        mapped.push({
+          label: item.command,
+          status: Number(item.status) === 0 ? "success" : "failed",
+        });
+      }
+    }
+    if (!mapped.length) {
+      mapped.push({ label: "pnpm 已就绪", status: "success" });
+    }
+    pnpmProgress.value = mapped;
     envActionLog.value = JSON.stringify(result, null, 2);
     await refreshEnvStatus();
   } catch (error) {
+    pnpmProgress.value.push({ label: "安装过程异常中断", status: "failed" });
     openErrorModal("pnpm 安装失败", error);
+  } finally {
+    pnpmInstalling.value = false;
   }
 }
 
@@ -395,17 +425,15 @@ onUnmounted(() => {
         </div>
 
         <div class="sidebar-footer">
-          <p class="muted" style="margin: 0 0 8px 0">{{ sidebarLoginText }}</p>
-          <p class="muted" style="margin: 0 0 8px 0">
+          <p class="muted status-line">{{ sidebarLoginText }}</p>
+          <p class="muted status-line">
             {{ updateState.message }}
           </p>
-          <p class="muted" style="margin: 0 0 8px 0">
+          <p class="muted status-line">
             开机自启动：{{ launchAtStartupEnabled ? "已开启" : "已关闭" }}
           </p>
-          <p class="muted" style="margin: 0 0 8px 0">
-            RSS 新文章：{{ rssUnreadTotal }}
-          </p>
-          <div class="actions" style="margin-top: 0">
+          <p class="muted status-line">RSS 新文章：{{ rssUnreadTotal }}</p>
+          <div class="actions actions-tight">
             <button
               class="secondary"
               :class="{
@@ -524,11 +552,34 @@ onUnmounted(() => {
           <button
             v-if="envStatus.nodeInstalled && !envStatus.pnpmInstalled"
             class="secondary"
+            :disabled="pnpmInstalling"
             @click="handleInstallPnpm"
           >
-            安装 pnpm（失败自动换源重试）
+            {{
+              pnpmInstalling
+                ? "正在配置 pnpm..."
+                : "安装 pnpm（失败自动换源重试）"
+            }}
           </button>
           <button class="secondary" @click="refreshEnvStatus">重新检测</button>
+        </div>
+        <div v-if="pnpmProgress.length" class="panel stack-top">
+          <h2>pnpm 配置进度</h2>
+          <div
+            v-for="(step, idx) in pnpmProgress"
+            :key="`${step.label}-${idx}`"
+            class="muted"
+            style="margin-bottom: 6px"
+          >
+            {{
+              step.status === "success"
+                ? "✓"
+                : step.status === "failed"
+                  ? "✗"
+                  : "⏳"
+            }}
+            {{ step.label }}
+          </div>
         </div>
         <pre v-if="envActionLog">{{ envActionLog }}</pre>
       </section>
@@ -555,18 +606,10 @@ onUnmounted(() => {
         </div>
         <div
           v-if="deviceFlow?.userCode"
-          class="panel tutorial-note"
-          style="margin-top: 10px"
+          class="panel tutorial-note device-code-card"
         >
           <h2>当前设备码</h2>
-          <p
-            style="
-              font-size: 24px;
-              letter-spacing: 3px;
-              margin: 8px 0;
-              font-weight: 700;
-            "
-          >
+          <p class="device-code">
             {{ deviceFlow.userCode }}
           </p>
           <p class="muted">如果 GitHub 页面提示输入 code，请填这个码。</p>
@@ -580,6 +623,7 @@ onUnmounted(() => {
       <TutorialCenterView v-if="activeTab === 'tutorial'" />
       <WorkspaceView v-if="isLoggedIn && activeTab === 'workspace'" />
       <ThemeConfigView v-if="isLoggedIn && activeTab === 'theme'" />
+      <PreviewView v-if="isLoggedIn && activeTab === 'preview'" />
       <ContentEditorView v-if="isLoggedIn && activeTab === 'content'" />
       <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
       <ImportView v-if="isLoggedIn && activeTab === 'import'" />
@@ -607,7 +651,7 @@ onUnmounted(() => {
     >
       <div class="modal-panel">
         <h2>{{ errorModal.title }}</h2>
-        <p class="muted" style="font-size: 14px">{{ errorModal.message }}</p>
+        <p class="muted error-text">{{ errorModal.message }}</p>
         <div class="actions">
           <button class="danger" @click="closeErrorModal">关闭</button>
         </div>

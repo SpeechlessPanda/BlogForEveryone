@@ -6,3 +6,4 @@ Thumbs.db
 out/
 coverage/
 *.local
+.qa/

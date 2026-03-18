@@ -1,5 +1,8 @@
 # 发布、代码签名与自动更新指南
 
+注意：本指南是“桌面应用本身”的发布流程，不是博客内容发布流程。
+博客发布请看：docs/guides/blog-publish-pages-beginner.md
+
 ## 1. 自动更新机制
 
 1. 应用启动后会自动检查 GitHub Release 是否有新版本。
@@ -15,7 +18,7 @@
 pnpm run package
 ```
 
-2. 自动上传到 GitHub Release（需要 `GH_TOKEN`）：
+1. 自动上传到 GitHub Release（需要 `GH_TOKEN`）：
 
 ```bash
 pnpm run release
@@ -52,7 +55,13 @@ pnpm run release
    - `BlogForEveryone Setup x.y.z.exe.blockmap`
    - `latest.yml`
 
-## 5. 验证清单
+## 5. 与博客发布仓库的区别
+
+1. 应用发布仓库：SpeechlessPanda/BlogForEveryone（用于安装包与自动更新）。
+2. 博客发布仓库：必须是 用户名.github.io（用于你的网站内容）。
+3. 两者用途不同，不要混用。
+
+## 6. 验证清单
 
 1. 安装当前版本后启动应用。
 2. 发布更高版本到 Release。

@@ -3,7 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const { readStore, updateStore } = require('./services/storeService');
 const { detectFramework, initProject } = require('./services/frameworkService');
-const { getThemeCatalog, readThemeConfig, saveThemeConfig, saveLocalAssetToBlog } = require('./services/themeService');
+const { getThemeCatalog, readThemeConfig, saveThemeConfig, saveLocalAssetToBlog, installAndApplyTheme, applyPreviewOverrides } = require('./services/themeService');
+const { ensureFrameworkPublishPackages } = require('./services/frameworkToolingService');
+const { validateThemeSettings, validatePublishPayload } = require('./services/configValidationService');
 const { publishToGitHub } = require('./services/publishService');
 const { uploadImageToRepo } = require('./services/githubRepoService');
 const { backupWorkspace, pushBackupToRepo } = require('./services/backupService');
@@ -15,9 +17,18 @@ const {
     installDependenciesWithRetry
 } = require('./services/envService');
 const { beginDeviceLogin, completeDeviceLogin, loginWithDeviceCode, getAuthState, logout } = require('./services/githubAuthService');
-const { createAndOpenContent, watchSaveAndAutoPublish, getPublishJobStatus } = require('./services/contentService');
+const {
+    createAndOpenContent,
+    listExistingContents,
+    readExistingContent,
+    saveExistingContent,
+    openExistingContent,
+    watchSaveAndAutoPublish,
+    getPublishJobStatus
+} = require('./services/contentService');
 const { checkForUpdatesNow, quitAndInstallUpdate, getUpdateState } = require('./services/updateService');
 const { getLaunchAtStartup, setLaunchAtStartup } = require('./services/startupService');
+const { startLocalPreview, openLocalPreview, stopLocalPreview } = require('./services/previewService');
 const {
     listSubscriptions,
     addSubscription,
@@ -32,6 +43,13 @@ const {
 } = require('./services/rssService');
 
 function registerIpcHandlers() {
+    function emitOperationEvent(sender, payload) {
+        sender.send('ops:event', {
+            ts: new Date().toISOString(),
+            ...payload
+        });
+    }
+
     ipcMain.handle('app:getState', async () => {
         return {
             appName: 'BlogForEveryone',
@@ -145,6 +163,24 @@ function registerIpcHandlers() {
             throw new Error(`初始化工程失败（${framework}）：${detail || '未知错误'}`);
         }
 
+        const themeSetup = await installAndApplyTheme({
+            projectDir,
+            framework,
+            themeId: theme
+        });
+        if (!themeSetup.ok) {
+            throw new Error(`主题初始化失败（${theme}）：${themeSetup.message || '未知错误'}`);
+        }
+
+        const toolingSetup = await ensureFrameworkPublishPackages({
+            projectDir,
+            framework,
+            themeId: theme
+        });
+        if (!toolingSetup.ok) {
+            throw new Error(`发布依赖初始化失败：${toolingSetup.message || '未知错误'}`);
+        }
+
         const state = readStore();
         if ((state.workspaces || []).some((item) => item.projectDir === projectDir)) {
             throw new Error('该路径已存在管理记录，请勿重复创建。');
@@ -160,7 +196,7 @@ function registerIpcHandlers() {
             initCode: initResult.status,
             initStdout: initResult.stdout,
             initStderr: initResult.stderr,
-            initLogs: initResult.logs || []
+            initLogs: [...(initResult.logs || []), ...(themeSetup.logs || []), ...(toolingSetup.logs || [])]
         };
 
         const next = updateStore((state) => {
@@ -283,21 +319,139 @@ function registerIpcHandlers() {
         return { success: true };
     });
 
+    ipcMain.handle('theme:validateSettings', async (_event, payload) => {
+        return validateThemeSettings(payload);
+    });
+
     ipcMain.handle('theme:saveLocalAsset', async (_event, payload) => {
         return saveLocalAssetToBlog(payload);
+    });
+
+    ipcMain.handle('theme:applyPreviewOverrides', async (_event, payload) => {
+        return applyPreviewOverrides(payload);
     });
 
     ipcMain.handle('theme:uploadImageToGithub', async (_event, payload) => {
         return uploadImageToRepo(payload);
     });
 
-    ipcMain.handle('publish:github', async (_event, payload) => {
-        const result = publishToGitHub(payload);
-        return result;
+    ipcMain.handle('publish:github', async (event, payload) => {
+        const opId = `publish-${Date.now()}`;
+        const validation = validatePublishPayload(payload);
+        if (!validation.ok) {
+            emitOperationEvent(event.sender, {
+                opId,
+                scope: 'publish',
+                phase: 'failed',
+                message: validation.errors.join('；')
+            });
+            throw new Error(validation.errors.join('；'));
+        }
+
+        emitOperationEvent(event.sender, {
+            opId,
+            scope: 'publish',
+            phase: 'started',
+            framework: payload.framework,
+            mode: payload.publishMode || 'actions',
+            message: '开始发布流程。'
+        });
+
+        try {
+            const result = publishToGitHub(payload);
+            emitOperationEvent(event.sender, {
+                opId,
+                scope: 'publish',
+                phase: 'succeeded',
+                framework: payload.framework,
+                mode: payload.publishMode || 'actions',
+                pagesUrl: result.pagesUrl || '',
+                message: '发布流程完成。'
+            });
+            return {
+                ...result,
+                opId,
+                validationWarnings: validation.warnings || []
+            };
+        } catch (error) {
+            emitOperationEvent(event.sender, {
+                opId,
+                scope: 'publish',
+                phase: 'failed',
+                framework: payload.framework,
+                mode: payload.publishMode || 'actions',
+                message: String(error?.message || error)
+            });
+            throw error;
+        }
+    });
+
+    ipcMain.handle('preview:start', async (event, payload) => {
+        const opId = `preview-${Date.now()}`;
+        emitOperationEvent(event.sender, {
+            opId,
+            scope: 'preview',
+            phase: 'started',
+            framework: payload?.framework,
+            message: '开始启动本地预览。'
+        });
+        const result = await startLocalPreview(payload);
+        emitOperationEvent(event.sender, {
+            opId,
+            scope: 'preview',
+            phase: result.ok ? 'succeeded' : 'failed',
+            framework: payload?.framework,
+            url: result.url || '',
+            message: result.ok ? '本地预览已启动。' : (result.message || '预览启动失败。')
+        });
+        return { ...result, opId };
+    });
+
+    ipcMain.handle('preview:open', async (event, payload) => {
+        const opId = `preview-open-${Date.now()}`;
+        const result = openLocalPreview(payload);
+        emitOperationEvent(event.sender, {
+            opId,
+            scope: 'preview',
+            phase: 'succeeded',
+            framework: payload?.framework,
+            url: result.url || '',
+            message: '已打开本地预览地址。'
+        });
+        return { ...result, opId };
+    });
+
+    ipcMain.handle('preview:stop', async (event, payload) => {
+        const opId = `preview-stop-${Date.now()}`;
+        const result = stopLocalPreview(payload);
+        emitOperationEvent(event.sender, {
+            opId,
+            scope: 'preview',
+            phase: 'succeeded',
+            framework: payload?.framework,
+            message: result.stopped ? '已停止本地预览。' : '当前没有正在运行的预览进程。'
+        });
+        return { ...result, opId };
     });
 
     ipcMain.handle('content:createAndOpen', async (_event, payload) => {
         return createAndOpenContent(payload);
+    });
+
+    ipcMain.handle('content:listExisting', async (_event, payload) => {
+        return listExistingContents(payload);
+    });
+
+    ipcMain.handle('content:readExisting', async (_event, payload) => {
+        return readExistingContent(payload);
+    });
+
+    ipcMain.handle('content:saveExisting', async (_event, payload) => {
+        return saveExistingContent(payload);
+    });
+
+    ipcMain.handle('content:openExisting', async (_event, payload) => {
+        return openExistingContent(payload);
     });
 
     ipcMain.handle('content:watchAndAutoPublish', async (_event, payload) => {

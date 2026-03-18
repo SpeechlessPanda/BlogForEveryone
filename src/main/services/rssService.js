@@ -30,14 +30,14 @@ function listSubscriptions() {
     return list;
 }
 
-function addSubscription({ url, title }) {
+async function addSubscription({ url, title }) {
     const state = readStore();
     const exists = state.subscriptions.find((item) => item.url === url);
     if (exists) {
         return state.subscriptions;
     }
 
-    state.subscriptions.push({
+    const newSub = {
         id: Date.now().toString(),
         url,
         title: title || url,
@@ -46,7 +46,28 @@ function addSubscription({ url, title }) {
         unreadItemKeys: [],
         readItemKeys: [],
         latestItems: []
-    });
+    };
+
+    state.subscriptions.push(newSub);
+
+    // First subscription should immediately fetch the latest feed snapshot.
+    try {
+        const feed = await parser.parseURL(url);
+        const items = (feed.items || []).slice(0, 20);
+        const latestItemRecords = items.map((item) => ({
+            key: getItemKey(item),
+            title: item.title,
+            link: item.link,
+            pubDate: item.pubDate,
+            contentSnippet: item.contentSnippet || ''
+        }));
+        newSub.latestItems = latestItemRecords;
+        newSub.lastItemGuid = items[0] ? items[0].guid || items[0].link || items[0].title : null;
+        newSub.unreadItemKeys = [];
+        newSub.unreadCount = 0;
+    } catch (error) {
+        newSub.lastError = error.message;
+    }
 
     writeStore(state);
     return state.subscriptions;
@@ -184,7 +205,7 @@ function importSubscriptions({ projectDir, strategy = 'merge' }) {
     return { restored: incoming.length, subscriptions: state.subscriptions };
 }
 
-function startAutoSync(intervalMs = 10 * 60 * 1000) {
+function startAutoSync(intervalMs = 60 * 60 * 1000) {
     syncEnabled = true;
     if (syncTimer) {
         clearInterval(syncTimer);
@@ -207,7 +228,7 @@ function stopAutoSync() {
     }
 }
 
-function setAutoSyncEnabled(enabled, intervalMs = 10 * 60 * 1000) {
+function setAutoSyncEnabled(enabled, intervalMs = 60 * 60 * 1000) {
     if (enabled) {
         startAutoSync(intervalMs);
         return;

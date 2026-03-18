@@ -35,12 +35,21 @@ contextBridge.exposeInMainWorld('bfeApi', {
 
     getThemeCatalog: () => ipcRenderer.invoke('theme:catalog'),
     getThemeConfig: (payload) => ipcRenderer.invoke('theme:getConfig', payload),
+    validateThemeSettings: (payload) => ipcRenderer.invoke('theme:validateSettings', payload),
     saveThemeConfig: (payload) => ipcRenderer.invoke('theme:saveConfig', payload),
     uploadThemeImageToGithub: (payload) => ipcRenderer.invoke('theme:uploadImageToGithub', payload),
     saveThemeLocalAsset: (payload) => ipcRenderer.invoke('theme:saveLocalAsset', payload),
+    applyThemePreviewOverrides: (payload) => ipcRenderer.invoke('theme:applyPreviewOverrides', payload),
 
     publishToGitHub: (payload) => ipcRenderer.invoke('publish:github', payload),
+    startLocalPreview: (payload) => ipcRenderer.invoke('preview:start', payload),
+    openLocalPreview: (payload) => ipcRenderer.invoke('preview:open', payload),
+    stopLocalPreview: (payload) => ipcRenderer.invoke('preview:stop', payload),
     createAndOpenContent: (payload) => ipcRenderer.invoke('content:createAndOpen', payload),
+    listExistingContents: (payload) => ipcRenderer.invoke('content:listExisting', payload),
+    readExistingContent: (payload) => ipcRenderer.invoke('content:readExisting', payload),
+    saveExistingContent: (payload) => ipcRenderer.invoke('content:saveExisting', payload),
+    openExistingContent: (payload) => ipcRenderer.invoke('content:openExisting', payload),
     watchAndAutoPublish: (payload) => ipcRenderer.invoke('content:watchAndAutoPublish', payload),
     getPublishJobStatus: (payload) => ipcRenderer.invoke('content:getPublishJobStatus', payload),
 
@@ -51,5 +60,12 @@ contextBridge.exposeInMainWorld('bfeApi', {
     markSubscriptionItemRead: (payload) => ipcRenderer.invoke('rss:markItemRead', payload),
     getRssUnreadSummary: () => ipcRenderer.invoke('rss:getUnreadSummary'),
     exportSubscriptions: (payload) => ipcRenderer.invoke('rss:exportSubscriptions', payload),
-    importSubscriptions: (payload) => ipcRenderer.invoke('rss:importSubscriptions', payload)
+    importSubscriptions: (payload) => ipcRenderer.invoke('rss:importSubscriptions', payload),
+    onOperationEvent: (listener) => {
+        const handler = (_event, payload) => listener(payload);
+        ipcRenderer.on('ops:event', handler);
+        return () => {
+            ipcRenderer.removeListener('ops:event', handler);
+        };
+    }
 });

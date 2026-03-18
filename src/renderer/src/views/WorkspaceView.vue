@@ -1,10 +1,12 @@
 <script setup>
-import { reactive, onMounted, watch } from "vue";
+import { reactive, onMounted, onUnmounted, watch } from "vue";
 import {
   workspaceState,
   refreshWorkspaces,
   refreshThemeCatalog,
 } from "../stores/workspaceStore";
+import AsyncActionButton from "../components/AsyncActionButton.vue";
+import { useAsyncAction } from "../composables/useAsyncAction";
 
 const form = reactive({
   name: "",
@@ -14,21 +16,23 @@ const form = reactive({
 });
 
 const logs = reactive({ output: "" });
+const { run, isBusy } = useAsyncAction();
 const flow = reactive({
   creating: false,
   currentStep: "idle",
-  steps: [
-    { key: "validate", label: "校验输入", done: false },
-    { key: "init", label: "初始化博客工程", done: false },
-    { key: "save", label: "写入工作区记录", done: false },
-    { key: "finish", label: "完成", done: false },
-  ],
+  currentText: "等待开始",
+  percent: 0,
 });
+
+let flowPulseTimer = null;
 
 function resetFlow() {
   flow.currentStep = "idle";
-  for (const item of flow.steps) {
-    item.done = false;
+  flow.currentText = "等待开始";
+  flow.percent = 0;
+  if (flowPulseTimer) {
+    window.clearInterval(flowPulseTimer);
+    flowPulseTimer = null;
   }
 }
 
@@ -45,36 +49,78 @@ function applyDefaultThemeForFramework(framework) {
 
 function markStep(stepKey) {
   flow.currentStep = stepKey;
-  const target = flow.steps.find((x) => x.key === stepKey);
-  if (target) {
-    target.done = true;
+  if (stepKey === "validate") {
+    flow.currentText = "正在校验输入参数";
+    flow.percent = Math.max(flow.percent, 10);
+    return;
+  }
+  if (stepKey === "init") {
+    flow.currentText = "正在初始化博客工程与下载主题";
+    flow.percent = Math.max(flow.percent, 35);
+    if (flowPulseTimer) {
+      window.clearInterval(flowPulseTimer);
+    }
+    flowPulseTimer = window.setInterval(() => {
+      if (!flow.creating) {
+        return;
+      }
+      flow.percent = Math.min(flow.percent + 3, 75);
+    }, 320);
+    return;
+  }
+  if (stepKey === "save") {
+    if (flowPulseTimer) {
+      window.clearInterval(flowPulseTimer);
+      flowPulseTimer = null;
+    }
+    flow.currentText = "正在写入工作区记录";
+    flow.percent = Math.max(flow.percent, 88);
+    return;
+  }
+  if (stepKey === "finish") {
+    if (flowPulseTimer) {
+      window.clearInterval(flowPulseTimer);
+      flowPulseTimer = null;
+    }
+    flow.currentText = "创建完成";
+    flow.percent = 100;
   }
 }
 
 async function handleCreateWorkspace() {
-  resetFlow();
-  flow.creating = true;
-  markStep("validate");
-
-  if (!form.name || !form.projectDir) {
-    logs.output = "请先填写工程名称和本地路径。";
-    flow.creating = false;
+  if (isBusy("create")) {
     return;
   }
+  await run("create", async () => {
+    resetFlow();
+    flow.creating = true;
+    markStep("validate");
 
-  try {
-    markStep("init");
-    const result = await window.bfeApi.createWorkspace({ ...form });
-    markStep("save");
-    workspaceState.selectedWorkspaceId = result.workspace.id;
-    logs.output = JSON.stringify(result, null, 2);
-    await refreshWorkspaces();
-    markStep("finish");
-  } catch (error) {
-    logs.output = `创建工程失败：${String(error?.message || error)}`;
-  } finally {
-    flow.creating = false;
-  }
+    if (!form.name || !form.projectDir) {
+      logs.output = "请先填写工程名称和本地路径。";
+      flow.creating = false;
+      return;
+    }
+
+    try {
+      markStep("init");
+      const result = await window.bfeApi.createWorkspace({ ...form });
+      markStep("save");
+      workspaceState.selectedWorkspaceId = result.workspace.id;
+      logs.output = JSON.stringify(result, null, 2);
+      await refreshWorkspaces();
+      markStep("finish");
+    } catch (error) {
+      logs.output = `创建工程失败：${String(error?.message || error)}`;
+      flow.currentText = "创建失败，请查看下方执行日志";
+    } finally {
+      flow.creating = false;
+      if (flowPulseTimer) {
+        window.clearInterval(flowPulseTimer);
+        flowPulseTimer = null;
+      }
+    }
+  });
 }
 
 async function pickProjectDirectory() {
@@ -118,25 +164,41 @@ function jumpToContentEditor(ws) {
   );
 }
 
+function jumpToPreview(ws) {
+  workspaceState.selectedWorkspaceId = ws.id;
+  window.dispatchEvent(
+    new CustomEvent("bfe:open-tab", { detail: { tabKey: "preview" } }),
+  );
+}
+
 async function handleInstallDeps() {
-  if (!form.projectDir) {
-    logs.output = "请先填写工程目录。";
-    return;
-  }
-  try {
-    const result = await window.bfeApi.installProjectDependencies({
-      projectDir: form.projectDir,
-    });
-    logs.output = JSON.stringify(result, null, 2);
-  } catch (error) {
-    logs.output = `安装依赖失败：${String(error?.message || error)}`;
-  }
+  await run("install-deps", async () => {
+    if (!form.projectDir) {
+      logs.output = "请先填写工程目录。";
+      return;
+    }
+    try {
+      const result = await window.bfeApi.installProjectDependencies({
+        projectDir: form.projectDir,
+      });
+      logs.output = JSON.stringify(result, null, 2);
+    } catch (error) {
+      logs.output = `安装依赖失败：${String(error?.message || error)}`;
+    }
+  });
 }
 
 onMounted(async () => {
   await refreshThemeCatalog();
   applyDefaultThemeForFramework(form.framework);
   await refreshWorkspaces();
+});
+
+onUnmounted(() => {
+  if (flowPulseTimer) {
+    window.clearInterval(flowPulseTimer);
+    flowPulseTimer = null;
+  }
 });
 
 watch(
@@ -210,28 +272,34 @@ function goTutorialCenter() {
     </div>
 
     <div class="actions">
-      <button
-        class="primary"
-        :disabled="flow.creating"
+      <AsyncActionButton
+        kind="primary"
+        label="创建工程"
+        busy-label="创建中..."
+        :busy="isBusy('create') || flow.creating"
         @click="handleCreateWorkspace"
-      >
-        {{ flow.creating ? "创建中..." : "创建工程" }}
-      </button>
-      <button class="secondary" @click="handleInstallDeps">
-        安装工程依赖（pnpm）
-      </button>
+      />
+      <AsyncActionButton
+        kind="secondary"
+        label="安装工程依赖（pnpm）"
+        busy-label="安装中..."
+        :busy="isBusy('install-deps')"
+        @click="handleInstallDeps"
+      />
     </div>
 
     <div class="panel" style="margin-top: 12px">
       <h2>创建流程进度</h2>
-      <div
-        v-for="step in flow.steps"
-        :key="step.key"
-        class="muted"
-        style="margin-bottom: 6px"
-      >
-        {{ step.done ? "✓" : flow.currentStep === step.key ? "⏳" : "○" }}
-        {{ step.label }}
+      <div class="progress-wrap">
+        <div class="progress-bar-track">
+          <div
+            class="progress-bar-fill"
+            :style="{ width: `${flow.percent}%` }"
+          ></div>
+        </div>
+        <div class="muted" style="margin-top: 8px">
+          {{ flow.currentText }}（{{ flow.percent }}%）
+        </div>
       </div>
     </div>
   </section>
@@ -255,6 +323,9 @@ function goTutorialCenter() {
           </button>
           <button class="secondary" @click="jumpToContentEditor(ws)">
             去发布内容
+          </button>
+          <button class="secondary" @click="jumpToPreview(ws)">
+            去本地预览
           </button>
           <button class="danger" @click="removeWorkspaceRecord(ws.id, false)">
             仅删记录

@@ -51,7 +51,7 @@ const backgroundTransfer = reactive({
 });
 
 const faviconUploadPath = ref("");
-
+const faviconPreferredFileName = ref("");
 const selectedWorkspace = computed(() => getSelectedWorkspace());
 
 const selectedThemeName = computed(() => {
@@ -70,10 +70,25 @@ const selectedThemeSchema = computed(() => {
   return list.find((item) => item.id === selectedThemeId.value) || null;
 });
 
+const backgroundSupportHint = computed(() => {
+  const framework = selectedWorkspace.value?.framework;
+  const themeId = selectedThemeId.value;
+  if (framework === "hugo" && themeId === "papermod") {
+    return "PaperMod 默认不提供原生背景图配置，软件会自动注入兼容样式并写入扩展 CSS。";
+  }
+  return "若主题不提供原生背景参数，软件会尽量写入通用兼容覆盖；若仍无效，请优先使用主题原生背景项。";
+});
+
 const optionValues = reactive({});
 
 function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+}
+
+function goPreviewPage() {
+  window.dispatchEvent(
+    new CustomEvent("bfe:open-tab", { detail: { tabKey: "preview" } }),
+  );
 }
 
 function getDefaultAssetDir(framework) {
@@ -297,7 +312,65 @@ function applyPersonalization(config, framework) {
       return;
     }
     setByPath(config, "outputs.home", outputList);
+
+    if (selectedThemeId.value === "papermod") {
+      setByPath(config, "params.assets.favicon", basicFields.favicon || "");
+      setByPath(
+        config,
+        "params.assets.favicon16x16",
+        basicFields.favicon || "",
+      );
+      setByPath(
+        config,
+        "params.assets.favicon32x32",
+        basicFields.favicon || "",
+      );
+
+      const socialIcons = [];
+      if (basicFields.github) {
+        socialIcons.push({ name: "github", url: basicFields.github });
+      }
+      if (basicFields.email) {
+        socialIcons.push({ name: "email", url: `mailto:${basicFields.email}` });
+      }
+      setByPath(config, "params.socialIcons", socialIcons);
+
+      const existingHomeInfo = getByPath(config, "params.homeInfoParams");
+      if (!existingHomeInfo || typeof existingHomeInfo !== "object") {
+        setByPath(config, "params.homeInfoParams", {
+          Title: basicFields.siteTitle || "Hi there 👋",
+          Content: basicFields.subtitle || "Welcome to my blog",
+        });
+      }
+
+      const existingMenu = getByPath(config, "menu.main");
+      if (!Array.isArray(existingMenu) || !existingMenu.length) {
+        setByPath(config, "menu.main", [
+          {
+            identifier: "archives",
+            name: "Archives",
+            url: "/archives/",
+            weight: 10,
+          },
+          { identifier: "tags", name: "Tags", url: "/tags/", weight: 20 },
+          { identifier: "series", name: "Series", url: "/series/", weight: 30 },
+        ]);
+      }
+    }
   }
+}
+
+async function syncPreviewOverrides(projectDir, framework) {
+  if (framework !== "hugo") {
+    return;
+  }
+  await window.bfeApi.applyThemePreviewOverrides({
+    projectDir,
+    framework,
+    themeId: selectedThemeId.value,
+    backgroundImage: basicFields.backgroundImage,
+    favicon: basicFields.favicon,
+  });
 }
 
 async function loadConfig() {
@@ -317,11 +390,23 @@ async function loadConfig() {
   );
   basicFields.email = String(
     getByPath(config, "author.email") ||
+      (Array.isArray(getByPath(config, "params.socialIcons"))
+        ? (
+            getByPath(config, "params.socialIcons").find(
+              (item) => String(item?.name || "").toLowerCase() === "email",
+            )?.url || ""
+          ).replace(/^mailto:/i, "")
+        : "") ||
       getByPath(config, "params.social.email") ||
       "",
   );
   basicFields.github = String(
     getByPath(config, "theme_config.social.github") ||
+      (Array.isArray(getByPath(config, "params.socialIcons"))
+        ? getByPath(config, "params.socialIcons").find(
+            (item) => String(item?.name || "").toLowerCase() === "github",
+          )?.url || ""
+        : "") ||
       getByPath(config, "params.social.github") ||
       "",
   );
@@ -331,7 +416,10 @@ async function loadConfig() {
       "",
   );
   basicFields.favicon = String(
-    config.favicon || getByPath(config, "params.favicon") || "",
+    config.favicon ||
+      getByPath(config, "params.assets.favicon") ||
+      getByPath(config, "params.favicon") ||
+      "",
   );
   basicFields.bodyFontFamily = String(
     getByPath(config, "theme_config.post_font.family") ||
@@ -427,10 +515,31 @@ async function saveAllConfig() {
   if (!ws) {
     return;
   }
+
+  const validateResult = await window.bfeApi.validateThemeSettings({
+    framework: ws.framework,
+    themeId: selectedThemeId.value,
+    basicFields: {
+      siteTitle: basicFields.siteTitle,
+      email: basicFields.email,
+      github: basicFields.github,
+      backgroundImage: basicFields.backgroundImage,
+      favicon: basicFields.favicon,
+    },
+  });
+
+  if (!validateResult?.ok) {
+    status.value = `保存失败：${(validateResult?.errors || []).join("；")}`;
+    return;
+  }
   const config = await window.bfeApi.getThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
   });
+
+  for (const item of allConfigEntries.value) {
+    setByPath(config, item.key, parseInputValue(item.value));
+  }
 
   for (const option of selectedThemeSchema.value?.options || []) {
     let value = optionValues[option.key];
@@ -451,22 +560,22 @@ async function saveAllConfig() {
 
   applyPersonalization(config, ws.framework);
 
-  for (const item of allConfigEntries.value) {
-    setByPath(config, item.key, parseInputValue(item.value));
-  }
-
   await window.bfeApi.saveThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
     nextConfig: config,
   });
+  await syncPreviewOverrides(ws.projectDir, ws.framework);
 
   await window.bfeApi.savePreferences({
     generateBlogRss: rssFields.generateBlogRss,
     autoSyncRssSubscriptions: rssFields.autoSyncRssSubscriptions,
   });
 
-  status.value = "主题配置已保存。";
+  const warningText = (validateResult?.warnings || []).join("；");
+  status.value = warningText
+    ? `主题配置已保存（提示：${warningText}）`
+    : "主题配置已保存。";
   allConfigEntries.value = flattenObject(config);
 }
 
@@ -495,7 +604,26 @@ async function applyLocalBackgroundImage() {
 
   basicFields.backgroundImage = result.webPath;
   backgroundTransfer.preferredFileName = deriveFileNameFromPath(result.webPath);
-  status.value = `背景图已转存并应用：${result.webPath}`;
+  const config = await window.bfeApi.getThemeConfig({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+  });
+  if (ws.framework === "hexo") {
+    setByPath(config, "theme_config.background_image", result.webPath);
+  } else {
+    setByPath(config, "params.backgroundImage", result.webPath);
+    if (selectedThemeId.value === "papermod") {
+      setByPath(config, "params.assets.disableFingerprinting", true);
+    }
+  }
+  await window.bfeApi.saveThemeConfig({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+    nextConfig: config,
+  });
+  allConfigEntries.value = flattenObject(config);
+  await syncPreviewOverrides(ws.projectDir, ws.framework);
+  status.value = `背景图已转存并写入配置：${result.webPath}`;
 }
 
 async function uploadLocalFavicon() {
@@ -511,10 +639,31 @@ async function uploadLocalFavicon() {
     assetType: "favicon",
     preferredDir:
       backgroundTransfer.preferredDir || getDefaultAssetDir(ws.framework),
-    preferredFileName: "favicon",
+    preferredFileName: faviconPreferredFileName.value || "favicon",
   });
   basicFields.favicon = result.webPath;
-  status.value = `图标已保存到博客目录：${result.webPath}`;
+  const config = await window.bfeApi.getThemeConfig({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+  });
+  if (ws.framework === "hexo") {
+    config.favicon = result.webPath;
+  } else {
+    setByPath(config, "params.favicon", result.webPath);
+    if (selectedThemeId.value === "papermod") {
+      setByPath(config, "params.assets.favicon", result.webPath);
+      setByPath(config, "params.assets.favicon16x16", result.webPath);
+      setByPath(config, "params.assets.favicon32x32", result.webPath);
+    }
+  }
+  await window.bfeApi.saveThemeConfig({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+    nextConfig: config,
+  });
+  allConfigEntries.value = flattenObject(config);
+  await syncPreviewOverrides(ws.projectDir, ws.framework);
+  status.value = `图标已转存并写入配置：${result.webPath}`;
 }
 
 function applyThemeFromWorkspace() {
@@ -599,6 +748,11 @@ watch(
         >打开教程中心：主题个性化完整指南</a
       >
     </p>
+    <div class="actions" style="margin-top: 6px">
+      <button class="secondary" type="button" @click="goPreviewPage">
+        前往本地预览页面
+      </button>
+    </div>
 
     <div class="grid-2">
       <div>
@@ -646,18 +800,11 @@ watch(
     <div class="panel" style="margin-top: 12px">
       <h2>背景与图标</h2>
       <p class="muted">
-        不走图床。填写本地图片路径后，软件会自动复制到工程的图片目录（默认
-        `img`）并回填 URL。
+        只需要提供本地图片路径，软件会自动复制到工程图片目录并写入主题配置。
+        如需改名，可填写“文件名（可选）”。
       </p>
+      <p class="muted">{{ backgroundSupportHint }}</p>
       <div class="grid-2">
-        <div>
-          <label>背景图 URL</label
-          ><input v-model="basicFields.backgroundImage" />
-        </div>
-        <div>
-          <label>博客图标 URL (favicon)</label
-          ><input v-model="basicFields.favicon" />
-        </div>
         <div>
           <label>本地图标路径（自动保存到博客文件夹）</label>
           <div class="path-input-row">
@@ -674,9 +821,16 @@ watch(
             </button>
           </div>
         </div>
+        <div>
+          <label>图标文件名（可选）</label>
+          <input
+            v-model="faviconPreferredFileName"
+            placeholder="例如 favicon-brand"
+          />
+        </div>
         <div class="actions">
           <button class="secondary" @click="uploadLocalFavicon">
-            上传并应用博客图标
+            转存并应用博客图标
           </button>
         </div>
       </div>
@@ -698,13 +852,6 @@ watch(
           </div>
         </div>
         <div>
-          <label>工程内图片目录</label
-          ><input
-            v-model="backgroundTransfer.preferredDir"
-            placeholder="默认 source/img 或 static/img"
-          />
-        </div>
-        <div>
           <label>背景图文件名（可选）</label
           ><input
             v-model="backgroundTransfer.preferredFileName"
@@ -714,7 +861,7 @@ watch(
       </div>
       <div class="actions">
         <button class="secondary" @click="applyLocalBackgroundImage">
-          转存并应用背景图
+          转存并应用背景图（自动写入配置）
         </button>
       </div>
     </div>

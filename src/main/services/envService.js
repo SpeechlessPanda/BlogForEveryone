@@ -1,5 +1,7 @@
 const { spawnSync } = require('child_process');
 const { shell } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
 const MIRROR_REGISTRY = 'https://registry.npmmirror.com';
 
@@ -8,6 +10,7 @@ function runCommand(command, args = [], options = {}) {
         shell: true,
         encoding: 'utf-8',
         timeout: 120000,
+        windowsHide: true,
         ...options
     });
 }
@@ -17,16 +20,173 @@ function commandExists(command) {
     return result.status === 0;
 }
 
+function getHugoVersionInfo(executablePath) {
+    if (!executablePath) {
+        return { ok: false, isExtended: false, version: '', status: 1 };
+    }
+
+    const result = spawnSync(executablePath, ['version'], {
+        shell: false,
+        encoding: 'utf-8',
+        timeout: 15000,
+        windowsHide: true
+    });
+
+    const version = String(result.stdout || '').trim();
+    return {
+        ok: result.status === 0,
+        isExtended: /\+extended\b/i.test(version),
+        version,
+        status: result.status ?? 1
+    };
+}
+
+function resolveHugoExecutable(options = {}) {
+    const requireExtended = Boolean(options.requireExtended);
+    const candidates = [];
+    const seen = new Set();
+
+    const addCandidate = (candidate) => {
+        if (!candidate || seen.has(candidate)) {
+            return;
+        }
+
+        if (candidate === 'hugo' || candidate === 'hugo_extended') {
+            if (commandExists(candidate)) {
+                candidates.push(candidate);
+                seen.add(candidate);
+            }
+            return;
+        }
+
+        if (fs.existsSync(candidate)) {
+            candidates.push(candidate);
+            seen.add(candidate);
+        }
+    };
+
+    addCandidate('hugo_extended');
+    addCandidate('hugo');
+
+    if (process.platform === 'win32') {
+        const localAppData = process.env.LOCALAPPDATA;
+        if (localAppData) {
+            const linksDir = path.join(localAppData, 'Microsoft', 'WinGet', 'Links');
+            addCandidate(path.join(linksDir, 'hugo_extended.exe'));
+            addCandidate(path.join(linksDir, 'hugo.exe'));
+
+            const packagesDir = path.join(localAppData, 'Microsoft', 'WinGet', 'Packages');
+            if (fs.existsSync(packagesDir)) {
+                try {
+                    const entries = fs.readdirSync(packagesDir, { withFileTypes: true });
+                    for (const entry of entries) {
+                        if (!entry.isDirectory()) {
+                            continue;
+                        }
+                        const dirNameLower = entry.name.toLowerCase();
+                        if (!dirNameLower.startsWith('hugo.')) {
+                            continue;
+                        }
+                        addCandidate(path.join(packagesDir, entry.name, 'hugo_extended.exe'));
+                        addCandidate(path.join(packagesDir, entry.name, 'hugo.exe'));
+                    }
+                } catch {
+                    // ignore candidate discovery failures
+                }
+            }
+        }
+    }
+
+    const ordered = candidates.sort((a, b) => {
+        const score = (value) => (/extended/i.test(value) ? 2 : 1);
+        return score(b) - score(a);
+    });
+
+    if (!requireExtended) {
+        return ordered[0] || '';
+    }
+
+    for (const candidate of ordered) {
+        const versionInfo = getHugoVersionInfo(candidate);
+        if (versionInfo.ok && versionInfo.isExtended) {
+            return candidate;
+        }
+    }
+
+    return '';
+}
+
+function resolveExecutable(command) {
+    if (command === 'hugo') {
+        return resolveHugoExecutable({ requireExtended: false });
+    }
+
+    if (commandExists(command)) {
+        return command;
+    }
+
+    if (process.platform === 'win32') {
+        if (command === 'pnpm') {
+            const pnpmCandidates = [
+                process.env.PNPM_HOME ? path.join(process.env.PNPM_HOME, 'pnpm.cmd') : '',
+                process.env.USERPROFILE ? path.join(process.env.USERPROFILE, '.pnpm', 'pnpm.cmd') : '',
+                process.env.APPDATA ? path.join(process.env.APPDATA, 'npm', 'pnpm.cmd') : ''
+            ].filter(Boolean);
+
+            for (const candidate of pnpmCandidates) {
+                if (fs.existsSync(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+
+        const localAppData = process.env.LOCALAPPDATA;
+        if (localAppData) {
+            const candidate = path.join(localAppData, 'Microsoft', 'WinGet', 'Links', `${command}.exe`);
+            if (fs.existsSync(candidate)) {
+                return candidate;
+            }
+
+            const packagesDir = path.join(localAppData, 'Microsoft', 'WinGet', 'Packages');
+            if (fs.existsSync(packagesDir)) {
+                try {
+                    const entries = fs.readdirSync(packagesDir, { withFileTypes: true });
+                    const commandLower = command.toLowerCase();
+                    for (const entry of entries) {
+                        if (!entry.isDirectory()) {
+                            continue;
+                        }
+                        const dirNameLower = entry.name.toLowerCase();
+                        if (!dirNameLower.includes(`${commandLower}.`)) {
+                            continue;
+                        }
+                        const exePath = path.join(packagesDir, entry.name, `${command}.exe`);
+                        if (fs.existsSync(exePath)) {
+                            return exePath;
+                        }
+                    }
+                } catch {
+                    return '';
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
 function checkEnvironment() {
-    const nodeInstalled = commandExists('node');
-    const gitInstalled = commandExists('git');
-    const pnpmInstalled = commandExists('pnpm');
+    const nodeInstalled = Boolean(resolveExecutable('node'));
+    const gitInstalled = Boolean(resolveExecutable('git'));
+    const pnpmInstalled = Boolean(resolveExecutable('pnpm'));
+    const hugoInstalled = Boolean(resolveExecutable('hugo'));
     const wingetInstalled = commandExists('winget');
 
     return {
         nodeInstalled,
         gitInstalled,
         pnpmInstalled,
+        hugoInstalled,
         wingetInstalled,
         ready: nodeInstalled && gitInstalled && pnpmInstalled
     };
@@ -38,37 +198,54 @@ function autoInstallToolWithWinget(tool) {
         return { ok: false, reason: 'WINGET_MISSING', logs: [] };
     }
 
-    const packageId = tool === 'git' ? 'Git.Git' : tool === 'node' ? 'OpenJS.NodeJS.LTS' : null;
-    if (!packageId) {
+    const packageIds =
+        tool === 'git'
+            ? ['Git.Git']
+            : tool === 'node'
+                ? ['OpenJS.NodeJS.LTS']
+                : tool === 'hugo'
+                    ? ['Hugo.Hugo.Extended', 'Hugo.Hugo']
+                    : tool === 'hugo-extended'
+                        ? ['Hugo.Hugo.Extended']
+                        : null;
+    if (!packageIds) {
         return { ok: false, reason: 'UNSUPPORTED_TOOL', logs: [] };
     }
 
     const logs = [];
 
-    const installArgs = [
-        'install',
-        '--id',
-        packageId,
-        '--silent',
-        '--accept-package-agreements',
-        '--accept-source-agreements'
-    ];
+    for (const packageId of packageIds) {
+        const installArgs = [
+            'install',
+            '--id',
+            packageId,
+            '--source',
+            'winget',
+            '--silent',
+            '--accept-package-agreements',
+            '--accept-source-agreements'
+        ];
 
-    const firstTry = runCommand('winget', installArgs);
-    logs.push({ command: `winget ${installArgs.join(' ')}`, status: firstTry.status, stdout: firstTry.stdout, stderr: firstTry.stderr });
+        const firstTry = runCommand('winget', installArgs);
+        logs.push({ command: `winget ${installArgs.join(' ')}`, status: firstTry.status, stdout: firstTry.stdout, stderr: firstTry.stderr });
 
-    if (firstTry.status === 0) {
-        return { ok: true, retried: false, logs };
+        if (firstTry.status === 0) {
+            return { ok: true, retried: false, packageId, logs };
+        }
+
+        const updateSource = runCommand('winget', ['source', 'update', 'winget']);
+        logs.push({ command: 'winget source update winget', status: updateSource.status, stdout: updateSource.stdout, stderr: updateSource.stderr });
+
+        const secondTry = runCommand('winget', installArgs);
+        logs.push({ command: `winget ${installArgs.join(' ')} (retry)`, status: secondTry.status, stdout: secondTry.stdout, stderr: secondTry.stderr });
+
+        if (secondTry.status === 0) {
+            return { ok: true, retried: true, packageId, logs };
+        }
     }
 
-    const resetSource = runCommand('winget', ['source', 'reset', '--force']);
-    logs.push({ command: 'winget source reset --force', status: resetSource.status, stdout: resetSource.stdout, stderr: resetSource.stderr });
-
-    const secondTry = runCommand('winget', installArgs);
-    logs.push({ command: `winget ${installArgs.join(' ')} (retry)`, status: secondTry.status, stdout: secondTry.stdout, stderr: secondTry.stderr });
-
     return {
-        ok: secondTry.status === 0,
+        ok: false,
         retried: true,
         logs
     };
@@ -108,10 +285,10 @@ function ensurePnpm() {
 
     const logs = [];
 
-    const step1 = runCommand('corepack', ['enable']);
+    const step1 = runCommand('corepack', ['enable'], { timeout: 45000 });
     logs.push({ command: 'corepack enable', status: step1.status, stdout: step1.stdout, stderr: step1.stderr });
 
-    const step2 = runCommand('corepack', ['prepare', 'pnpm@latest', '--activate']);
+    const step2 = runCommand('corepack', ['prepare', 'pnpm@latest', '--activate'], { timeout: 90000 });
     logs.push({
         command: 'corepack prepare pnpm@latest --activate',
         status: step2.status,
@@ -119,9 +296,15 @@ function ensurePnpm() {
         stderr: step2.stderr
     });
 
-    if (step2.status === 0 && commandExists('pnpm')) {
+    if (step2.status === 0 && resolveExecutable('pnpm')) {
         return { ok: true, alreadyInstalled: false, logs };
     }
+
+    logs.push({
+        event: 'mirror-fallback',
+        message: 'corepack 安装 pnpm 失败，已切换 npm 镜像源后重试。',
+        registry: MIRROR_REGISTRY
+    });
 
     const setMirror = runCommand('npm', ['config', 'set', 'registry', MIRROR_REGISTRY]);
     logs.push({
@@ -131,14 +314,77 @@ function ensurePnpm() {
         stderr: setMirror.stderr
     });
 
-    const fallbackInstall = runCommand('npm', ['install', '-g', 'pnpm']);
+    const fallbackInstall = runCommand('npm', ['install', '-g', 'pnpm'], { timeout: 180000 });
     logs.push({ command: 'npm install -g pnpm', status: fallbackInstall.status, stdout: fallbackInstall.stdout, stderr: fallbackInstall.stderr });
 
-    if (fallbackInstall.status === 0 && commandExists('pnpm')) {
+    if (fallbackInstall.status === 0 && resolveExecutable('pnpm')) {
         return { ok: true, alreadyInstalled: false, logs, fallback: true };
     }
 
     return { ok: false, reason: 'PNPM_INSTALL_FAILED', logs };
+}
+
+function ensureFrameworkEnvironment(framework) {
+    const logs = [];
+    const env = checkEnvironment();
+
+    if (framework === 'hexo') {
+        if (!env.nodeInstalled) {
+            const nodeInstall = autoInstallToolWithWinget('node');
+            logs.push({ step: 'install-node', ...nodeInstall });
+            if (!nodeInstall.ok) {
+                return {
+                    ok: false,
+                    framework,
+                    reason: 'NODE_MISSING',
+                    message: 'Hexo 需要 Node.js，自动安装失败，请在环境检查中手动安装。',
+                    logs
+                };
+            }
+        }
+
+        const pnpmResult = ensurePnpm();
+        logs.push({ step: 'ensure-pnpm', ...pnpmResult });
+        if (!pnpmResult.ok) {
+            return {
+                ok: false,
+                framework,
+                reason: pnpmResult.reason || 'PNPM_INSTALL_FAILED',
+                message: 'Hexo 需要 pnpm，自动安装失败，请在环境检查中重试。',
+                logs
+            };
+        }
+
+        return { ok: true, framework, logs };
+    }
+
+    if (framework === 'hugo') {
+        if (resolveHugoExecutable({ requireExtended: true })) {
+            return { ok: true, framework, logs };
+        }
+
+        const hugoInstall = autoInstallToolWithWinget('hugo-extended');
+        logs.push({ step: 'install-hugo', ...hugoInstall });
+        if (!hugoInstall.ok || !resolveHugoExecutable({ requireExtended: true })) {
+            return {
+                ok: false,
+                framework,
+                reason: 'HUGO_EXTENDED_MISSING',
+                message: 'Hugo Extended 环境未就绪，自动安装失败，请在环境检查中安装 Hugo Extended。',
+                logs
+            };
+        }
+
+        return { ok: true, framework, logs };
+    }
+
+    return {
+        ok: false,
+        framework,
+        reason: 'UNSUPPORTED_FRAMEWORK',
+        message: '暂不支持该框架环境自动配置。',
+        logs
+    };
 }
 
 function installDependenciesWithRetry(projectDir) {
@@ -150,6 +396,12 @@ function installDependenciesWithRetry(projectDir) {
     if (firstTry.status === 0) {
         return { ok: true, retried: false, logs };
     }
+
+    logs.push({
+        event: 'mirror-fallback',
+        message: 'pnpm install 首次失败，已切换镜像源后重试。',
+        registry: MIRROR_REGISTRY
+    });
 
     const setMirror = runCommand('pnpm', ['config', 'set', 'registry', MIRROR_REGISTRY], { cwd: projectDir });
     logs.push({
@@ -179,6 +431,12 @@ function runPnpmDlxWithRetry(args, options = {}) {
         return { ok: true, retried: false, result: firstTry, logs };
     }
 
+    logs.push({
+        event: 'mirror-fallback',
+        message: 'pnpm dlx 首次失败，已切换镜像源后重试。',
+        registry: MIRROR_REGISTRY
+    });
+
     const setMirror = runCommand('pnpm', ['config', 'set', 'registry', MIRROR_REGISTRY], options);
     logs.push({
         command: `pnpm config set registry ${MIRROR_REGISTRY}`,
@@ -205,8 +463,11 @@ function runPnpmDlxWithRetry(args, options = {}) {
 
 module.exports = {
     checkEnvironment,
+    resolveExecutable,
+    resolveHugoExecutable,
     openInstaller,
     autoInstallToolWithWinget,
+    ensureFrameworkEnvironment,
     ensurePnpm,
     installDependenciesWithRetry,
     runPnpmDlxWithRetry,

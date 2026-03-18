@@ -1,4 +1,4 @@
-const { shell } = require('electron');
+const { shell, net } = require('electron');
 const { updateStore, readStore } = require('./storeService');
 
 const GITHUB_DEVICE_CODE_URL = 'https://github.com/login/device/code';
@@ -11,22 +11,87 @@ function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeGithubOAuthErrorMessage(message) {
+    const text = String(message || '');
+    if (text.includes('Device Flow must be explicitly enabled for this App')) {
+        return '当前 GitHub OAuth App 未启用 Device Flow，请在 OAuth App 设置里勾选 Enable Device Flow 后重试。';
+    }
+
+    if (text.includes('incorrect_client_credentials')) {
+        return 'Client ID 无效，请确认复制的是 GitHub OAuth App 的 Client ID（不是 Client Secret）。';
+    }
+
+    return text;
+}
+
+function requestWithElectronNet({ url, method = 'GET', headers = {}, body = null, timeoutMs = REQUEST_TIMEOUT_MS }) {
+    return new Promise((resolve, reject) => {
+        const req = net.request({
+            method,
+            url
+        });
+
+        Object.entries(headers || {}).forEach(([key, value]) => {
+            req.setHeader(key, value);
+        });
+
+        const timeout = setTimeout(() => {
+            req.destroy(new Error(`Request timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+
+        req.on('response', (response) => {
+            const chunks = [];
+
+            response.on('data', (chunk) => {
+                chunks.push(Buffer.from(chunk));
+            });
+
+            response.on('end', () => {
+                clearTimeout(timeout);
+                const raw = Buffer.concat(chunks).toString('utf-8');
+                resolve({
+                    ok: response.statusCode >= 200 && response.statusCode < 300,
+                    status: response.statusCode,
+                    body: raw
+                });
+            });
+
+            response.on('error', (error) => {
+                clearTimeout(timeout);
+                reject(error);
+            });
+        });
+
+        req.on('error', (error) => {
+            clearTimeout(timeout);
+            reject(error);
+        });
+
+        if (body) {
+            req.write(body);
+        }
+        req.end();
+    });
+}
+
 async function postForm(url, body) {
     let lastError = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
         try {
-            const response = await fetch(url, {
+            const response = await requestWithElectronNet({
+                url,
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'BlogForEveryone'
                 },
                 body: new URLSearchParams(body).toString(),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+                timeoutMs: REQUEST_TIMEOUT_MS
             });
 
-            const raw = await response.text();
+            const raw = response.body;
             let payload;
             try {
                 payload = JSON.parse(raw);
@@ -36,7 +101,8 @@ async function postForm(url, body) {
             }
 
             if (!response.ok) {
-                throw new Error(payload.error_description || 'GitHub OAuth request failed');
+                const detail = payload.error_description || payload.error || 'GitHub OAuth request failed';
+                throw new Error(normalizeGithubOAuthErrorMessage(detail));
             }
 
             return payload;
@@ -57,21 +123,23 @@ async function getJson(url, token) {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
         try {
-            const response = await fetch(url, {
+            const response = await requestWithElectronNet({
+                url,
+                method: 'GET',
                 headers: {
                     Accept: 'application/vnd.github+json',
                     Authorization: `Bearer ${token}`,
                     'User-Agent': 'BlogForEveryone'
                 },
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+                timeoutMs: REQUEST_TIMEOUT_MS
             });
 
             if (!response.ok) {
-                const raw = await response.text();
+                const raw = response.body;
                 throw new Error(`GitHub API error: ${raw}`);
             }
 
-            return response.json();
+            return JSON.parse(response.body);
         } catch (error) {
             lastError = error;
             if (!isTransientNetworkError(error) || attempt === MAX_RETRIES) {
@@ -86,16 +154,23 @@ async function getJson(url, token) {
 
 function isTransientNetworkError(error) {
     const message = String(error?.message || '').toLowerCase();
+    const code = String(error?.code || '').toLowerCase();
     return (
         message.includes('fetch failed') ||
+        message.includes('request timeout') ||
         message.includes('timed out') ||
         message.includes('timeout') ||
         message.includes('econnreset') ||
         message.includes('etimedout') ||
         message.includes('enotfound') ||
+        message.includes('err_name_not_resolved') ||
+        message.includes('err_internet_disconnected') ||
+        message.includes('err_proxy_connection_failed') ||
+        message.includes('err_tunnel_connection_failed') ||
         message.includes('socket') ||
         message.includes('network') ||
-        message.includes('tls')
+        message.includes('tls') ||
+        code.includes('err_')
     );
 }
 

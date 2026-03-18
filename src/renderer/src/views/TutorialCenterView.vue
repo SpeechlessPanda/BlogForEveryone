@@ -27,6 +27,7 @@ const tutorialSections = [
       "在 GitHub 打开 Settings > Developer settings > OAuth Apps，创建一个 OAuth App。",
       "Homepage URL 可填任意可访问地址，例如 https://github.com/你的用户名。",
       "Authorization callback URL 可填 http://localhost。",
+      "在 OAuth App 页面勾选 Enable Device Flow（这是设备码登录必须项）。",
       "创建后复制 Client ID，粘贴到应用登录区，再点“设备码登录”。",
       "如果网页要求输入 code，请填应用里显示的“当前设备码”。授权后回到应用等待完成。",
     ],

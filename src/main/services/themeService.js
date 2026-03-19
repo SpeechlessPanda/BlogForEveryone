@@ -364,7 +364,7 @@ function applyPreviewOverrides(payload) {
     if (escapedBackground) {
         lines.push('<style>');
         lines.push(`html, body { background-image: url('${escapedBackground}') !important; background-size: cover !important; background-position: center !important; background-attachment: fixed !important; background-repeat: no-repeat !important; background-color: transparent !important; }`);
-        lines.push('.main, .post-content, .list, .article-content, .entry, .first-entry, #main { background-color: transparent !important; }');
+        lines.push('.main, .post-content, .list, .article-content, .entry, .first-entry, #main, .container, .widget, .article-list article, .main-article, .left-sidebar, .right-sidebar, .site-info { background-color: transparent !important; }');
         lines.push('</style>');
     }
 

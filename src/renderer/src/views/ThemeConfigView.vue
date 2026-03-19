@@ -18,8 +18,14 @@ const basicFields = reactive({
   github: "",
   backgroundImage: "",
   favicon: "",
+  avatarImage: "",
   bodyFontFamily: "",
   bodyFontSize: "18",
+  stackHomeIcon: "home",
+  stackAboutIcon: "user",
+  stackArchivesIcon: "archives",
+  stackShowArchivesWidget: true,
+  stackShowTagCloudWidget: false,
 });
 
 const giscusFields = reactive({
@@ -50,6 +56,11 @@ const backgroundTransfer = reactive({
   preferredFileName: "",
 });
 
+const avatarTransfer = reactive({
+  localFilePath: "",
+  preferredFileName: "",
+});
+
 const faviconUploadPath = ref("");
 const faviconPreferredFileName = ref("");
 const selectedWorkspace = computed(() => getSelectedWorkspace());
@@ -68,6 +79,20 @@ const selectedThemeSchema = computed(() => {
   }
   const list = workspaceState.themeCatalog[ws.framework] || [];
   return list.find((item) => item.id === selectedThemeId.value) || null;
+});
+
+const supportsAvatarUpload = computed(() => {
+  return (
+    selectedWorkspace.value?.framework === "hugo" &&
+    ["stack", "anatole"].includes(selectedThemeId.value)
+  );
+});
+
+const supportsStackComponents = computed(() => {
+  return (
+    selectedWorkspace.value?.framework === "hugo" &&
+    selectedThemeId.value === "stack"
+  );
 });
 
 const backgroundSupportHint = computed(() => {
@@ -115,6 +140,22 @@ function setByPath(target, path, value) {
     pointer = pointer[key];
   }
   pointer[keys[keys.length - 1]] = value;
+}
+
+function removeByPath(target, path) {
+  const keys = path.split(".");
+  let pointer = target;
+  for (let i = 0; i < keys.length - 1; i += 1) {
+    const key = keys[i];
+    if (pointer == null || typeof pointer !== "object") {
+      return;
+    }
+    pointer = pointer[key];
+  }
+
+  if (pointer && typeof pointer === "object") {
+    delete pointer[keys[keys.length - 1]];
+  }
 }
 
 function getByPath(source, path) {
@@ -313,6 +354,79 @@ function applyPersonalization(config, framework) {
     }
     setByPath(config, "outputs.home", outputList);
 
+    if (selectedThemeId.value === "stack") {
+      setByPath(config, "params.sidebar.subtitle", basicFields.subtitle || "");
+      if (basicFields.avatarImage) {
+        setByPath(config, "params.sidebar.avatar", basicFields.avatarImage);
+      } else {
+        removeByPath(config, "params.sidebar.avatar");
+      }
+
+      const homepageWidgets = [];
+      if (basicFields.stackShowArchivesWidget) {
+        homepageWidgets.push({ type: "archives", params: { limit: 5 } });
+      }
+      if (basicFields.stackShowTagCloudWidget) {
+        homepageWidgets.push({ type: "tag-cloud", params: { limit: 15 } });
+        setByPath(config, "taxonomies.tag", "tags");
+        setByPath(config, "taxonomies.category", "categories");
+      }
+      setByPath(config, "params.widgets.homepage", homepageWidgets);
+      setByPath(config, "params.widgets.page", [{ type: "toc" }]);
+
+      const currentMenu = Array.isArray(getByPath(config, "menu.main"))
+        ? getByPath(config, "menu.main")
+        : [];
+      const byId = (id) =>
+        currentMenu.find((item) => String(item?.identifier || "") === id) ||
+        {};
+
+      const buildMenuItem = (id, fallbackName, fallbackUrl, fallbackWeight, icon) => {
+        const existing = byId(id);
+        const item = {
+          identifier: id,
+          name: existing.name || fallbackName,
+          url: existing.url || fallbackUrl,
+          weight:
+            typeof existing.weight === "number"
+              ? existing.weight
+              : fallbackWeight,
+        };
+
+        const nextIcon = String(icon || "").trim();
+        if (nextIcon) {
+          item.params = { ...(existing.params || {}), icon: nextIcon };
+        } else if (existing.params && typeof existing.params === "object") {
+          const cloned = { ...existing.params };
+          delete cloned.icon;
+          if (Object.keys(cloned).length) {
+            item.params = cloned;
+          }
+        }
+        return item;
+      };
+
+      setByPath(config, "menu.main", [
+        buildMenuItem("home", "Home", "/", 10, basicFields.stackHomeIcon),
+        buildMenuItem("about", "About", "/about/", 20, basicFields.stackAboutIcon),
+        buildMenuItem(
+          "archives",
+          "Archives",
+          "/archives/",
+          30,
+          basicFields.stackArchivesIcon,
+        ),
+      ]);
+    }
+
+    if (selectedThemeId.value === "anatole") {
+      if (basicFields.avatarImage) {
+        setByPath(config, "params.profilePicture", basicFields.avatarImage);
+      } else {
+        removeByPath(config, "params.profilePicture");
+      }
+    }
+
     if (selectedThemeId.value === "papermod") {
       setByPath(config, "params.assets.favicon", basicFields.favicon || "");
       setByPath(
@@ -421,6 +535,11 @@ async function loadConfig() {
       getByPath(config, "params.favicon") ||
       "",
   );
+  basicFields.avatarImage = String(
+    getByPath(config, "params.sidebar.avatar") ||
+      getByPath(config, "params.profilePicture") ||
+      "",
+  );
   basicFields.bodyFontFamily = String(
     getByPath(config, "theme_config.post_font.family") ||
       getByPath(config, "params.postFont.family") ||
@@ -441,6 +560,29 @@ async function loadConfig() {
   backgroundTransfer.preferredFileName = deriveFileNameFromPath(
     basicFields.backgroundImage,
   );
+  avatarTransfer.preferredFileName = deriveFileNameFromPath(basicFields.avatarImage);
+
+  const stackMenu = Array.isArray(getByPath(config, "menu.main"))
+    ? getByPath(config, "menu.main")
+    : [];
+  const menuIconById = (id) =>
+    String(
+      stackMenu.find((item) => String(item?.identifier || "") === id)?.params
+        ?.icon || "",
+    );
+  basicFields.stackHomeIcon = menuIconById("home");
+  basicFields.stackAboutIcon = menuIconById("about");
+  basicFields.stackArchivesIcon = menuIconById("archives");
+
+  const homepageWidgets = Array.isArray(getByPath(config, "params.widgets.homepage"))
+    ? getByPath(config, "params.widgets.homepage")
+    : [];
+  const hasWidget = (type) =>
+    homepageWidgets.some(
+      (item) => String(item?.type || "").toLowerCase() === String(type).toLowerCase(),
+    );
+  basicFields.stackShowArchivesWidget = hasWidget("archives");
+  basicFields.stackShowTagCloudWidget = hasWidget("tag-cloud");
 
   giscusFields.enabled = Boolean(
     getByPath(config, "theme_config.comments.use") === "giscus" ||
@@ -666,6 +808,56 @@ async function uploadLocalFavicon() {
   status.value = `图标已转存并写入配置：${result.webPath}`;
 }
 
+async function applyLocalAvatarImage() {
+  const ws = selectedWorkspace.value;
+  if (!ws) {
+    status.value = "请先选择工程。";
+    return;
+  }
+  if (!supportsAvatarUpload.value) {
+    status.value = "当前主题不支持头像配置。";
+    return;
+  }
+  if (!avatarTransfer.localFilePath) {
+    status.value = "请先填写头像本地路径。";
+    return;
+  }
+
+  const result = await window.bfeApi.saveThemeLocalAsset({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+    localFilePath: avatarTransfer.localFilePath,
+    assetType: "avatar",
+    preferredDir:
+      backgroundTransfer.preferredDir || getDefaultAssetDir(ws.framework),
+    preferredFileName: avatarTransfer.preferredFileName || "avatar",
+  });
+
+  basicFields.avatarImage = result.webPath;
+  avatarTransfer.preferredFileName = deriveFileNameFromPath(result.webPath);
+
+  const config = await window.bfeApi.getThemeConfig({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+  });
+
+  if (selectedThemeId.value === "stack") {
+    setByPath(config, "params.sidebar.avatar", result.webPath);
+  }
+  if (selectedThemeId.value === "anatole") {
+    setByPath(config, "params.profilePicture", result.webPath);
+  }
+
+  await window.bfeApi.saveThemeConfig({
+    projectDir: ws.projectDir,
+    framework: ws.framework,
+    nextConfig: config,
+  });
+  allConfigEntries.value = flattenObject(config);
+  await syncPreviewOverrides(ws.projectDir, ws.framework);
+  status.value = `头像已转存并写入配置：${result.webPath}`;
+}
+
 function applyThemeFromWorkspace() {
   const ws = selectedWorkspace.value;
   if (!ws) {
@@ -710,6 +902,22 @@ async function pickFaviconImageFile() {
   });
   if (!result.canceled && result.path) {
     faviconUploadPath.value = result.path;
+  }
+}
+
+async function pickAvatarImageFile() {
+  const result = await window.bfeApi.pickFile({
+    title: "选择头像文件",
+    defaultPath: avatarTransfer.localFilePath || undefined,
+    filters: [
+      {
+        name: "Images",
+        extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"],
+      },
+    ],
+  });
+  if (!result.canceled && result.path) {
+    avatarTransfer.localFilePath = result.path;
   }
 }
 
@@ -794,6 +1002,38 @@ watch(
             placeholder="https://github.com/yourname"
           />
         </div>
+        <template v-if="supportsStackComponents">
+          <div>
+            <label>首页菜单图标（可空，空则移除）</label>
+            <input v-model="basicFields.stackHomeIcon" placeholder="例如 home" />
+          </div>
+          <div>
+            <label>关于菜单图标（可空，空则移除）</label>
+            <input v-model="basicFields.stackAboutIcon" placeholder="例如 user" />
+          </div>
+          <div>
+            <label>归档菜单图标（可空，空则移除）</label>
+            <input
+              v-model="basicFields.stackArchivesIcon"
+              placeholder="例如 archives"
+            />
+          </div>
+          <div>
+            <label>显示归档小组件</label>
+            <select v-model="basicFields.stackShowArchivesWidget">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>显示标签云小组件</label>
+            <select v-model="basicFields.stackShowTagCloudWidget">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+            <p class="muted">启用前请确保文章包含 tags，否则主题可能不显示标签云。</p>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -804,6 +1044,20 @@ watch(
         如需改名，可填写“文件名（可选）”。
       </p>
       <p class="muted">{{ backgroundSupportHint }}</p>
+      <div class="grid-2" style="margin-top: 8px">
+        <div>
+          <label>当前图标路径（已配置）</label>
+          <input :value="basicFields.favicon" readonly />
+        </div>
+        <div>
+          <label>当前背景图路径（已配置）</label>
+          <input :value="basicFields.backgroundImage" readonly />
+        </div>
+        <div v-if="supportsAvatarUpload">
+          <label>当前头像路径（已配置）</label>
+          <input :value="basicFields.avatarImage" readonly />
+        </div>
+      </div>
       <div class="grid-2">
         <div>
           <label>本地图标路径（自动保存到博客文件夹）</label>
@@ -862,6 +1116,30 @@ watch(
       <div class="actions">
         <button class="secondary" @click="applyLocalBackgroundImage">
           转存并应用背景图（自动写入配置）
+        </button>
+      </div>
+
+      <div v-if="supportsAvatarUpload" class="grid-2" style="margin-top: 8px">
+        <div>
+          <label>本地头像路径</label>
+          <div class="path-input-row">
+            <input
+              v-model="avatarTransfer.localFilePath"
+              placeholder="例如 D:/images/avatar.png"
+            />
+            <button class="secondary" type="button" @click="pickAvatarImageFile">
+              选择文件
+            </button>
+          </div>
+        </div>
+        <div>
+          <label>头像文件名（可选）</label>
+          <input v-model="avatarTransfer.preferredFileName" placeholder="例如 profile-avatar" />
+        </div>
+      </div>
+      <div v-if="supportsAvatarUpload" class="actions">
+        <button class="secondary" @click="applyLocalAvatarImage">
+          转存并应用头像（自动写入配置）
         </button>
       </div>
     </div>

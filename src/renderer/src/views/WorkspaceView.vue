@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, onMounted, onUnmounted, watch } from "vue";
+import { computed, reactive, onMounted, onUnmounted, watch } from "vue";
 import {
   workspaceState,
   refreshWorkspaces,
@@ -24,6 +24,31 @@ const flow = reactive({
   percent: 0,
 });
 
+const themePreviewMap = {
+  "hexo:landscape": "/theme-previews/hexo-landscape.png",
+  "hexo:next": "/theme-previews/hexo-next.png",
+  "hexo:butterfly": "/theme-previews/hexo-butterfly.png",
+  "hexo:fluid": "/theme-previews/hexo-fluid.png",
+  "hexo:volantis": "/theme-previews/hexo-volantis.png",
+  "hugo:papermod": "/theme-previews/hugo-papermod.png",
+  "hugo:loveit": "/theme-previews/hugo-loveit.png",
+  "hugo:stack": "/theme-previews/hugo-stack.png",
+  "hugo:mainroad": "/theme-previews/hugo-mainroad.png",
+  "hugo:anatole": "/theme-previews/hugo-anatole.png",
+};
+
+const currentFrameworkThemes = computed(() => {
+  const list = workspaceState.themeCatalog?.[form.framework] || [];
+  return list.map((item) => {
+    const key = `${form.framework}:${item.id}`;
+    return {
+      ...item,
+      preview: themePreviewMap[key] || "",
+      selected: item.id === form.theme,
+    };
+  });
+});
+
 let flowPulseTimer = null;
 
 function resetFlow() {
@@ -45,6 +70,10 @@ function applyDefaultThemeForFramework(framework) {
   if (!list.some((item) => item.id === form.theme)) {
     form.theme = list[0].id;
   }
+}
+
+function selectThemeCard(themeId) {
+  form.theme = themeId;
 }
 
 function markStep(stepKey) {
@@ -271,6 +300,36 @@ function goTutorialCenter() {
       </div>
     </div>
 
+    <div class="theme-hint">
+      选主题时请主要留意主题框架页面的效果。背景图片是随意添加的示例素材，不要被背景图影响判断。
+    </div>
+
+    <div class="theme-grid" v-if="currentFrameworkThemes.length">
+      <button
+        v-for="item in currentFrameworkThemes"
+        :key="`${form.framework}-${item.id}`"
+        class="theme-card"
+        :class="{ active: item.selected }"
+        type="button"
+        @click="selectThemeCard(item.id)"
+      >
+        <div class="theme-thumb-wrap">
+          <img
+            v-if="item.preview"
+            class="theme-thumb"
+            :src="item.preview"
+            :alt="`${item.name} 主题预览`"
+            loading="lazy"
+          />
+          <div v-else class="theme-thumb-empty">暂无预览图</div>
+        </div>
+        <div class="theme-meta">
+          <strong>{{ item.name }}</strong>
+          <span class="muted">{{ form.framework }} · {{ item.id }}</span>
+        </div>
+      </button>
+    </div>
+
     <div class="actions">
       <AsyncActionButton
         kind="primary"
@@ -344,3 +403,73 @@ function goTutorialCenter() {
     <pre>{{ logs.output }}</pre>
   </section>
 </template>
+
+<style scoped>
+.theme-hint {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.theme-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.theme-card {
+  text-align: left;
+  border: 1px solid #d4d4d8;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.theme-card.active {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
+}
+
+.theme-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e5e7eb;
+}
+
+.theme-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.theme-thumb-empty {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.theme-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@media (max-width: 640px) {
+  .theme-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

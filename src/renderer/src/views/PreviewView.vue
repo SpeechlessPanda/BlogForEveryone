@@ -58,7 +58,11 @@ async function runPreviewAction(action) {
         }
         preview.running = true;
         preview.url = result.url;
-        await window.bfeApi.openLocalPreview({ framework: ws.framework, port });
+        await window.bfeApi.openLocalPreview({
+          framework: ws.framework,
+          projectDir: ws.projectDir,
+          url: result.url,
+        });
         status.value = `预览已启动：${result.url}`;
         return;
       }
@@ -66,6 +70,7 @@ async function runPreviewAction(action) {
       if (action === "open") {
         const result = await window.bfeApi.openLocalPreview({
           framework: ws.framework,
+          projectDir: ws.projectDir,
           port,
         });
         preview.url = result.url;
@@ -91,7 +96,11 @@ async function runPreviewAction(action) {
         }
         preview.running = true;
         preview.url = result.url;
-        await window.bfeApi.openLocalPreview({ framework: ws.framework, port });
+        await window.bfeApi.openLocalPreview({
+          framework: ws.framework,
+          projectDir: ws.projectDir,
+          url: result.url,
+        });
         status.value = `预览已重启：${result.url}`;
         return;
       }

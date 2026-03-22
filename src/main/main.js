@@ -16,7 +16,11 @@ function resolveAppIcon() {
         ? [
             path.join(app.getAppPath(), 'build', 'icon.ico'),
             path.join(app.getAppPath(), 'src', 'img', 'icon.ico'),
-            path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.ico')
+            path.join(__dirname, '../img/icon.ico'),
+            path.join(app.getAppPath(), 'src', 'img', 'icon.jpg'),
+            path.join(__dirname, '../img/icon.jpg'),
+            path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.ico'),
+            path.join(process.resourcesPath, 'app.asar', 'src', 'img', 'icon.jpg')
         ]
         : [path.join(__dirname, '../img/icon.jpg')];
 

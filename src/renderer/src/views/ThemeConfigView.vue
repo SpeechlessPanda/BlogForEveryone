@@ -298,6 +298,25 @@ function applyPersonalization(config, framework) {
         getByPath(config, "feed.path") || "atom.xml",
       );
     }
+
+    if (selectedThemeId.value === "next") {
+      setByPath(config, "theme_config.sidebar.display", "always");
+      setByPath(
+        config,
+        "theme_config.favicon.small",
+        basicFields.favicon || "",
+      );
+      setByPath(
+        config,
+        "theme_config.favicon.medium",
+        basicFields.favicon || "",
+      );
+      setByPath(
+        config,
+        "theme_config.favicon.apple_touch_icon",
+        basicFields.favicon || "",
+      );
+    }
   } else {
     setByPath(config, "params.description", basicFields.subtitle);
     setByPath(config, "params.backgroundImage", basicFields.backgroundImage);
@@ -378,10 +397,15 @@ function applyPersonalization(config, framework) {
         ? getByPath(config, "menu.main")
         : [];
       const byId = (id) =>
-        currentMenu.find((item) => String(item?.identifier || "") === id) ||
-        {};
+        currentMenu.find((item) => String(item?.identifier || "") === id) || {};
 
-      const buildMenuItem = (id, fallbackName, fallbackUrl, fallbackWeight, icon) => {
+      const buildMenuItem = (
+        id,
+        fallbackName,
+        fallbackUrl,
+        fallbackWeight,
+        icon,
+      ) => {
         const existing = byId(id);
         const item = {
           identifier: id,
@@ -408,7 +432,13 @@ function applyPersonalization(config, framework) {
 
       setByPath(config, "menu.main", [
         buildMenuItem("home", "Home", "/", 10, basicFields.stackHomeIcon),
-        buildMenuItem("about", "About", "/about/", 20, basicFields.stackAboutIcon),
+        buildMenuItem(
+          "about",
+          "About",
+          "/about/",
+          20,
+          basicFields.stackAboutIcon,
+        ),
         buildMenuItem(
           "archives",
           "Archives",
@@ -425,6 +455,23 @@ function applyPersonalization(config, framework) {
       } else {
         removeByPath(config, "params.profilePicture");
       }
+
+      const socialIcons = [];
+      if (basicFields.github) {
+        socialIcons.push({
+          icon: "fa-brands fa-github",
+          title: "GitHub",
+          url: basicFields.github,
+        });
+      }
+      if (basicFields.email) {
+        socialIcons.push({
+          icon: "fa-solid fa-envelope",
+          title: "Email",
+          url: `mailto:${basicFields.email}`,
+        });
+      }
+      setByPath(config, "params.socialIcons", socialIcons);
     }
 
     if (selectedThemeId.value === "papermod") {
@@ -470,6 +517,28 @@ function applyPersonalization(config, framework) {
           { identifier: "series", name: "Series", url: "/series/", weight: 30 },
         ]);
       }
+    }
+
+    if (selectedThemeId.value === "loveit") {
+      setByPath(config, "params.home.profile.enable", false);
+      setByPath(config, "params.home.posts.enable", true);
+      setByPath(config, "params.home.posts.paginate", 6);
+      setByPath(config, "mainSections", ["posts", "post"]);
+    }
+
+    if (selectedThemeId.value === "mainroad") {
+      setByPath(config, "Params.mainSections", ["post"]);
+      setByPath(config, "Params.sidebar.home", "right");
+      setByPath(config, "Params.sidebar.list", "right");
+      setByPath(config, "Params.sidebar.single", "right");
+      setByPath(config, "Params.sidebar.widgets", [
+        "search",
+        "recent",
+        "categories",
+        "taglist",
+      ]);
+      setByPath(config, "Params.widgets.recent_num", 5);
+      setByPath(config, "Params.widgets.tags_counter", true);
     }
   }
 }
@@ -560,7 +629,9 @@ async function loadConfig() {
   backgroundTransfer.preferredFileName = deriveFileNameFromPath(
     basicFields.backgroundImage,
   );
-  avatarTransfer.preferredFileName = deriveFileNameFromPath(basicFields.avatarImage);
+  avatarTransfer.preferredFileName = deriveFileNameFromPath(
+    basicFields.avatarImage,
+  );
 
   const stackMenu = Array.isArray(getByPath(config, "menu.main"))
     ? getByPath(config, "menu.main")
@@ -574,12 +645,15 @@ async function loadConfig() {
   basicFields.stackAboutIcon = menuIconById("about");
   basicFields.stackArchivesIcon = menuIconById("archives");
 
-  const homepageWidgets = Array.isArray(getByPath(config, "params.widgets.homepage"))
+  const homepageWidgets = Array.isArray(
+    getByPath(config, "params.widgets.homepage"),
+  )
     ? getByPath(config, "params.widgets.homepage")
     : [];
   const hasWidget = (type) =>
     homepageWidgets.some(
-      (item) => String(item?.type || "").toLowerCase() === String(type).toLowerCase(),
+      (item) =>
+        String(item?.type || "").toLowerCase() === String(type).toLowerCase(),
     );
   basicFields.stackShowArchivesWidget = hasWidget("archives");
   basicFields.stackShowTagCloudWidget = hasWidget("tag-cloud");
@@ -1005,11 +1079,17 @@ watch(
         <template v-if="supportsStackComponents">
           <div>
             <label>首页菜单图标（可空，空则移除）</label>
-            <input v-model="basicFields.stackHomeIcon" placeholder="例如 home" />
+            <input
+              v-model="basicFields.stackHomeIcon"
+              placeholder="例如 home"
+            />
           </div>
           <div>
             <label>关于菜单图标（可空，空则移除）</label>
-            <input v-model="basicFields.stackAboutIcon" placeholder="例如 user" />
+            <input
+              v-model="basicFields.stackAboutIcon"
+              placeholder="例如 user"
+            />
           </div>
           <div>
             <label>归档菜单图标（可空，空则移除）</label>
@@ -1031,7 +1111,9 @@ watch(
               <option :value="true">true</option>
               <option :value="false">false</option>
             </select>
-            <p class="muted">启用前请确保文章包含 tags，否则主题可能不显示标签云。</p>
+            <p class="muted">
+              启用前请确保文章包含 tags，否则主题可能不显示标签云。
+            </p>
           </div>
         </template>
       </div>
@@ -1127,14 +1209,21 @@ watch(
               v-model="avatarTransfer.localFilePath"
               placeholder="例如 D:/images/avatar.png"
             />
-            <button class="secondary" type="button" @click="pickAvatarImageFile">
+            <button
+              class="secondary"
+              type="button"
+              @click="pickAvatarImageFile"
+            >
               选择文件
             </button>
           </div>
         </div>
         <div>
           <label>头像文件名（可选）</label>
-          <input v-model="avatarTransfer.preferredFileName" placeholder="例如 profile-avatar" />
+          <input
+            v-model="avatarTransfer.preferredFileName"
+            placeholder="例如 profile-avatar"
+          />
         </div>
       </div>
       <div v-if="supportsAvatarUpload" class="actions">

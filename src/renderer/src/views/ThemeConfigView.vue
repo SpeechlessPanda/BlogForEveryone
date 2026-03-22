@@ -6,6 +6,14 @@ import {
   refreshWorkspaces,
   getSelectedWorkspace,
 } from "../stores/workspaceStore";
+import {
+  getAvatarUploadDir,
+  getHexoBackgroundConfigPath,
+  getHexoFaviconConfigPath,
+  normalizeAvatarConfigValue,
+  readHexoBackgroundValue,
+  readHexoFaviconValue,
+} from "../utils/themeConfigHelpers.mjs";
 
 const status = ref("");
 const selectedThemeId = ref("");
@@ -120,6 +128,14 @@ function getDefaultAssetDir(framework) {
   return framework === "hexo" ? "source/img" : "static/img";
 }
 
+function setThemeValueByPath(config, path, value) {
+  if (path === "favicon") {
+    config.favicon = value;
+    return;
+  }
+  setByPath(config, path, value);
+}
+
 function deriveFileNameFromPath(value) {
   if (!value) {
     return "";
@@ -221,12 +237,18 @@ function applyPersonalization(config, framework) {
     config.subtitle = basicFields.subtitle || config.subtitle;
     setByPath(
       config,
-      "theme_config.background_image",
+      getHexoBackgroundConfigPath(selectedThemeId.value),
       basicFields.backgroundImage ||
-        getByPath(config, "theme_config.background_image") ||
+        readHexoBackgroundValue(config, selectedThemeId.value, getByPath) ||
         "",
     );
-    config.favicon = basicFields.favicon || config.favicon;
+    setThemeValueByPath(
+      config,
+      getHexoFaviconConfigPath(selectedThemeId.value),
+      basicFields.favicon ||
+        readHexoFaviconValue(config, selectedThemeId.value, getByPath) ||
+        "",
+    );
     setByPath(config, "author.email", basicFields.email);
     setByPath(config, "theme_config.social.github", basicFields.github);
 
@@ -594,15 +616,17 @@ async function loadConfig() {
       "",
   );
   basicFields.backgroundImage = String(
-    getByPath(config, "theme_config.background_image") ||
-      getByPath(config, "params.backgroundImage") ||
-      "",
+    selectedWorkspace.value?.framework === "hexo"
+      ? readHexoBackgroundValue(config, selectedThemeId.value, getByPath)
+      : getByPath(config, "params.backgroundImage") || "",
   );
   basicFields.favicon = String(
-    config.favicon ||
-      getByPath(config, "params.assets.favicon") ||
-      getByPath(config, "params.favicon") ||
-      "",
+    selectedWorkspace.value?.framework === "hexo"
+      ? readHexoFaviconValue(config, selectedThemeId.value, getByPath)
+      : config.favicon ||
+        getByPath(config, "params.assets.favicon") ||
+        getByPath(config, "params.favicon") ||
+        "",
   );
   basicFields.avatarImage = String(
     getByPath(config, "params.sidebar.avatar") ||
@@ -825,7 +849,11 @@ async function applyLocalBackgroundImage() {
     framework: ws.framework,
   });
   if (ws.framework === "hexo") {
-    setByPath(config, "theme_config.background_image", result.webPath);
+    setByPath(
+      config,
+      getHexoBackgroundConfigPath(selectedThemeId.value),
+      result.webPath,
+    );
   } else {
     setByPath(config, "params.backgroundImage", result.webPath);
     if (selectedThemeId.value === "papermod") {
@@ -863,7 +891,11 @@ async function uploadLocalFavicon() {
     framework: ws.framework,
   });
   if (ws.framework === "hexo") {
-    config.favicon = result.webPath;
+    setThemeValueByPath(
+      config,
+      getHexoFaviconConfigPath(selectedThemeId.value),
+      result.webPath,
+    );
   } else {
     setByPath(config, "params.favicon", result.webPath);
     if (selectedThemeId.value === "papermod") {
@@ -902,13 +934,18 @@ async function applyLocalAvatarImage() {
     framework: ws.framework,
     localFilePath: avatarTransfer.localFilePath,
     assetType: "avatar",
-    preferredDir:
-      backgroundTransfer.preferredDir || getDefaultAssetDir(ws.framework),
+    preferredDir: getAvatarUploadDir(ws.framework, selectedThemeId.value),
     preferredFileName: avatarTransfer.preferredFileName || "avatar",
   });
 
-  basicFields.avatarImage = result.webPath;
-  avatarTransfer.preferredFileName = deriveFileNameFromPath(result.webPath);
+  const avatarValue = normalizeAvatarConfigValue(
+    ws.framework,
+    selectedThemeId.value,
+    result.webPath,
+  );
+
+  basicFields.avatarImage = avatarValue;
+  avatarTransfer.preferredFileName = deriveFileNameFromPath(avatarValue);
 
   const config = await window.bfeApi.getThemeConfig({
     projectDir: ws.projectDir,
@@ -916,10 +953,10 @@ async function applyLocalAvatarImage() {
   });
 
   if (selectedThemeId.value === "stack") {
-    setByPath(config, "params.sidebar.avatar", result.webPath);
+    setByPath(config, "params.sidebar.avatar", avatarValue);
   }
   if (selectedThemeId.value === "anatole") {
-    setByPath(config, "params.profilePicture", result.webPath);
+    setByPath(config, "params.profilePicture", avatarValue);
   }
 
   await window.bfeApi.saveThemeConfig({
@@ -929,7 +966,7 @@ async function applyLocalAvatarImage() {
   });
   allConfigEntries.value = flattenObject(config);
   await syncPreviewOverrides(ws.projectDir, ws.framework);
-  status.value = `头像已转存并写入配置：${result.webPath}`;
+  status.value = `头像已转存并写入配置：${avatarValue}`;
 }
 
 function applyThemeFromWorkspace() {
@@ -1024,7 +1061,9 @@ watch(
 <template>
   <section class="panel">
     <h2>主题配置（全可视化）</h2>
-    <p class="muted">不需要编辑 JSON。若不确定参数，请先阅读教程中心。</p>
+    <p class="muted">
+      按“先基础、后高级”的顺序整理博客外观。常用项放在前面，原始配置放在最后折叠区。
+    </p>
     <p>
       <a href="#" @click.prevent="goTutorialCenter"
         >打开教程中心：主题个性化完整指南</a
@@ -1036,28 +1075,65 @@ watch(
       </button>
     </div>
 
-    <div class="grid-2">
-      <div>
-        <label>选择工程</label>
-        <select v-model="workspaceState.selectedWorkspaceId">
-          <option value="">请选择</option>
-          <option
-            v-for="ws in workspaceState.workspaces"
-            :key="ws.id"
-            :value="ws.id"
-          >
-            {{ ws.name }}
-          </option>
-        </select>
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">当前工作区</p>
+        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework.toUpperCase()} · ${selectedWorkspace.projectDir}`
+              : "先选择或创建博客工程，主题和图片配置才会落到正确目录里。"
+          }}
+        </p>
       </div>
-      <div>
-        <label>主题（由工程自动确定）</label>
-        <input :value="selectedThemeName" readonly />
+      <div class="context-card">
+        <p class="section-eyebrow">当前主题</p>
+        <strong>{{ selectedThemeName }}</strong>
+        <p class="section-helper">
+          先完成标题、背景、图标这类高感知项，再去处理主题专属高级参数。
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">兼容提示</p>
+        <strong>图片与头像会自动转存</strong>
+        <p class="section-helper">{{ backgroundSupportHint }}</p>
       </div>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>基础信息</h2>
+    <div class="panel page-section">
+      <p class="section-eyebrow">第一步</p>
+      <h2>确认当前博客与主题</h2>
+      <p class="section-helper">
+        这里先确认你正在改哪一个工作区，避免把图片和配置写到错误的博客目录里。
+      </p>
+      <div class="grid-2">
+        <div>
+          <label>选择工程</label>
+          <select v-model="workspaceState.selectedWorkspaceId">
+            <option value="">请选择</option>
+            <option
+              v-for="ws in workspaceState.workspaces"
+              :key="ws.id"
+              :value="ws.id"
+            >
+              {{ ws.name }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label>主题（由工程自动确定）</label>
+          <input :value="selectedThemeName" readonly />
+        </div>
+      </div>
+    </div>
+
+    <div class="panel page-section">
+      <p class="section-eyebrow">第二步</p>
+      <h2>博客基础信息</h2>
+      <p class="section-helper">
+        先改标题、副标题和主页链接。这一组最能直接改变读者看到的第一印象。
+      </p>
       <div class="grid-2">
         <div>
           <label>博客标题</label><input v-model="basicFields.siteTitle" />
@@ -1119,11 +1195,11 @@ watch(
       </div>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>背景与图标</h2>
-      <p class="muted">
-        只需要提供本地图片路径，软件会自动复制到工程图片目录并写入主题配置。
-        如需改名，可填写“文件名（可选）”。
+    <div class="panel page-section">
+      <p class="section-eyebrow">第三步</p>
+      <h2>图片与品牌素材</h2>
+      <p class="section-helper">
+        只需要提供本地图片路径，软件会自动复制到工程图片目录并写入主题配置。如需改名，可填写“文件名（可选）”。
       </p>
       <p class="muted">{{ backgroundSupportHint }}</p>
       <div class="grid-2" style="margin-top: 8px">
@@ -1164,12 +1240,13 @@ watch(
             placeholder="例如 favicon-brand"
           />
         </div>
-        <div class="actions">
-          <button class="secondary" @click="uploadLocalFavicon">
-            转存并应用博客图标
-          </button>
-        </div>
       </div>
+      <div class="actions">
+        <button class="secondary" @click="uploadLocalFavicon">
+          转存并应用博客图标
+        </button>
+      </div>
+
       <div class="grid-2" style="margin-top: 8px">
         <div>
           <label>本地背景图路径</label>
@@ -1233,8 +1310,12 @@ watch(
       </div>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>正文排版（仅正文区域）</h2>
+    <div class="panel page-section">
+      <p class="section-eyebrow">第四步</p>
+      <h2>阅读体验</h2>
+      <p class="section-helper">
+        这里只调正文区域的可读性。建议先用默认值，只有在觉得字太小或字体不合适时再微调。
+      </p>
       <div class="grid-2">
         <div>
           <label>正文字体</label
@@ -1250,128 +1331,155 @@ watch(
       </div>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>评论系统（Giscus）</h2>
-      <p class="muted">Giscus 需要你先按教程完成仓库 Discussion 配置。</p>
-      <div class="grid-2">
-        <div>
-          <label>启用 Giscus</label
-          ><select v-model="giscusFields.enabled">
-            <option :value="true">true</option>
-            <option :value="false">false</option>
-          </select>
+    <div class="panel page-section split-section">
+      <div>
+        <p class="section-eyebrow">第五步</p>
+        <h2>可选增强项</h2>
+        <p class="section-helper">
+          下面这些属于“博客已经能跑之后再加”的能力。你可以先跳过，后面再回来补。
+        </p>
+      </div>
+
+      <div>
+        <h3>评论系统（Giscus）</h3>
+        <p class="muted">Giscus 需要你先按教程完成仓库 Discussion 配置。</p>
+        <div class="grid-2">
+          <div>
+            <label>启用 Giscus</label
+            ><select v-model="giscusFields.enabled">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>repo (owner/repo)</label><input v-model="giscusFields.repo" />
+          </div>
+          <div><label>repoId</label><input v-model="giscusFields.repoId" /></div>
+          <div>
+            <label>category</label><input v-model="giscusFields.category" />
+          </div>
+          <div>
+            <label>categoryId</label><input v-model="giscusFields.categoryId" />
+          </div>
+          <div>
+            <label>mapping</label><input v-model="giscusFields.mapping" />
+          </div>
         </div>
-        <div>
-          <label>repo (owner/repo)</label><input v-model="giscusFields.repo" />
+      </div>
+
+      <hr class="section-divider" />
+
+      <div>
+        <h3>访客统计</h3>
+        <p class="muted">
+          默认方案是“不蒜子”，无需额外注册即可显示浏览量；广告拦截插件可能影响统计脚本加载。
+        </p>
+        <div class="grid-2">
+          <div>
+            <label>启用不蒜子统计</label
+            ><select v-model="analyticsFields.busuanzi">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>Umami Script URL</label
+            ><input v-model="analyticsFields.umamiScriptUrl" />
+          </div>
+          <div>
+            <label>Umami Website ID</label
+            ><input v-model="analyticsFields.umamiWebsiteId" />
+          </div>
+          <div>
+            <label>GA Measurement ID</label
+            ><input v-model="analyticsFields.gaMeasurementId" />
+          </div>
         </div>
-        <div><label>repoId</label><input v-model="giscusFields.repoId" /></div>
-        <div>
-          <label>category</label><input v-model="giscusFields.category" />
-        </div>
-        <div>
-          <label>categoryId</label><input v-model="giscusFields.categoryId" />
-        </div>
-        <div>
-          <label>mapping</label><input v-model="giscusFields.mapping" />
+      </div>
+
+      <hr class="section-divider" />
+
+      <div>
+        <h3>RSS 生成与自动更新</h3>
+        <p class="muted">
+          你可以控制是否生成博客 RSS 链接，并决定软件是否自动轮询订阅更新。
+        </p>
+        <div class="grid-2">
+          <div>
+            <label>生成博客 RSS 链接</label>
+            <select v-model="rssFields.generateBlogRss">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>软件自动更新 RSS 订阅</label>
+            <select v-model="rssFields.autoSyncRssSubscriptions">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>访客统计</h2>
-      <p class="muted">
-        默认方案是“不蒜子”，无需额外注册即可显示浏览量；广告拦截插件可能影响统计脚本加载。
-      </p>
-      <div class="grid-2">
-        <div>
-          <label>启用不蒜子统计</label
-          ><select v-model="analyticsFields.busuanzi">
-            <option :value="true">true</option>
-            <option :value="false">false</option>
-          </select>
-        </div>
-        <div>
-          <label>Umami Script URL</label
-          ><input v-model="analyticsFields.umamiScriptUrl" />
-        </div>
-        <div>
-          <label>Umami Website ID</label
-          ><input v-model="analyticsFields.umamiWebsiteId" />
-        </div>
-        <div>
-          <label>GA Measurement ID</label
-          ><input v-model="analyticsFields.gaMeasurementId" />
+    <details v-if="selectedThemeSchema" class="advanced-panel">
+      <summary>
+        主题专属高级配置（{{ selectedThemeSchema.options.length }} 项）
+      </summary>
+      <div class="advanced-panel-content">
+        <p class="section-helper">
+          只有当你已经跑通基础外观、预览和内容后，再建议回来调这些主题特有参数。
+        </p>
+        <div class="grid-2">
+          <div v-for="opt in selectedThemeSchema.options" :key="opt.key">
+            <label>{{ opt.label }} ({{ opt.key }})</label>
+            <select v-if="opt.type === 'enum'" v-model="optionValues[opt.key]">
+              <option v-for="v in opt.enumValues" :key="v" :value="v">
+                {{ v }}
+              </option>
+            </select>
+            <select
+              v-else-if="opt.type === 'boolean'"
+              v-model="optionValues[opt.key]"
+            >
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+            <input
+              v-else-if="opt.type === 'array'"
+              v-model="optionValues[opt.key]"
+              :placeholder="(opt.default || []).join(',')"
+            />
+            <input
+              v-else
+              v-model="optionValues[opt.key]"
+              :placeholder="String(opt.default || '')"
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </details>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>RSS 生成与自动更新</h2>
-      <p class="muted">
-        你可以控制是否生成博客 RSS 链接，并决定软件是否自动轮询订阅更新。
-      </p>
-      <div class="grid-2">
-        <div>
-          <label>生成博客 RSS 链接</label>
-          <select v-model="rssFields.generateBlogRss">
-            <option :value="true">true</option>
-            <option :value="false">false</option>
-          </select>
-        </div>
-        <div>
-          <label>软件自动更新 RSS 订阅</label>
-          <select v-model="rssFields.autoSyncRssSubscriptions">
-            <option :value="true">true</option>
-            <option :value="false">false</option>
-          </select>
+    <details class="advanced-panel">
+      <summary>全部配置项（{{ allConfigEntries.length }} 项，适合高级用户）</summary>
+      <div class="advanced-panel-content">
+        <p class="section-helper">
+          这里会直接影响最终配置文件。只有当上面的可视化项无法覆盖你的需求时，再修改这一组原始条目。
+        </p>
+        <div class="grid-2">
+          <div v-for="item in allConfigEntries" :key="item.key">
+            <label>{{ item.key }}</label>
+            <input v-model="item.value" />
+          </div>
         </div>
       </div>
-    </div>
-
-    <div v-if="selectedThemeSchema" class="panel" style="margin-top: 12px">
-      <h2>主题专属配置项</h2>
-      <div class="grid-2">
-        <div v-for="opt in selectedThemeSchema.options" :key="opt.key">
-          <label>{{ opt.label }} ({{ opt.key }})</label>
-          <select v-if="opt.type === 'enum'" v-model="optionValues[opt.key]">
-            <option v-for="v in opt.enumValues" :key="v" :value="v">
-              {{ v }}
-            </option>
-          </select>
-          <select
-            v-else-if="opt.type === 'boolean'"
-            v-model="optionValues[opt.key]"
-          >
-            <option value="true">true</option>
-            <option value="false">false</option>
-          </select>
-          <input
-            v-else-if="opt.type === 'array'"
-            v-model="optionValues[opt.key]"
-            :placeholder="(opt.default || []).join(',')"
-          />
-          <input
-            v-else
-            v-model="optionValues[opt.key]"
-            :placeholder="String(opt.default || '')"
-          />
-        </div>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-top: 12px">
-      <h2>全部配置项（自动展开）</h2>
-      <div class="grid-2">
-        <div v-for="item in allConfigEntries" :key="item.key">
-          <label>{{ item.key }}</label>
-          <input v-model="item.value" />
-        </div>
-      </div>
-    </div>
+    </details>
 
     <div class="actions">
       <button class="primary" @click="saveAllConfig">保存全部配置</button>
     </div>
+    <p class="muted">保存后建议立刻去本地预览，确认外观变更已真实生效。</p>
     <p class="muted">{{ status }}</p>
   </section>
 </template>

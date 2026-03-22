@@ -258,7 +258,28 @@ watch(
       >
     </p>
 
-    <div class="grid-2">
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">当前工作区</p>
+        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
+              : "先选择工作区，写出的文章和页面才会进入正确的博客目录。"
+          }}
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">推荐顺序</p>
+        <strong>先写第一篇内容，再考虑自动发布</strong>
+        <p class="section-helper">
+          先确认 Markdown 创建和保存都正常，再启用保存后自动发布，会更容易排查问题。
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 12px">
       <div>
         <label>当前工程</label>
         <select v-model="workspaceState.selectedWorkspaceId">
@@ -292,21 +313,32 @@ watch(
         <label>slug（可选）</label>
         <input v-model="form.slug" placeholder="例如 first-post" />
       </div>
-      <div>
-        <label>保存后自动发布（需要仓库地址）</label>
-        <select v-model="form.autoPublish">
-          <option :value="true">true</option>
-          <option :value="false">false</option>
-        </select>
-      </div>
-      <div>
-        <label>发布仓库地址</label>
-        <input
-          v-model="form.repoUrl"
-          placeholder="https://github.com/you/your-blog.git"
-        />
-      </div>
     </div>
+
+    <details class="advanced-panel">
+      <summary>自动发布（进阶，可稍后再配）</summary>
+      <div class="advanced-panel-content">
+        <p class="section-helper">
+          如果只是先把文章写出来，可以先不配这部分。等你确认手动预览和发布都正常后，再打开自动发布。
+        </p>
+        <div class="grid-2">
+          <div>
+            <label>保存后自动发布（需要仓库地址）</label>
+            <select v-model="form.autoPublish">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>发布仓库地址</label>
+            <input
+              v-model="form.repoUrl"
+              placeholder="https://github.com/you/your-blog.git"
+            />
+          </div>
+        </div>
+      </div>
+    </details>
 
     <div class="actions">
       <AsyncActionButton

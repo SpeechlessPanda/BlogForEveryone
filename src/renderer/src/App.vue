@@ -9,18 +9,93 @@ import ImportView from "./views/ImportView.vue";
 import RssReaderView from "./views/RssReaderView.vue";
 import TutorialCenterView from "./views/TutorialCenterView.vue";
 import ContentEditorView from "./views/ContentEditorView.vue";
+import { getSelectedWorkspace, refreshWorkspaces } from "./stores/workspaceStore";
 
 const ACTION_IDLE_RESET_MS = 1400;
 
 const tabs = [
-  { key: "tutorial", label: "教程中心" },
-  { key: "workspace", label: "博客创建" },
-  { key: "theme", label: "主题配置" },
-  { key: "preview", label: "本地预览" },
-  { key: "content", label: "内容编辑" },
-  { key: "publish", label: "发布与备份" },
-  { key: "import", label: "导入恢复" },
-  { key: "rss", label: "RSS 阅读" },
+  {
+    key: "tutorial",
+    label: "教程中心",
+    section: "prepare",
+    step: "STEP 01",
+    note: "先走一遍 10 分钟总流程，知道每一步会看到什么。",
+    summary: "从环境、登录到创建与发布，先把新手主线看明白。",
+  },
+  {
+    key: "workspace",
+    label: "博客创建",
+    section: "build",
+    step: "STEP 02",
+    note: "创建第一个工作区，选框架、主题和本地目录。",
+    summary: "把第一个博客工程搭起来，后面的配置都会围绕这个工作区展开。",
+  },
+  {
+    key: "theme",
+    label: "主题配置",
+    section: "build",
+    step: "STEP 03",
+    note: "先改基础外观，复杂项放到高级设置里慢慢补。",
+    summary: "按先基础、后高级的顺序整理博客外观与主题能力。",
+  },
+  {
+    key: "preview",
+    label: "本地预览",
+    section: "build",
+    step: "STEP 04",
+    note: "确认 localhost 能打开，再决定要不要继续调整。",
+    summary: "把当前配置真实跑起来，快速确认页面有没有达到预期。",
+  },
+  {
+    key: "content",
+    label: "内容编辑",
+    section: "build",
+    step: "STEP 05",
+    note: "先写第一篇内容，再考虑自动发布与二次编辑。",
+    summary: "创建文章和页面内容，让博客从空壳变成真正可读。",
+  },
+  {
+    key: "publish",
+    label: "发布与备份",
+    section: "ship",
+    step: "STEP 06",
+    note: "发布上线后，顺手做一份备份，迁移会更安心。",
+    summary: "把本地成果推到 GitHub Pages，并准备好恢复用的快照。",
+  },
+  {
+    key: "import",
+    label: "导入恢复",
+    section: "ship",
+    step: "STEP 07",
+    note: "把旧工程接进来，重新回到可视化流程里。",
+    summary: "已有博客也能继续用这套工作流维护，而不是从头再来。",
+  },
+  {
+    key: "rss",
+    label: "RSS 阅读",
+    section: "ship",
+    step: "STEP 08",
+    note: "把常看的站点放进来，持续获取灵感与更新。",
+    summary: "在同一个应用里关注内容更新，形成持续创作的节奏。",
+  },
+];
+
+const workflowSections = [
+  {
+    key: "prepare",
+    label: "起步准备",
+    summary: "先理解整条路径，再确认账号和环境都已经就绪。",
+  },
+  {
+    key: "build",
+    label: "搭建博客",
+    summary: "从工作区、主题、预览到内容，逐步把博客做完整。",
+  },
+  {
+    key: "ship",
+    label: "发布与维护",
+    summary: "上线、备份、迁移和订阅都放在最后一段长期维护流程里。",
+  },
 ];
 
 const activeTab = ref("tutorial");
@@ -54,6 +129,135 @@ const isLoggedIn = computed(() =>
 const launchAtStartupEnabled = computed(
   () => preferences.value.launchAtStartup === true,
 );
+const groupedWorkflowSections = computed(() => {
+  return workflowSections.map((section) => ({
+    ...section,
+    tabs: tabs.filter((tab) => tab.section === section.key),
+  }));
+});
+const activeTabMeta = computed(() => {
+  return tabs.find((item) => item.key === activeTab.value) || tabs[0];
+});
+const activeSectionMeta = computed(() => {
+  return (
+    workflowSections.find((item) => item.key === activeTabMeta.value.section) ||
+    workflowSections[0]
+  );
+});
+const selectedWorkspace = computed(() => getSelectedWorkspace());
+const environmentStatusText = computed(() => {
+  if (!envStatus.value.ready) {
+    return "环境待补齐";
+  }
+  return "环境已就绪";
+});
+const loginStatusText = computed(() => {
+  if (!isLoggedIn.value) {
+    return "等待 GitHub 登录";
+  }
+  const user = authState.value?.user;
+  return user?.login ? `已连接 ${user.login}` : "GitHub 已登录";
+});
+const workspaceSummary = computed(() => {
+  const ws = selectedWorkspace.value;
+  if (!ws) {
+    return {
+      title: "还未选择工作区",
+      detail: "去“博客创建”新建第一个博客工程，或在页面下拉框里切换已有工程。",
+    };
+  }
+
+  return {
+    title: ws.name,
+    detail: `${String(ws.framework || "").toUpperCase()} · ${ws.theme || "主题待识别"} · ${ws.projectDir}`,
+  };
+});
+const nextStep = computed(() => {
+  if (!envStatus.value.ready) {
+    return {
+      title: "先补齐运行环境",
+      detail: "把 Node.js、Git、pnpm 补齐后，再继续后面的创建与发布。",
+    };
+  }
+
+  if (!isLoggedIn.value && activeTab.value !== "tutorial") {
+    return {
+      title: "完成 GitHub 登录",
+      detail: "登录成功后，发布、备份和仓库相关能力才会变得顺畅。",
+    };
+  }
+
+  if (
+    !selectedWorkspace.value &&
+    !["tutorial", "workspace", "import", "rss"].includes(activeTab.value)
+  ) {
+    return {
+      title: "先选一个博客工程",
+      detail: "主题配置、预览、内容编辑和发布都需要先绑定到具体工作区。",
+    };
+  }
+
+  if (activeTab.value === "tutorial") {
+    return {
+      title: isLoggedIn.value ? "开始创建第一个博客工程" : "先完成设备码登录",
+      detail: isLoggedIn.value
+        ? "进入“博客创建”，选框架、主题和目录，拿到第一个可运行工作区。"
+        : "教程读完后先完成登录，后面的发布链路会少很多来回切换。",
+    };
+  }
+
+  if (activeTab.value === "workspace") {
+    return selectedWorkspace.value
+      ? {
+          title: "去主题配置整理外观",
+          detail: `当前工作区“${selectedWorkspace.value.name}”已经就位，下一步可以先改标题、背景和图标。`,
+        }
+      : {
+          title: "创建第一个工作区",
+          detail: "建议先用默认主题跑通，再逐步替换成更喜欢的外观。",
+        };
+  }
+
+  if (activeTab.value === "theme") {
+    return {
+      title: "保存后去本地预览",
+      detail: "先处理标题、背景、图标这些高感知项，再去 localhost 看实际效果。",
+    };
+  }
+
+  if (activeTab.value === "preview") {
+    return {
+      title: "确认能打开后开始写内容",
+      detail: "预览页能正常打开时，说明工程链路基本通了，可以继续写第一篇文章。",
+    };
+  }
+
+  if (activeTab.value === "content") {
+    return {
+      title: "写完第一篇后去发布",
+      detail: "有了真实内容再发布，首次上线时更容易确认主题和链接都正常。",
+    };
+  }
+
+  if (activeTab.value === "publish") {
+    return {
+      title: "发布成功后顺手做备份",
+      detail: "上线和备份在同一页完成，后续换设备或恢复会轻松很多。",
+    };
+  }
+
+  if (activeTab.value === "import") {
+    return {
+      title: "导入完成后回到主题或预览",
+      detail: "先确认旧工程被识别正确，再继续调外观、预览和发布。",
+    };
+  }
+
+  return {
+    title: "添加订阅并定期同步",
+    detail: "把常看的站点放进来，应用会继续帮你跟踪更新和未读数量。",
+  };
+});
 const infoModal = ref({ visible: false, key: "about" });
 const actionState = ref({
   checkUpdate: "idle",
@@ -137,13 +341,6 @@ function getActionLabel(key, idleLabel) {
     return "fail";
   }
   return idleLabel;
-}
-
-function getTabLabel(tab) {
-  if (tab.key === "rss" && rssUnreadTotal.value > 0) {
-    return `${tab.label} (${rssUnreadTotal.value})`;
-  }
-  return tab.label;
 }
 
 async function refreshEnvStatus() {
@@ -358,6 +555,11 @@ onMounted(async () => {
     await refreshAuthState();
     await refreshPreferences();
     await refreshRssUnreadSummary();
+    try {
+      await refreshWorkspaces();
+    } catch {
+      // Workspaces are contextual metadata for the shell; views keep their own refresh flow.
+    }
 
     releaseUpdateListener = window.bfeApi.onUpdateStatus((payload) => {
       updateState.value = payload;
@@ -411,29 +613,90 @@ onUnmounted(() => {
   <div class="layout">
     <aside class="sidebar">
       <div class="sidebar-inner">
-        <div>
-          <h1>{{ appState.appName }}</h1>
-          <p class="version">v{{ appState.version }}</p>
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            :class="['tab', { active: activeTab === tab.key }]"
-            @click="activeTab = tab.key"
+        <div class="sidebar-primary">
+          <div>
+            <h1>{{ appState.appName }}</h1>
+            <p class="version">v{{ appState.version }}</p>
+          </div>
+
+          <div class="sidebar-focus-card">
+            <p class="sidebar-kicker">当前阶段</p>
+            <strong>{{ activeSectionMeta.label }}</strong>
+            <p class="muted sidebar-focus-copy">
+              {{ activeSectionMeta.summary }}
+            </p>
+            <div class="sidebar-next-step">
+              <span class="status-label">建议下一步</span>
+              <strong>{{ nextStep.title }}</strong>
+              <p class="muted">{{ nextStep.detail }}</p>
+            </div>
+          </div>
+
+          <div
+            v-for="section in groupedWorkflowSections"
+            :key="section.key"
+            class="sidebar-group"
           >
-            {{ getTabLabel(tab) }}
-          </button>
+            <p class="sidebar-group-kicker">Workflow</p>
+            <h2 class="sidebar-group-title">{{ section.label }}</h2>
+            <p class="muted sidebar-group-copy">{{ section.summary }}</p>
+            <div class="workflow-nav">
+              <button
+                v-for="tab in section.tabs"
+                :key="tab.key"
+                :class="['tab', { active: activeTab === tab.key }]"
+                @click="activeTab = tab.key"
+              >
+                <span class="tab-copy">
+                  <span class="tab-kicker">{{ tab.step }}</span>
+                  <span class="tab-label-row">
+                    <span>{{ tab.label }}</span>
+                    <span
+                      v-if="tab.key === 'rss' && rssUnreadTotal > 0"
+                      class="tab-badge"
+                    >
+                      {{ rssUnreadTotal }}
+                    </span>
+                  </span>
+                  <span class="tab-note">{{ tab.note }}</span>
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="sidebar-footer">
-          <p class="muted status-line">{{ sidebarLoginText }}</p>
-          <p class="muted status-line">
-            {{ updateState.message }}
-          </p>
-          <p class="muted status-line">
-            开机自启动：{{ launchAtStartupEnabled ? "已开启" : "已关闭" }}
-          </p>
-          <p class="muted status-line">RSS 新文章：{{ rssUnreadTotal }}</p>
-          <div class="actions actions-tight">
+          <div class="sidebar-utility-card">
+            <p class="sidebar-kicker">辅助状态</p>
+            <div class="sidebar-status-list">
+              <div class="sidebar-status-item">
+                <span class="muted">环境</span>
+                <strong>{{ environmentStatusText }}</strong>
+              </div>
+              <div class="sidebar-status-item">
+                <span class="muted">登录</span>
+                <strong>{{ sidebarLoginText.replace('登录状态：', '') }}</strong>
+              </div>
+              <div class="sidebar-status-item">
+                <span class="muted">工作区</span>
+                <strong>{{ selectedWorkspace?.name || "未选择" }}</strong>
+              </div>
+              <div class="sidebar-status-item">
+                <span class="muted">更新</span>
+                <strong>{{ updateState.message }}</strong>
+              </div>
+              <div class="sidebar-status-item">
+                <span class="muted">开机自启动</span>
+                <strong>{{ launchAtStartupEnabled ? "已开启" : "已关闭" }}</strong>
+              </div>
+              <div class="sidebar-status-item">
+                <span class="muted">RSS 未读</span>
+                <strong>{{ rssUnreadTotal }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions actions-tight sidebar-utility-actions">
             <button
               class="secondary"
               :class="{
@@ -510,6 +773,34 @@ onUnmounted(() => {
     </aside>
 
     <main class="content">
+      <section class="panel shell-overview">
+        <div class="shell-summary shell-summary-lead">
+          <p class="page-kicker">
+            {{ activeTabMeta.step }} · {{ activeSectionMeta.label }}
+          </p>
+          <h2>{{ activeTabMeta.label }}</h2>
+          <p class="muted shell-summary-copy">{{ activeTabMeta.summary }}</p>
+        </div>
+
+        <div class="shell-summary">
+          <span class="status-label">环境与登录</span>
+          <strong class="status-value">{{ environmentStatusText }}</strong>
+          <p class="status-detail">{{ loginStatusText }}</p>
+        </div>
+
+        <div class="shell-summary">
+          <span class="status-label">当前工作区</span>
+          <strong class="status-value">{{ workspaceSummary.title }}</strong>
+          <p class="status-detail">{{ workspaceSummary.detail }}</p>
+        </div>
+
+        <div class="shell-summary">
+          <span class="status-label">建议下一步</span>
+          <strong class="status-value">{{ nextStep.title }}</strong>
+          <p class="status-detail">{{ nextStep.detail }}</p>
+        </div>
+      </section>
+
       <section v-if="!envStatus.ready" class="panel env-alert">
         <h2>环境检查</h2>
         <p class="muted">

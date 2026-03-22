@@ -60,6 +60,23 @@ function goTutorialCenter() {
       >
     </p>
 
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">这页适合谁</p>
+        <strong>已经有旧博客，想继续可视化维护的人</strong>
+        <p class="section-helper">
+          导入后你可以直接回到主题配置、本地预览和发布流程里，不需要重新从零创建。
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">可选恢复</p>
+        <strong>RSS 恢复是附加项</strong>
+        <p class="section-helper">
+          先把博客工程导入成功，再决定要不要恢复项目里的订阅快照。
+        </p>
+      </div>
+    </div>
+
     <div class="grid-2">
       <div>
         <label>显示名称</label>
@@ -78,6 +95,15 @@ function goTutorialCenter() {
 
     <div class="actions">
       <button class="primary" @click="doImport">导入工程</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>可选：恢复 RSS 订阅</h2>
+    <p class="section-helper">
+      只有当这个工程目录里已经包含订阅快照时，才需要执行这一步。
+    </p>
+    <div class="actions">
       <button class="secondary" @click="restoreRssFromProject">
         恢复 RSS 订阅
       </button>

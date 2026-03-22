@@ -151,6 +151,38 @@ function goTutorialCenter() {
       >
     </p>
 
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">当前工作区</p>
+        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
+              : "先选择一个博客工程，再填写仓库地址和 Git 身份。"
+          }}
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">推荐发布方式</p>
+        <strong>GitHub Actions（默认推荐）</strong>
+        <p class="section-helper">
+          Hexo 和 Hugo 都更适合先用 Actions 跑通；只有明确需要时再切到 Hexo 命令发布。
+        </p>
+      </div>
+    </div>
+
+    <div class="context-card" style="margin-top: 12px">
+      <p class="section-eyebrow">发布前检查清单</p>
+      <strong>先确认这 4 件事</strong>
+      <ul class="checklist">
+        <li>已经选中正确的博客工程</li>
+        <li>仓库地址是完整的 GitHub URL</li>
+        <li>Git 提交用户名和邮箱已填写</li>
+        <li>本地预览和内容都已经检查过</li>
+      </ul>
+    </div>
+
     <div class="grid-2">
       <div>
         <label>当前工程</label>
@@ -276,23 +308,21 @@ function goTutorialCenter() {
     </div>
   </section>
 
-  <section class="panel" v-if="events.length">
-    <h2>发布链路事件</h2>
-    <div class="list">
-      <div
-        class="list-item"
-        v-for="evt in events"
-        :key="`${evt.opId}-${evt.ts}`"
-      >
-        <strong>{{ evt.phase }}</strong>
-        <div class="muted">{{ evt.message }}</div>
-        <div class="muted">{{ evt.ts }}</div>
+  <details class="advanced-panel" v-if="events.length || logs">
+    <summary>查看发布日志与链路事件</summary>
+    <div class="advanced-panel-content">
+      <div v-if="events.length" class="list">
+        <div
+          class="list-item"
+          v-for="evt in events"
+          :key="`${evt.opId}-${evt.ts}`"
+        >
+          <strong>{{ evt.phase }}</strong>
+          <div class="muted">{{ evt.message }}</div>
+          <div class="muted">{{ evt.ts }}</div>
+        </div>
       </div>
+      <pre v-if="logs" style="margin-top: 12px">{{ logs }}</pre>
     </div>
-  </section>
-
-  <section class="panel" v-if="logs">
-    <h2>执行结果</h2>
-    <pre>{{ logs }}</pre>
-  </section>
+  </details>
 </template>

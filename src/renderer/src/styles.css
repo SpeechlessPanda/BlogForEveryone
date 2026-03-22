@@ -79,6 +79,12 @@ body::before {
   gap: 18px;
 }
 
+.sidebar-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .sidebar-footer {
   border-top: 1px solid rgba(112, 87, 56, 0.22);
   padding-top: 14px;
@@ -130,6 +136,212 @@ body::before {
 .tab:hover {
   transform: translateY(-1px);
   border-color: var(--line-strong);
+}
+
+.workflow-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tab-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tab-kicker,
+.sidebar-kicker,
+.sidebar-group-kicker,
+.page-kicker,
+.section-eyebrow,
+.status-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tab-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.tab-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(47, 109, 91, 0.14);
+  color: var(--brand);
+  font-size: 0.78rem;
+}
+
+.tab-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.sidebar-focus-card,
+.sidebar-utility-card,
+.shell-summary,
+.context-card,
+.info-card {
+  border: 1px solid rgba(131, 110, 85, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(249, 242, 232, 0.82));
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(var(--shadow-tint), 0.08);
+}
+
+.sidebar-focus-copy,
+.sidebar-group-copy,
+.shell-summary-copy,
+.section-helper,
+.status-detail,
+.action-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.sidebar-next-step {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(131, 110, 85, 0.28);
+}
+
+.sidebar-group {
+  padding-top: 14px;
+  border-top: 1px dashed rgba(131, 110, 85, 0.22);
+}
+
+.sidebar-group:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.sidebar-group-title {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+
+.sidebar-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sidebar-status-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidebar-status-item strong {
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.sidebar-utility-actions {
+  margin-top: 10px;
+}
+
+.shell-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.shell-summary-lead {
+  background: linear-gradient(180deg, rgba(223, 236, 228, 0.88), rgba(247, 241, 232, 0.84));
+}
+
+.shell-summary h2,
+.context-card h3,
+.info-card h3 {
+  margin-bottom: 0;
+}
+
+.status-value {
+  display: block;
+  margin-top: 5px;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.section-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.page-section {
+  margin-top: 12px;
+}
+
+.page-section:first-of-type {
+  margin-top: 0;
+}
+
+.context-card strong,
+.info-card strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.checklist {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+}
+
+.checklist li {
+  margin-bottom: 6px;
+}
+
+.advanced-panel {
+  margin-top: 12px;
+  border: 1px solid rgba(131, 110, 85, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(252, 247, 239, 0.95), rgba(244, 235, 223, 0.88));
+  overflow: hidden;
+}
+
+.advanced-panel summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  font-weight: 600;
+}
+
+.advanced-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-panel-content {
+  padding: 0 16px 16px;
+}
+
+.split-section {
+  display: grid;
+  gap: 14px;
+}
+
+.section-divider {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px dashed rgba(131, 110, 85, 0.28);
 }
 
 .content {
@@ -614,6 +826,10 @@ a:hover {
 
   .content {
     padding: 18px 14px 26px;
+  }
+
+  .shell-overview {
+    grid-template-columns: 1fr;
   }
 
   .tutorial-directory {

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 
@@ -13,6 +13,9 @@ const { run, isBusy } = useAsyncAction();
 
 const list = ref([]);
 const message = ref("");
+const totalUnread = computed(() => {
+  return list.value.reduce((sum, item) => sum + Number(item.unreadCount || 0), 0);
+});
 
 function getItemKey(post) {
   return post?.key || post?.guid || post?.id || post?.link || post?.title || "";
@@ -150,6 +153,23 @@ onMounted(refresh);
         >打开教程中心（RSS 配置指南）</a
       >
     </p>
+
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">定位</p>
+        <strong>这是创作灵感和订阅管理区</strong>
+        <p class="section-helper">
+          RSS 不影响你创建、预览和发布博客，所以可以在主流程跑通后再慢慢补。
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">当前未读</p>
+        <strong>{{ totalUnread }}</strong>
+        <p class="section-helper">
+          新增订阅会自动首次同步，后台每小时还会继续轮询更新。
+        </p>
+      </div>
+    </div>
 
     <div class="grid-2">
       <div>

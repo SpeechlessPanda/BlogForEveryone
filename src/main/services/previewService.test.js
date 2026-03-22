@@ -41,7 +41,7 @@ test('stopLocalPreview triggers cleanup chain for tracked process', () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.stopped, true);
-    assert.equal(killerPid, 4321);
+    assert.equal(killerPid, process.platform === 'win32' ? 4321 : null);
     assert.equal(killCallCount, 1);
 
     previewService.__test__.setProcessTreeKillerForTests(null);

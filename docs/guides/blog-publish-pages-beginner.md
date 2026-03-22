@@ -3,20 +3,23 @@
 ## 1. 先准备发布仓库
 
 1. 登录 GitHub，点击 New repository。
-2. Repository name 必须填写：用户名.github.io。
+2. Repository name 可以是两种：
+   - 用户站点：`用户名.github.io`
+   - project pages：任意仓库名（例如 `my-blog`）
 3. 仓库可见性建议先选 Public。
 4. 创建完成后，复制仓库地址。
 
 示例：
 
 - 用户名是 ming
-- 仓库名必须是 ming.github.io
-- 仓库地址示例：<https://github.com/ming/ming.github.io.git>
+- 用户站点仓库：`ming.github.io`
+- project pages 仓库：`my-blog`
+- 仓库地址示例：<https://github.com/ming/ming.github.io.git> 或 <https://github.com/ming/my-blog.git>
 
 检查点：
 
-1. 仓库名与用户名完全一致（忽略大小写）。
-2. 仓库地址末尾可带 .git。
+1. 仓库地址必须是完整 GitHub URL，末尾可带 `.git`。
+2. 如果你想把站点放在根域名，仓库名才需要与用户名一致。
 
 ## 2. 在软件中填写发布信息
 
@@ -27,7 +30,7 @@
 
 检查点：
 
-1. 如果仓库名不是 用户名.github.io，软件会直接提示并阻止发布。
+1. 软件会根据仓库类型自动推断最终 Pages 地址。
 2. 发布日志中应看到 git push 成功信息。
 
 ## 3. 在 GitHub 开启 Pages
@@ -44,13 +47,14 @@
 ## 4. 验证访问地址
 
 1. 用户站点访问地址固定为：<https://用户名.github.io/>
-2. 打开地址后如果是旧内容，先强制刷新。
-3. 发布刚完成时可能需要 1-10 分钟生效。
+2. project pages 访问地址通常为：<https://用户名.github.io/仓库名/>
+3. 打开地址后如果是旧内容，先强制刷新。
+4. 发布刚完成时可能需要 1-10 分钟生效。
 
 ## 5. 常见错误
 
-1. 仓库名填成 blog 或 my-site。
-处理：改为 用户名.github.io。
+1. 访问地址与预期不一致。
+处理：先确认你发布的是用户站点还是 project pages，再按对应 URL 访问。
 
 2. Actions 失败。
 处理：打开失败任务日志，从第一条报错开始修复。

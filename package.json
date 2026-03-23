@@ -15,9 +15,9 @@
         "sanitize:release": "node scripts/sanitize-release.js",
         "start": "cross-env NODE_ENV=production electron .",
         "lint": "eslint .",
-        "package": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder",
-        "package:signed": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish never",
-        "release": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish always"
+        "package": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win",
+        "package:signed": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win --publish never",
+        "release": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win --publish always"
     },
     "packageManager": "pnpm@9.15.0",
     "dependencies": {
@@ -70,9 +70,6 @@
             "signAndEditExecutable": false,
             "verifyUpdateCodeSignature": true,
             "target": "nsis"
-        },
-        "linux": {
-            "icon": "build/icon.png"
         },
         "nsis": {
             "oneClick": false,

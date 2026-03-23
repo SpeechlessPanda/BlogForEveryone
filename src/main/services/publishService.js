@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const YAML = require('yaml');
+const { normalizePublishResult } = require('../policies/publishResultPolicy');
 
 function runGit(projectDir, args) {
     return spawnSync('git', args, {
@@ -284,16 +285,16 @@ function publishToGitHub(payload) {
         if (framework !== 'hexo') {
             throw new Error('Hexo 命令发布仅支持 Hexo 工程。');
         }
-        return publishWithHexoDeploy(payload);
+        return normalizePublishResult(publishWithHexoDeploy(payload));
     }
 
     ensureWorkflow(projectDir, framework);
     const logs = runGitCommands(projectDir, repoUrl, payload);
-    return {
+    return normalizePublishResult({
         logs,
         pagesUrl: inferPagesUrl(repoUrl),
         mode: 'actions'
-    };
+    });
 }
 
 function inferPagesUrl(repoUrl) {

@@ -1,7 +1,10 @@
 const { spawn } = require('child_process');
 const { shell } = require('electron');
 const net = require('net');
-const { resolveExecutable, resolveHugoExecutable, ensureFrameworkEnvironment, getHugoExecutionEnv } = require('./envService');
+const { resolveHugoExecutable, ensureFrameworkEnvironment, getHugoExecutionEnv } = require('./envService');
+const { evaluateExternalUrl, EXTERNAL_URL_RULES } = require('../policies/externalUrlPolicy');
+
+const ANSI_COLOR_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
 const previewProcesses = new Map();
 let processTreeKiller = (pid) => {
@@ -74,7 +77,7 @@ function waitForServerReady(proc, timeoutMs = 15000) {
 
         const onChunk = (chunk, target) => {
             const text = chunk.toString();
-            const normalized = text.replace(/\x1b\[[0-9;]*m/g, '');
+            const normalized = text.replace(ANSI_COLOR_PATTERN, '');
             if (target === 'stdout') {
                 stdout += text;
             } else {
@@ -266,9 +269,18 @@ function openLocalPreview(payload) {
     const key = `${framework}:${projectDir}`;
     const existing = previewProcesses.get(key);
     const port = Number(payload?.port) || existing?.port || getDefaultPort(framework);
-    const url = explicitUrl || `http://localhost:${port}/`;
-    shell.openExternal(url);
-    return { ok: true, url };
+    const nextUrl = explicitUrl || `http://localhost:${port}/`;
+    const decision = evaluateExternalUrl(nextUrl, EXTERNAL_URL_RULES.preview);
+    if (!decision.allowed) {
+        return {
+            ok: false,
+            reason: 'PREVIEW_URL_BLOCKED',
+            message: '预览地址不受信任，已阻止打开。'
+        };
+    }
+
+    shell.openExternal(decision.normalizedUrl);
+    return { ok: true, url: decision.normalizedUrl };
 }
 
 function stopLocalPreview(payload) {
@@ -276,12 +288,17 @@ function stopLocalPreview(payload) {
     const key = `${framework}:${projectDir}`;
     const item = previewProcesses.get(key);
     if (!item?.proc) {
-        return { ok: true, stopped: false };
+        return {
+            ok: false,
+            stopped: false,
+            reason: 'PREVIEW_NOT_RUNNING',
+            message: '当前没有正在运行的预览进程。'
+        };
     }
 
     terminateProcessTree(item.proc);
     previewProcesses.delete(key);
-    return { ok: true, stopped: true };
+    return { ok: true, stopped: true, message: '已停止本地预览。' };
 }
 
 module.exports = {

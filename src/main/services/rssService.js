@@ -214,7 +214,7 @@ function startAutoSync(intervalMs = 60 * 60 * 1000) {
     syncTimer = setInterval(async () => {
         try {
             await syncSubscriptions();
-        } catch (error) {
+        } catch {
             // Keep background polling resilient; errors are stored in subscription state.
         }
     }, intervalMs);

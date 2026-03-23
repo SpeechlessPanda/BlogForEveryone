@@ -134,3 +134,97 @@ test("shell actions preserve app/auth/update/env/preferences/rss contracts", asy
     "onUpdateStatus",
   ]);
 });
+
+test("shell actions expose bfe custom-event listener bridges with release callbacks", () => {
+  const api = {
+    onUpdateStatus: () => {},
+  };
+  const listenerCalls = [];
+  const fakeWindow = {
+    addEventListener: (eventName, handler) => {
+      listenerCalls.push(["add", eventName, handler]);
+    },
+    removeEventListener: (eventName, handler) => {
+      listenerCalls.push(["remove", eventName, handler]);
+    },
+  };
+
+  const actions = createShellActions(api, fakeWindow);
+  const tutorialHandler = () => {};
+  const tabHandler = () => {};
+  const rssHandler = () => {};
+
+  const releaseTutorial = actions.onOpenTutorial(tutorialHandler);
+  const releaseTab = actions.onOpenTab(tabHandler);
+  const releaseRss = actions.onRssUpdated(rssHandler);
+
+  assert.equal(typeof releaseTutorial, "function");
+  assert.equal(typeof releaseTab, "function");
+  assert.equal(typeof releaseRss, "function");
+
+  releaseTutorial();
+  releaseTab();
+  releaseRss();
+
+  assert.deepEqual(listenerCalls, [
+    ["add", "bfe:open-tutorial", tutorialHandler],
+    ["add", "bfe:open-tab", tabHandler],
+    ["add", "bfe:rss-updated", rssHandler],
+    ["remove", "bfe:open-tutorial", tutorialHandler],
+    ["remove", "bfe:open-tab", tabHandler],
+    ["remove", "bfe:rss-updated", rssHandler],
+  ]);
+});
+
+test("shell actions expose shell utility wrappers for timers confirm and clipboard", async () => {
+  const timerCalls = [];
+  const intervalCalls = [];
+  const clearCalls = [];
+  const confirmCalls = [];
+  const clipboardCalls = [];
+  const timeoutToken = Symbol("timeout");
+  const intervalToken = Symbol("interval");
+
+  const fakeWindow = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    setTimeout: (handler, delay) => {
+      timerCalls.push([handler, delay]);
+      return timeoutToken;
+    },
+    setInterval: (handler, delay) => {
+      intervalCalls.push([handler, delay]);
+      return intervalToken;
+    },
+    clearInterval: (token) => {
+      clearCalls.push(token);
+    },
+    confirm: (message) => {
+      confirmCalls.push(message);
+      return true;
+    },
+    navigator: {
+      clipboard: {
+        writeText: async (text) => {
+          clipboardCalls.push(text);
+        },
+      },
+    },
+  };
+
+  const actions = createShellActions({ onUpdateStatus: () => {} }, fakeWindow);
+  const timeoutHandler = () => {};
+  const intervalHandler = () => {};
+
+  assert.equal(actions.setTimeout(timeoutHandler, 1400), timeoutToken);
+  assert.equal(actions.setInterval(intervalHandler, 30000), intervalToken);
+  actions.clearInterval(intervalToken);
+  assert.equal(actions.confirm("confirm message"), true);
+  await actions.copyToClipboard("USER-CODE");
+
+  assert.deepEqual(timerCalls, [[timeoutHandler, 1400]]);
+  assert.deepEqual(intervalCalls, [[intervalHandler, 30000]]);
+  assert.deepEqual(clearCalls, [intervalToken]);
+  assert.deepEqual(confirmCalls, ["confirm message"]);
+  assert.deepEqual(clipboardCalls, ["USER-CODE"]);
+});

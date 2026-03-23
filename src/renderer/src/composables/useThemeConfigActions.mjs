@@ -16,10 +16,13 @@ function assertWorkspaceThemeContext(payload) {
 }
 
 function buildOptionalPickerPayload(payload) {
-  const nextPayload = {
-    title: payload?.title,
-    defaultPath: payload?.defaultPath,
-  };
+  const nextPayload = {};
+  if (payload?.title !== undefined) {
+    nextPayload.title = payload.title;
+  }
+  if (payload?.defaultPath !== undefined) {
+    nextPayload.defaultPath = payload.defaultPath;
+  }
   if (payload?.filters !== undefined) {
     nextPayload.filters = payload.filters;
   }

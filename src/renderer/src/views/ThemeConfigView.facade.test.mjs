@@ -8,6 +8,29 @@ test("ThemeConfigView uses theme facade instead of raw window.bfeApi theme/picke
   const source = await readFile(themeConfigViewPath, "utf8");
 
   assert.match(source, /useThemeConfigActions/);
+  assert.match(
+    source,
+    /const\s+themeConfigActions\s*=\s*useThemeConfigActions\(\)/,
+  );
+
+  const requiredFacadeCalls = [
+    "getThemeConfig",
+    "validateThemeSettings",
+    "saveThemeConfig",
+    "saveThemeLocalAsset",
+    "applyThemePreviewOverrides",
+    "getPreferences",
+    "savePreferences",
+    "pickFile",
+  ];
+
+  for (const method of requiredFacadeCalls) {
+    assert.match(
+      source,
+      new RegExp(`themeConfigActions\\.${method}\\s*\\(`),
+      `expected ThemeConfigView.vue to call facade method themeConfigActions.${method}(...)`,
+    );
+  }
 
   const forbiddenCalls = [
     "getThemeConfig",
@@ -27,4 +50,26 @@ test("ThemeConfigView uses theme facade instead of raw window.bfeApi theme/picke
       `expected ThemeConfigView.vue to stop calling window.bfeApi.${method}`,
     );
   }
+
+  assert.equal(
+    source.includes("window.bfeApi"),
+    false,
+    "expected ThemeConfigView.vue to keep all bridge I/O behind useThemeConfigActions",
+  );
+});
+
+test("ThemeConfigView presents the brand-workspace hierarchy while keeping advanced config secondary", async () => {
+  const source = await readFile(themeConfigViewPath, "utf8");
+
+  assert.match(source, /data-page-role="theme-config"/);
+  assert.match(source, /品牌与外观工作台/);
+  assert.match(
+    source,
+    /data-page-layer="primary"[\s\S]*data-page-layer="explanation"[\s\S]*data-page-layer="detail"/,
+  );
+  assert.match(source, /高级与原始配置属于次级区域/);
+  assert.match(
+    source,
+    /data-page-layer="detail"[\s\S]*主题专属高级配置[\s\S]*全部配置项/,
+  );
 });

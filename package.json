@@ -1,6 +1,6 @@
 {
     "name": "blog-for-everyone",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Beginner-friendly blog builder platform for Hexo and Hugo",
     "main": "src/main/main.js",
     "author": "BlogForEveryone",
@@ -9,11 +9,12 @@
         "dev": "concurrently \"vite --config vite.config.js\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
         "dev:renderer": "vite --config vite.config.js",
         "dev:electron": "cross-env NODE_ENV=development electron .",
+        "test": "node --test",
         "build:renderer": "vite build --config vite.config.js",
         "generate:icon": "node scripts/generate-win-icon.js",
         "sanitize:release": "node scripts/sanitize-release.js",
         "start": "cross-env NODE_ENV=production electron .",
-        "lint": "echo \"No linter configured yet\"",
+        "lint": "eslint .",
         "package": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder",
         "package:signed": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish never",
         "release": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --publish always"
@@ -27,11 +28,15 @@
         "yaml": "^2.8.1"
     },
     "devDependencies": {
+        "@eslint/js": "^9.23.0",
         "@vitejs/plugin-vue": "^5.2.4",
         "concurrently": "^9.1.2",
         "cross-env": "^7.0.3",
         "electron": "^37.2.1",
         "electron-builder": "^25.1.8",
+        "eslint": "^9.23.0",
+        "eslint-plugin-vue": "^9.33.0",
+        "globals": "^16.0.0",
         "png-to-ico": "^2.1.8",
         "rcedit": "2.0.0",
         "sharp": "^0.34.3",
@@ -63,8 +68,11 @@
         "win": {
             "icon": "build/icon.ico",
             "signAndEditExecutable": false,
-            "verifyUpdateCodeSignature": false,
+            "verifyUpdateCodeSignature": true,
             "target": "nsis"
+        },
+        "linux": {
+            "icon": "build/icon.png"
         },
         "nsis": {
             "oneClick": false,

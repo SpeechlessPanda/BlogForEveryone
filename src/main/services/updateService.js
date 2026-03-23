@@ -3,9 +3,29 @@ const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('./storeService');
+const {
+    evaluateUpdateTrust,
+    buildBlockedTrustState,
+    decideInstallUpdateAction
+} = require('../policies/updateTrustPolicy');
 
 const isDev = process.env.NODE_ENV === 'development';
 const updatesDisabled = isDev || !app.isPackaged;
+const PACKAGE_JSON_FILE = path.join(__dirname, '../../../package.json');
+
+function readVerifyUpdateCodeSignature() {
+    try {
+        const raw = fs.readFileSync(PACKAGE_JSON_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return parsed?.build?.win?.verifyUpdateCodeSignature;
+    } catch {
+        return undefined;
+    }
+}
+
+const updaterTrustContext = {
+    verifyUpdateCodeSignature: readVerifyUpdateCodeSignature()
+};
 
 const updateState = {
     status: 'idle',
@@ -15,7 +35,8 @@ const updateState = {
     version: app.getVersion(),
     latestVersion: null,
     percent: 0,
-    error: null
+    error: null,
+    blockedReason: null
 };
 
 let boundWindow = null;
@@ -78,12 +99,35 @@ function setState(patch) {
     emitState();
 }
 
+function resolveTrustDecision(updaterError) {
+    return evaluateUpdateTrust({
+        platform: process.platform,
+        verifyUpdateCodeSignature: updaterTrustContext.verifyUpdateCodeSignature,
+        updaterError
+    });
+}
+
+function applyTrustBlock(trustDecision) {
+    setState(buildBlockedTrustState(trustDecision));
+}
+
+function blockIfTrustPolicyFails(updaterError) {
+    const trustDecision = resolveTrustDecision(updaterError);
+    if (!trustDecision.blocked) {
+        return false;
+    }
+
+    applyTrustBlock(trustDecision);
+    return true;
+}
+
 function setupUpdaterEvents() {
     autoUpdater.on('checking-for-update', () => {
         setState({
             status: 'checking',
             message: '正在检查新版本...',
             error: null,
+            blockedReason: null,
             percent: 0
         });
     });
@@ -95,7 +139,8 @@ function setupUpdaterEvents() {
             hasUpdate: true,
             latestVersion: info.version,
             downloaded: false,
-            error: null
+            error: null,
+            blockedReason: null
         });
     });
 
@@ -107,7 +152,8 @@ function setupUpdaterEvents() {
             downloaded: false,
             latestVersion: null,
             percent: 0,
-            error: null
+            error: null,
+            blockedReason: null
         });
     });
 
@@ -120,6 +166,10 @@ function setupUpdaterEvents() {
     });
 
     autoUpdater.on('update-downloaded', (info) => {
+        if (blockIfTrustPolicyFails('')) {
+            return;
+        }
+
         setState({
             status: 'downloaded',
             message: `新版本 ${info.version} 已下载，重启应用后自动安装`,
@@ -127,15 +177,22 @@ function setupUpdaterEvents() {
             downloaded: true,
             latestVersion: info.version,
             percent: 100,
-            error: null
+            error: null,
+            blockedReason: null
         });
     });
 
     autoUpdater.on('error', (error) => {
+        const errorText = String(error?.message || error || 'unknown error');
+        if (blockIfTrustPolicyFails(errorText)) {
+            return;
+        }
+
         setState({
             status: 'error',
             message: '自动更新失败，请稍后重试',
-            error: String(error?.message || error || 'unknown error')
+            error: errorText,
+            blockedReason: null
         });
     });
 }
@@ -148,8 +205,13 @@ function initAutoUpdate(mainWindow) {
         setState({
             status: 'disabled',
             message: '当前运行模式不执行自动更新',
-            error: null
+            error: null,
+            blockedReason: null
         });
+        return;
+    }
+
+    if (blockIfTrustPolicyFails('')) {
         return;
     }
 
@@ -164,23 +226,31 @@ function initAutoUpdate(mainWindow) {
     setState({
         status: 'ready',
         message: '自动更新已启用',
-        error: null
+        error: null,
+        blockedReason: null
     });
 
     if (!shouldAutoCheckNow()) {
         setState({
             status: 'ready',
             message: '自动更新已启用（本次启动跳过自动检查，加速启动）',
-            error: null
+            error: null,
+            blockedReason: null
         });
         return;
     }
 
     autoUpdater.checkForUpdates().catch((error) => {
+        const errorText = String(error?.message || error || 'unknown error');
+        if (blockIfTrustPolicyFails(errorText)) {
+            return;
+        }
+
         setState({
             status: 'error',
             message: '自动更新检查失败',
-            error: String(error?.message || error || 'unknown error')
+            error: errorText,
+            blockedReason: null
         });
     });
     markAutoUpdateCheckedNow();
@@ -191,8 +261,13 @@ async function checkForUpdatesNow() {
         setState({
             status: 'disabled',
             message: '当前运行模式不执行自动更新',
-            error: null
+            error: null,
+            blockedReason: null
         });
+        return snapshot();
+    }
+
+    if (blockIfTrustPolicyFails('')) {
         return snapshot();
     }
 
@@ -202,7 +277,13 @@ async function checkForUpdatesNow() {
 }
 
 function quitAndInstallUpdate() {
+    const installDecision = decideInstallUpdateAction(snapshot());
+    if (!installDecision.ok) {
+        return installDecision;
+    }
+
     autoUpdater.quitAndInstall();
+    return { ok: true };
 }
 
 function getUpdateState() {

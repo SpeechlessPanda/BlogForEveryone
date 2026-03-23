@@ -7,6 +7,7 @@ import {
 } from "../stores/workspaceStore";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useWorkspaceActions } from "../composables/useWorkspaceActions.mjs";
 
 const form = reactive({
   name: "",
@@ -17,6 +18,7 @@ const form = reactive({
 
 const logs = reactive({ output: "" });
 const { run, isBusy } = useAsyncAction();
+const workspaceActions = useWorkspaceActions();
 const flow = reactive({
   creating: false,
   currentStep: "idle",
@@ -141,7 +143,7 @@ async function handleCreateWorkspace() {
 
     try {
       markStep("init");
-      const result = await window.bfeApi.createWorkspace({ ...form });
+      const result = await workspaceActions.createWorkspace({ ...form });
       markStep("save");
       workspaceState.selectedWorkspaceId = result.workspace.id;
       logs.output = JSON.stringify(result, null, 2);
@@ -162,7 +164,7 @@ async function handleCreateWorkspace() {
 
 async function pickProjectDirectory() {
   try {
-    const result = await window.bfeApi.pickDirectory({
+    const result = await workspaceActions.pickDirectory({
       title: "选择博客工程目录",
       defaultPath: form.projectDir || undefined,
     });
@@ -176,7 +178,7 @@ async function pickProjectDirectory() {
 
 async function removeWorkspaceRecord(id, deleteLocal = false) {
   try {
-    const result = await window.bfeApi.removeWorkspace({ id, deleteLocal });
+    const result = await workspaceActions.removeWorkspace({ id, deleteLocal });
     logs.output = JSON.stringify(result, null, 2);
     if (workspaceState.selectedWorkspaceId === id) {
       workspaceState.selectedWorkspaceId = "";
@@ -215,7 +217,7 @@ async function handleInstallDeps() {
       return;
     }
     try {
-      const result = await window.bfeApi.installProjectDependencies({
+      const result = await workspaceActions.installProjectDependencies({
         projectDir: form.projectDir,
       });
       logs.output = JSON.stringify(result, null, 2);

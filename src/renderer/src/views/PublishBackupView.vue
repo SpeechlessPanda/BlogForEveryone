@@ -8,6 +8,7 @@ import {
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
+import { usePublishBackupActions } from "../composables/usePublishBackupActions.mjs";
 
 const publishForm = reactive({
   repoUrl: "",
@@ -27,6 +28,7 @@ const pagesUrl = ref("");
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["publish"]);
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+const publishBackupActions = usePublishBackupActions();
 
 function parseGithubRepo(repoUrl) {
   const clean = String(repoUrl || "")
@@ -58,7 +60,7 @@ async function publish() {
     }
 
     try {
-      const result = await window.bfeApi.publishToGitHub({
+      const result = await publishBackupActions.publishToGitHub({
         projectDir: ws.projectDir,
         framework: ws.framework,
         repoUrl: publishForm.repoUrl,
@@ -66,6 +68,12 @@ async function publish() {
         gitUserName: publishForm.gitUserName,
         gitUserEmail: publishForm.gitUserEmail,
       });
+
+      if (!result?.ok) {
+        pagesUrl.value = "";
+        logs.value = `发布失败：${result?.message || "发布流程未完成。"}\n${JSON.stringify(result.logs || result, null, 2)}`;
+        return;
+      }
 
       pagesUrl.value = result.pagesUrl || "";
       logs.value = JSON.stringify(result.logs || result, null, 2);
@@ -91,7 +99,7 @@ async function backup() {
     }
 
     try {
-      const result = await window.bfeApi.backupWorkspace({
+      const result = await publishBackupActions.backupWorkspace({
         projectDir: ws.projectDir,
         backupDir: backupForm.backupDir,
         repoUrl: backupForm.backupRepoUrl,
@@ -107,7 +115,7 @@ async function backup() {
 
 async function pickBackupDirectory() {
   try {
-    const result = await window.bfeApi.pickDirectory({
+    const result = await publishBackupActions.pickDirectory({
       title: "选择备份目录",
       defaultPath: backupForm.backupDir || undefined,
     });
@@ -119,15 +127,15 @@ async function pickBackupDirectory() {
   }
 }
 
-onMounted(async () => {
+  onMounted(async () => {
   await refreshWorkspaces();
   try {
-    const auth = await window.bfeApi.getGithubAuthState();
-    if (auth?.user?.login && !publishForm.gitUserName) {
-      publishForm.gitUserName = auth.user.login;
+    const auth = await publishBackupActions.getGithubAuthState();
+    if (auth?.account?.login && !publishForm.gitUserName) {
+      publishForm.gitUserName = auth.account.login;
     }
-    if (auth?.user?.email && !publishForm.gitUserEmail) {
-      publishForm.gitUserEmail = auth.user.email;
+    if (auth?.account?.email && !publishForm.gitUserEmail) {
+      publishForm.gitUserEmail = auth.account.email;
     }
   } catch {
     // Ignore auth prefill failures.

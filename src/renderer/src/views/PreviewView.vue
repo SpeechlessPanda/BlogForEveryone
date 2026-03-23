@@ -8,6 +8,7 @@ import {
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
+import { usePreviewActions } from "../composables/usePreviewActions.mjs";
 
 const status = ref("");
 const preview = reactive({
@@ -18,6 +19,7 @@ const preview = reactive({
 });
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["preview"]);
+const previewActions = usePreviewActions();
 
 const selectedWorkspace = computed(() => getSelectedWorkspace());
 
@@ -43,9 +45,9 @@ async function runPreviewAction(action) {
     }
 
     try {
-      const port = Number(preview.port || getDefaultPort(ws.framework));
-      if (action === "start") {
-        const result = await window.bfeApi.startLocalPreview({
+        const port = Number(preview.port || getDefaultPort(ws.framework));
+        if (action === "start") {
+        const result = await previewActions.startLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
           port,
@@ -58,32 +60,45 @@ async function runPreviewAction(action) {
         }
         preview.running = true;
         preview.url = result.url;
-        await window.bfeApi.openLocalPreview({
+        const openResult = await previewActions.openLocalPreview({
           framework: ws.framework,
           projectDir: ws.projectDir,
           url: result.url,
         });
+        if (!openResult?.ok) {
+          status.value = `预览已启动，但未能打开地址：${openResult?.message || "请手动打开预览地址。"}`;
+          return;
+        }
         status.value = `预览已启动：${result.url}`;
         return;
       }
 
       if (action === "open") {
-        const result = await window.bfeApi.openLocalPreview({
+        const result = await previewActions.openLocalPreview({
           framework: ws.framework,
           projectDir: ws.projectDir,
           port,
         });
+        if (!result?.ok) {
+          status.value = result?.message || "预览地址打开失败。";
+          return;
+        }
         preview.url = result.url;
         status.value = `已打开：${result.url}`;
         return;
       }
 
       if (action === "restart") {
-        await window.bfeApi.stopLocalPreview({
+        const stopResult = await previewActions.stopLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
         });
-        const result = await window.bfeApi.startLocalPreview({
+        if (!stopResult?.ok) {
+          preview.running = false;
+          status.value = stopResult?.message || "预览重启失败，停止旧进程时出错。";
+          return;
+        }
+        const result = await previewActions.startLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
           port,
@@ -96,21 +111,29 @@ async function runPreviewAction(action) {
         }
         preview.running = true;
         preview.url = result.url;
-        await window.bfeApi.openLocalPreview({
+        const openResult = await previewActions.openLocalPreview({
           framework: ws.framework,
           projectDir: ws.projectDir,
           url: result.url,
         });
+        if (!openResult?.ok) {
+          status.value = `预览已重启，但未能打开地址：${openResult?.message || "请手动打开预览地址。"}`;
+          return;
+        }
         status.value = `预览已重启：${result.url}`;
         return;
       }
 
       if (action === "stop") {
-        await window.bfeApi.stopLocalPreview({
+        const result = await previewActions.stopLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
         });
         preview.running = false;
+        if (!result?.ok) {
+          status.value = result?.message || "预览停止失败。";
+          return;
+        }
         status.value = "预览已停止。";
       }
     } catch (error) {

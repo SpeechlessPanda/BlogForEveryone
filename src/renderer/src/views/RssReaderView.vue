@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useRssActions } from "../composables/useRssActions.mjs";
 
 const form = reactive({
   url: "",
@@ -10,6 +11,7 @@ const form = reactive({
 });
 
 const { run, isBusy } = useAsyncAction();
+const rssActions = useRssActions();
 
 const list = ref([]);
 const message = ref("");
@@ -40,7 +42,7 @@ function setSubscriptions(nextList) {
 
 async function refresh() {
   try {
-    setSubscriptions(await window.bfeApi.listSubscriptions());
+    setSubscriptions(await rssActions.listSubscriptions());
   } catch (error) {
     message.value = `加载订阅失败：${String(error?.message || error)}`;
   }
@@ -49,7 +51,7 @@ async function refresh() {
 async function add() {
   await run("add", async () => {
     try {
-      const next = await window.bfeApi.addSubscription({
+      const next = await rssActions.addSubscription({
         url: form.url,
         title: form.title,
       });
@@ -65,7 +67,7 @@ async function add() {
 
 async function remove(id) {
   try {
-    setSubscriptions(await window.bfeApi.removeSubscription({ id }));
+    setSubscriptions(await rssActions.removeSubscription({ id }));
     message.value = "已取消订阅。";
   } catch (error) {
     message.value = `取消订阅失败：${String(error?.message || error)}`;
@@ -75,7 +77,7 @@ async function remove(id) {
 async function syncNow() {
   await run("refresh", async () => {
     try {
-      setSubscriptions(await window.bfeApi.syncSubscriptions());
+      setSubscriptions(await rssActions.syncSubscriptions());
       message.value = "已完成同步，若有新内容会触发桌面通知。";
     } catch (error) {
       message.value = `同步失败：${String(error?.message || error)}`;
@@ -91,7 +93,7 @@ async function markPostAsRead(subscription, post) {
 
   try {
     setSubscriptions(
-      await window.bfeApi.markSubscriptionItemRead({
+      await rssActions.markSubscriptionItemRead({
         subscriptionId: subscription.id,
         itemKey,
       }),
@@ -110,7 +112,7 @@ async function openPost(subscription, post) {
 
 async function pickExportDirectory() {
   try {
-    const result = await window.bfeApi.pickDirectory({
+    const result = await rssActions.pickDirectory({
       title: "选择导出订阅所对应的博客目录",
       defaultPath: form.exportProjectDir || undefined,
     });
@@ -125,7 +127,7 @@ async function pickExportDirectory() {
 async function exportBundle() {
   await run("export", async () => {
     try {
-      const filePath = await window.bfeApi.exportSubscriptions({
+      const filePath = await rssActions.exportSubscriptions({
         projectDir: form.exportProjectDir,
       });
       message.value = `已导出订阅文件：${filePath}`;

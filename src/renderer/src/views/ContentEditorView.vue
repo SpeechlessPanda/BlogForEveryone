@@ -46,6 +46,26 @@ const errorModal = reactive({
   message: "",
 });
 
+const contentRecentResult = computed(() => {
+  if (state.filePath) {
+    return `已创建或更新：${state.filePath}`;
+  }
+  if (state.jobStatus) {
+    return `自动发布状态：${state.jobStatus}`;
+  }
+  return "还没有最近一次写作结果。";
+});
+
+const contentNextStep = computed(() => {
+  if (state.jobStatus) {
+    return "确认自动发布结果后，可继续预览或直接进入发布页。";
+  }
+  if (state.filePath) {
+    return "继续润色内容，然后去本地预览检查真实页面。";
+  }
+  return "先创建第一篇内容，再决定是否启用自动发布。";
+});
+
 function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
 }
@@ -268,191 +288,219 @@ watch(
 </script>
 
 <template>
-  <section class="panel">
-    <h2>内容编辑</h2>
-    <p class="muted">
-      新建博客/关于/友链/公告时，软件会自动创建 Markdown 并打开系统默认编辑器。
-    </p>
-    <p>
-      <a href="#" @click.prevent="goTutorialCenter"
-        >打开教程中心：内容编辑与自动发布完整步骤</a
-      >
-    </p>
-
-    <div class="section-card-grid">
-      <div class="context-card">
-        <p class="section-eyebrow">当前工作区</p>
-        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
-        <p class="section-helper">
-          {{
-            selectedWorkspace
-              ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
-              : "先选择工作区，写出的文章和页面才会进入正确的博客目录。"
-          }}
-        </p>
-      </div>
-      <div class="context-card">
-        <p class="section-eyebrow">推荐顺序</p>
-        <strong>先写第一篇内容，再考虑自动发布</strong>
-        <p class="section-helper">
-          先确认 Markdown 创建和保存都正常，再启用保存后自动发布，会更容易排查问题。
-        </p>
-      </div>
-    </div>
-
-    <div class="grid-2" style="margin-top: 12px">
-      <div>
-        <label>当前工程</label>
-        <select v-model="workspaceState.selectedWorkspaceId">
-          <option value="">请选择</option>
-          <option
-            v-for="ws in workspaceState.workspaces"
-            :key="ws.id"
-            :value="ws.id"
-          >
-            {{ ws.name }}
-          </option>
-        </select>
-        <p class="muted" style="margin: 6px 0 0 0">
-          当前主题：{{ selectedWorkspace?.theme || "未识别" }}
-        </p>
-      </div>
-      <div>
-        <label>内容类型</label>
-        <select v-model="form.type">
-          <option value="post">新博客文章</option>
-          <option value="about">关于页</option>
-          <option value="links">友链页</option>
-          <option value="announcement">公告页</option>
-        </select>
-      </div>
-      <div>
-        <label>标题</label>
-        <input v-model="form.title" placeholder="例如 这是我的第一篇博客" />
-      </div>
-      <div>
-        <label>slug（可选）</label>
-        <input v-model="form.slug" placeholder="例如 first-post" />
-      </div>
-    </div>
-
-    <details class="advanced-panel">
-      <summary>自动发布（进阶，可稍后再配）</summary>
-      <div class="advanced-panel-content">
-        <p class="section-helper">
-          如果只是先把文章写出来，可以先不配这部分。等你确认手动预览和发布都正常后，再打开自动发布。
-        </p>
-        <div class="grid-2">
+  <div class="page-shell page-shell--content" data-page-role="content-editor">
+    <div class="page-layer" data-page-layer="primary">
+      <section class="panel page-hero">
+        <div class="page-hero-grid">
           <div>
-            <label>保存后自动发布（需要仓库地址）</label>
-            <select v-model="form.autoPublish">
-              <option :value="true">true</option>
-              <option :value="false">false</option>
+            <p class="page-kicker">Writing hub</p>
+            <h2 class="page-title">写作中枢</h2>
+            <p class="page-lead">
+              内容编辑页优先服务写作本身：先创建或进入内容工作，再理解当前结果，最后才看自动发布等次级自动化。发布相关能力必须辅助写作，而不是压过写作。
+            </p>
+            <div class="page-link-row">
+              <a href="#" @click.prevent="goTutorialCenter"
+                >打开教程中心：内容编辑与自动发布完整步骤</a
+              >
+            </div>
+          </div>
+          <div class="page-hero-aside">
+            <div class="page-signal page-signal--accent">
+              <p class="section-eyebrow">建议下一步</p>
+              <strong>{{ contentNextStep }}</strong>
+              <p class="section-helper">先把内容写出来，再决定是否要把发布动作自动化。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="page-status-grid">
+          <div class="page-signal page-signal--accent">
+            <p class="section-eyebrow">当前工作区</p>
+            <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+            <p class="section-helper">
+              {{
+                selectedWorkspace
+                  ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
+                  : "先选择工作区，写出的文章和页面才会进入正确的博客目录。"
+              }}
+            </p>
+          </div>
+          <div class="page-signal">
+            <p class="section-eyebrow">当前内容状态</p>
+            <strong>{{ existingList.length ? `已有 ${existingList.length} 项内容` : "还没有已载入内容" }}</strong>
+            <p class="section-helper">已存在内容也能在这里直接继续编辑。</p>
+          </div>
+          <div class="page-signal page-signal--quiet">
+            <p class="section-eyebrow">建议下一步</p>
+            <strong>{{ contentNextStep }}</strong>
+            <p class="section-helper">写完后优先去预览检查真实页面，再决定是否发布。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>新建内容</h2>
+        <p class="muted">新建博客/关于/友链/公告时，软件会自动创建 Markdown 并打开系统默认编辑器。</p>
+
+        <div class="grid-2 stack-top">
+          <div>
+            <label>当前工程</label>
+            <select v-model="workspaceState.selectedWorkspaceId">
+              <option value="">请选择</option>
+              <option
+                v-for="ws in workspaceState.workspaces"
+                :key="ws.id"
+                :value="ws.id"
+              >
+                {{ ws.name }}
+              </option>
+            </select>
+            <p class="muted stack-top">当前主题：{{ selectedWorkspace?.theme || "未识别" }}</p>
+          </div>
+          <div>
+            <label>内容类型</label>
+            <select v-model="form.type">
+              <option value="post">新博客文章</option>
+              <option value="about">关于页</option>
+              <option value="links">友链页</option>
+              <option value="announcement">公告页</option>
             </select>
           </div>
           <div>
-            <label>发布仓库地址</label>
-            <input
-              v-model="form.repoUrl"
-              placeholder="https://github.com/you/your-blog.git"
-            />
+            <label>标题</label>
+            <input v-model="form.title" placeholder="例如 这是我的第一篇博客" />
+          </div>
+          <div>
+            <label>slug（可选）</label>
+            <input v-model="form.slug" placeholder="例如 first-post" />
           </div>
         </div>
-      </div>
-    </details>
 
-    <div class="actions">
-      <AsyncActionButton
-        kind="primary"
-        label="创建并打开编辑器"
-        busy-label="创建中..."
-        :busy="actionState.create === 'loading' || isBusy('create')"
-        @click="createAndEdit"
-      />
-      <button
-        class="secondary"
-        :class="{
-          'is-loading': actionState.refresh === 'loading',
-          'is-success': actionState.refresh === 'success',
-          'is-fail': actionState.refresh === 'fail',
-        }"
-        :disabled="actionState.refresh === 'loading'"
-        @click="refreshPublishJob"
-      >
-        <span
-          v-if="actionState.refresh === 'loading'"
-          class="btn-spinner"
-          aria-hidden="true"
-        ></span>
-        {{ getActionLabel("refresh", "刷新自动发布状态") }}
-      </button>
+        <div class="actions">
+          <AsyncActionButton
+            kind="primary"
+            label="创建并打开编辑器"
+            busy-label="创建中..."
+            :busy="actionState.create === 'loading' || isBusy('create')"
+            @click="createAndEdit"
+          />
+          <button
+            class="secondary"
+            :class="{
+              'is-loading': actionState.refresh === 'loading',
+              'is-success': actionState.refresh === 'success',
+              'is-fail': actionState.refresh === 'fail',
+            }"
+            :disabled="actionState.refresh === 'loading'"
+            @click="refreshPublishJob"
+          >
+            <span
+              v-if="actionState.refresh === 'loading'"
+              class="btn-spinner"
+              aria-hidden="true"
+            ></span>
+            {{ getActionLabel("refresh", "刷新自动发布状态") }}
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>已有内容二次编辑</h2>
+        <p class="muted">
+          读取当前工程已有文章/页面，支持直接修改标题与正文后保存，也可以一键用外部编辑器打开。
+        </p>
+        <div class="grid-2">
+          <div>
+            <label>选择已有内容</label>
+            <select v-model="selectedExistingPath">
+              <option value="">请选择</option>
+              <option
+                v-for="item in existingList"
+                :key="item.filePath"
+                :value="item.filePath"
+              >
+                {{ item.type }} | {{ item.title }} | {{ item.relativePath }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label>标题</label>
+            <input v-model="existingEditor.title" placeholder="文章标题" />
+          </div>
+        </div>
+        <div class="stack-top">
+          <label>正文（Markdown）</label>
+          <textarea
+            v-model="existingEditor.body"
+            rows="14"
+            placeholder="在这里编辑正文内容"
+          ></textarea>
+        </div>
+        <div class="actions">
+          <AsyncActionButton
+            kind="secondary"
+            label="刷新内容列表"
+            busy-label="刷新中..."
+            :busy="isBusy('load-existing')"
+            @click="refreshExistingContents"
+          />
+          <AsyncActionButton
+            kind="primary"
+            label="保存标题与正文"
+            busy-label="保存中..."
+            :busy="isBusy('save-existing')"
+            @click="saveExistingContentChanges"
+          />
+          <AsyncActionButton
+            kind="secondary"
+            label="用外部编辑器打开"
+            busy-label="打开中..."
+            :busy="isBusy('open-existing')"
+            @click="openSelectedExistingInEditor"
+          />
+        </div>
+      </section>
     </div>
 
-    <div class="panel" style="margin-top: 12px">
-      <h2>已有内容二次编辑</h2>
-      <p class="muted">
-        读取当前工程已有文章/页面，支持直接修改标题与正文后保存，也可以一键用外部编辑器打开。
-      </p>
-      <div class="grid-2">
-        <div>
-          <label>选择已有内容</label>
-          <select v-model="selectedExistingPath">
-            <option value="">请选择</option>
-            <option
-              v-for="item in existingList"
-              :key="item.filePath"
-              :value="item.filePath"
-            >
-              {{ item.type }} | {{ item.title }} | {{ item.relativePath }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label>标题</label>
-          <input v-model="existingEditor.title" placeholder="文章标题" />
-        </div>
-      </div>
-      <div style="margin-top: 10px">
-        <label>正文（Markdown）</label>
-        <textarea
-          v-model="existingEditor.body"
-          rows="14"
-          placeholder="在这里编辑正文内容"
-        ></textarea>
-      </div>
-      <div class="actions">
-        <AsyncActionButton
-          kind="secondary"
-          label="刷新内容列表"
-          busy-label="刷新中..."
-          :busy="isBusy('load-existing')"
-          @click="refreshExistingContents"
-        />
-        <AsyncActionButton
-          kind="primary"
-          label="保存标题与正文"
-          busy-label="保存中..."
-          :busy="isBusy('save-existing')"
-          @click="saveExistingContentChanges"
-        />
-        <AsyncActionButton
-          kind="secondary"
-          label="用外部编辑器打开"
-          busy-label="打开中..."
-          :busy="isBusy('open-existing')"
-          @click="openSelectedExistingInEditor"
-        />
-      </div>
+    <div class="page-layer" data-page-layer="explanation">
+      <section class="priority-panel priority-panel--support">
+        <p class="section-eyebrow">最近结果</p>
+        <strong>{{ contentRecentResult }}</strong>
+        <p class="page-result-note">{{ contentNextStep }}</p>
+      </section>
     </div>
 
-    <div
-      v-if="state.filePath || state.jobStatus"
-      class="panel"
-      style="margin-top: 12px"
-    >
-      <h2>最近一次任务</h2>
-      <p class="muted">文件路径：{{ state.filePath || "-" }}</p>
-      <p class="muted">任务状态：{{ state.jobStatus || "-" }}</p>
+    <div class="page-layer" data-page-layer="detail">
+      <details class="advanced-panel">
+        <summary>自动发布（次级流程）</summary>
+        <div class="advanced-panel-content">
+          <p class="section-helper">
+            如果只是先把文章写出来，可以先不配这部分。等你确认手动预览和发布都正常后，再打开自动发布。
+          </p>
+          <div class="grid-2">
+            <div>
+              <label>保存后自动发布（需要仓库地址）</label>
+              <select v-model="form.autoPublish">
+                <option :value="true">true</option>
+                <option :value="false">false</option>
+              </select>
+            </div>
+            <div>
+              <label>发布仓库地址</label>
+              <input
+                v-model="form.repoUrl"
+                placeholder="https://github.com/you/your-blog.git"
+              />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <section v-if="state.filePath || state.jobStatus" class="panel">
+        <h2>任务详情</h2>
+        <p class="muted">文件路径：{{ state.filePath || "-" }}</p>
+        <p class="muted">任务状态：{{ state.jobStatus || "-" }}</p>
+      </section>
     </div>
 
     <div
@@ -462,11 +510,11 @@ watch(
     >
       <div class="modal-panel">
         <h2>{{ errorModal.title }}</h2>
-        <p class="muted" style="font-size: 14px">{{ errorModal.message }}</p>
+        <p class="muted error-text">{{ errorModal.message }}</p>
         <div class="actions">
           <button class="danger" @click="closeErrorModal">关闭</button>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 </template>

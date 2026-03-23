@@ -18,6 +18,8 @@
 pnpm run package
 ```
 
+当前脚本会显式构建 Windows NSIS 产物，而不是跟随当前平台默认生成 Linux 包。
+
 1. 自动上传到 GitHub Release（需要 `GH_TOKEN`）：
 
 ```bash

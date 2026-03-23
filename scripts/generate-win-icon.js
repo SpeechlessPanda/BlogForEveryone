@@ -7,7 +7,6 @@ async function main() {
     const projectRoot = path.resolve(__dirname, '..');
     const sourcePath = path.join(projectRoot, 'src', 'img', 'icon.jpg');
     const buildIconPath = path.join(projectRoot, 'build', 'icon.ico');
-    const buildLinuxIconPath = path.join(projectRoot, 'build', 'icon.png');
     const srcIconPath = path.join(projectRoot, 'src', 'img', 'icon.ico');
 
     const sizes = [16, 24, 32, 48, 64, 128, 256];
@@ -27,18 +26,10 @@ async function main() {
     const icoBuffer = await pngToIco(pngBuffers);
     await fs.mkdir(path.dirname(buildIconPath), { recursive: true });
     await fs.writeFile(buildIconPath, icoBuffer);
-    await sharp(sourcePath)
-        .resize(512, 512, {
-            fit: 'cover',
-            position: 'centre'
-        })
-        .png()
-        .toFile(buildLinuxIconPath);
     await fs.writeFile(srcIconPath, icoBuffer);
 
     console.log(`Generated Windows icon with ${sizes.length} sizes at:`);
     console.log(`- ${buildIconPath}`);
-    console.log(`- ${buildLinuxIconPath}`);
     console.log(`- ${srcIconPath}`);
 }
 

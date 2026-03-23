@@ -130,3 +130,28 @@ test("theme config actions reject missing workspace context for file-backed them
     /framework/,
   );
 });
+
+test("theme config pickFile omits undefined optional fields in bridge payload", async () => {
+  const calls = [];
+  const actions = createThemeConfigActions({
+    getThemeConfig: async () => ({}),
+    validateThemeSettings: async () => ({}),
+    saveThemeConfig: async () => ({}),
+    saveThemeLocalAsset: async () => ({}),
+    applyThemePreviewOverrides: async () => ({}),
+    getPreferences: async () => ({}),
+    savePreferences: async () => ({}),
+    pickFile: async (payload) => {
+      calls.push(payload);
+      return { canceled: true };
+    },
+  });
+
+  await actions.pickFile({ filters: [{ name: "Images", extensions: ["png"] }] });
+
+  assert.deepEqual(calls, [
+    {
+      filters: [{ name: "Images", extensions: ["png"] }],
+    },
+  ]);
+});

@@ -7,6 +7,7 @@ function assertProjectDir(projectDir) {
 export function createImportActions(api) {
   return {
     async importWorkspace(payload) {
+      assertProjectDir(payload?.projectDir);
       return api.importWorkspace({
         name: payload?.name,
         projectDir: payload?.projectDir,

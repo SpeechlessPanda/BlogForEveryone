@@ -81,4 +81,12 @@ test("workspace actions reject missing projectDir where required", async () => {
     () => actions.installProjectDependencies({}),
     /projectDir/,
   );
+  await assert.rejects(
+    () => actions.createWorkspace({ name: "Demo", framework: "hexo", theme: "landscape" }),
+    /projectDir/,
+  );
+  await assert.rejects(
+    () => actions.removeWorkspace({ deleteLocal: true }),
+    /id/,
+  );
 });

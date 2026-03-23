@@ -76,6 +76,7 @@ test("rss actions reject missing ids for targeted operations", async () => {
   });
 
   await assert.rejects(() => actions.removeSubscription({}), /id/);
+  await assert.rejects(() => actions.addSubscription({ title: "Example" }), /url/);
   await assert.rejects(
     () => actions.markSubscriptionItemRead({ subscriptionId: "sub-1" }),
     /itemKey/,

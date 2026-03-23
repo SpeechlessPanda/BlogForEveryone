@@ -4,6 +4,12 @@ function assertProjectDir(projectDir) {
   }
 }
 
+function assertId(id) {
+  if (!id || !String(id).trim()) {
+    throw new Error("缺少 id，无法执行工作区操作。");
+  }
+}
+
 export function createWorkspaceActions(api) {
   return {
     async listWorkspaces() {
@@ -13,6 +19,7 @@ export function createWorkspaceActions(api) {
       return api.getThemeCatalog();
     },
     async createWorkspace(payload) {
+      assertProjectDir(payload?.projectDir);
       return api.createWorkspace({
         name: payload?.name,
         framework: payload?.framework,
@@ -21,6 +28,7 @@ export function createWorkspaceActions(api) {
       });
     },
     async removeWorkspace(payload) {
+      assertId(payload?.id);
       return api.removeWorkspace({
         id: payload?.id,
         deleteLocal: payload?.deleteLocal,

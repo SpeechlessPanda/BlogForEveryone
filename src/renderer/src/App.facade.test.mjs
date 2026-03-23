@@ -11,6 +11,22 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /WorkflowSidebar/);
   assert.match(source, /WorkflowSummary/);
   assert.match(source, /SystemStatusPanel/);
+  assert.match(source, /ShellModalLayer/);
+
+  const forbiddenInlineShellPresentation = [
+    "GitHub 登录（OAuth 设备码）",
+    "modal-backdrop",
+    "device-code-card",
+    "当前设备码",
+  ];
+
+  for (const snippet of forbiddenInlineShellPresentation) {
+    assert.equal(
+      source.includes(snippet),
+      false,
+      `expected App.vue to avoid inline shell presentation: ${snippet}`,
+    );
+  }
 
   const forbiddenCalls = [
     "getAppState",

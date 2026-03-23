@@ -1,7 +1,10 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
 import appContents from "../../../shared/data/appContents.json";
-import { getSelectedWorkspace, refreshWorkspaces } from "../stores/workspaceStore";
+import {
+  getSelectedWorkspace,
+  refreshWorkspaces,
+} from "../stores/workspaceStore.js";
 import { useShellActions } from "./useShellActions.mjs";
 
 const ACTION_IDLE_RESET_MS = 1400;
@@ -11,7 +14,7 @@ const tabs = [
   {
     key: "tutorial",
     label: "教程中心",
-    section: "prepare",
+    section: "start",
     step: "STEP 01",
     note: "先走一遍 10 分钟总流程，知道每一步会看到什么。",
     summary: "从环境、登录到创建与发布，先把新手主线看明白。",
@@ -35,7 +38,7 @@ const tabs = [
   {
     key: "preview",
     label: "本地预览",
-    section: "build",
+    section: "check-release",
     step: "STEP 04",
     note: "确认 localhost 能打开，再决定要不要继续调整。",
     summary: "把当前配置真实跑起来，快速确认页面有没有达到预期。",
@@ -51,7 +54,7 @@ const tabs = [
   {
     key: "publish",
     label: "发布与备份",
-    section: "ship",
+    section: "check-release",
     step: "STEP 06",
     note: "发布上线后，顺手做一份备份，迁移会更安心。",
     summary: "把本地成果推到 GitHub Pages，并准备好恢复用的快照。",
@@ -59,7 +62,7 @@ const tabs = [
   {
     key: "import",
     label: "导入恢复",
-    section: "ship",
+    section: "start",
     step: "STEP 07",
     note: "把旧工程接进来，重新回到可视化流程里。",
     summary: "已有博客也能继续用这套工作流维护，而不是从头再来。",
@@ -67,7 +70,7 @@ const tabs = [
   {
     key: "rss",
     label: "RSS 阅读",
-    section: "ship",
+    section: "extension",
     step: "STEP 08",
     note: "把常看的站点放进来，持续获取灵感与更新。",
     summary: "在同一个应用里关注内容更新，形成持续创作的节奏。",
@@ -76,9 +79,9 @@ const tabs = [
 
 const workflowSections = [
   {
-    key: "prepare",
-    label: "起步准备",
-    summary: "先理解整条路径，再确认账号和环境都已经就绪。",
+    key: "start",
+    label: "开始",
+    summary: "先用教程了解主线，再把已有工程导入到统一流程里。",
   },
   {
     key: "build",
@@ -86,9 +89,14 @@ const workflowSections = [
     summary: "从工作区、主题、预览到内容，逐步把博客做完整。",
   },
   {
-    key: "ship",
-    label: "发布与维护",
-    summary: "上线、备份、迁移和订阅都放在最后一段长期维护流程里。",
+    key: "check-release",
+    label: "检查与发布",
+    summary: "先做本地检查，再完成发布与备份，确保上线链路稳定。",
+  },
+  {
+    key: "extension",
+    label: "扩展",
+    summary: "通过 RSS 阅读扩展信息输入，保持持续创作节奏。",
   },
 ];
 
@@ -163,9 +171,9 @@ export function useAppShell() {
   });
 
   let releaseUpdateListener = null;
-  let openTutorialListener = null;
-  let openTabListener = null;
-  let rssUpdatedListener = null;
+  let releaseOpenTutorialListener = null;
+  let releaseOpenTabListener = null;
+  let releaseRssUpdatedListener = null;
   let rssSummaryTimer = null;
 
   const isLoggedIn = computed(() => authState.value?.isLoggedIn === true);
@@ -336,7 +344,7 @@ export function useAppShell() {
   }
 
   function scheduleActionReset(key) {
-    window.setTimeout(() => {
+    shellActions.setTimeout(() => {
       if (actionState.value[key] !== "loading") {
         actionState.value[key] = "idle";
       }
@@ -376,7 +384,11 @@ export function useAppShell() {
   }
 
   async function refreshUpdateState() {
-    updateState.value = await shellActions.getUpdateState();
+    try {
+      updateState.value = await shellActions.getUpdateState();
+    } catch (error) {
+      openErrorModal("更新状态刷新失败", error);
+    }
   }
 
   async function refreshPreferences() {
@@ -470,7 +482,9 @@ export function useAppShell() {
   }
 
   async function handleAutoInstall(tool) {
-    const confirmed = window.confirm(`将使用 winget 静默安装 ${tool}，是否继续？`);
+    const confirmed = shellActions.confirm(
+      `将使用 winget 静默安装 ${tool}，是否继续？`,
+    );
     if (!confirmed) {
       return;
     }
@@ -531,7 +545,7 @@ export function useAppShell() {
       return;
     }
 
-    await navigator.clipboard.writeText(deviceFlow.value.userCode);
+    await shellActions.copyToClipboard(deviceFlow.value.userCode);
     authLog.value = `设备码已复制：${deviceFlow.value.userCode}`;
   }
 
@@ -552,7 +566,7 @@ export function useAppShell() {
   }
 
   onMounted(async () => {
-    if (window.bfeApi) {
+    if (shellActions.hasApi()) {
       appState.value = await shellActions.getAppState();
       envStatus.value = appState.value.env || envStatus.value;
       await refreshUpdateState();
@@ -571,21 +585,17 @@ export function useAppShell() {
       });
     }
 
-    openTutorialListener = () => {
+    releaseOpenTutorialListener = shellActions.onOpenTutorial(() => {
       setActiveTab("tutorial");
-    };
-    openTabListener = (event) => {
+    });
+    releaseOpenTabListener = shellActions.onOpenTab((event) => {
       setActiveTab(event?.detail?.tabKey);
-    };
-    rssUpdatedListener = () => {
+    });
+    releaseRssUpdatedListener = shellActions.onRssUpdated(() => {
       refreshRssUnreadSummary();
-    };
+    });
 
-    window.addEventListener("bfe:open-tutorial", openTutorialListener);
-    window.addEventListener("bfe:open-tab", openTabListener);
-    window.addEventListener("bfe:rss-updated", rssUpdatedListener);
-
-    rssSummaryTimer = window.setInterval(() => {
+    rssSummaryTimer = shellActions.setInterval(() => {
       refreshRssUnreadSummary();
     }, RSS_SUMMARY_REFRESH_INTERVAL_MS);
   });
@@ -594,17 +604,17 @@ export function useAppShell() {
     if (typeof releaseUpdateListener === "function") {
       releaseUpdateListener();
     }
-    if (openTutorialListener) {
-      window.removeEventListener("bfe:open-tutorial", openTutorialListener);
+    if (typeof releaseOpenTutorialListener === "function") {
+      releaseOpenTutorialListener();
     }
-    if (openTabListener) {
-      window.removeEventListener("bfe:open-tab", openTabListener);
+    if (typeof releaseOpenTabListener === "function") {
+      releaseOpenTabListener();
     }
-    if (rssUpdatedListener) {
-      window.removeEventListener("bfe:rss-updated", rssUpdatedListener);
+    if (typeof releaseRssUpdatedListener === "function") {
+      releaseRssUpdatedListener();
     }
     if (rssSummaryTimer) {
-      window.clearInterval(rssSummaryTimer);
+      shellActions.clearInterval(rssSummaryTimer);
     }
   });
 

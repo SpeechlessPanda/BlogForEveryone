@@ -28,8 +28,8 @@
 
 ## 4. 安装包初始化仍需 Windows 环境补充验证
 
-1. 本轮已确认并修复 Linux/WSL 本地打包链中的确定性阻塞：`package:signed` 原先会因 Linux 图标配置错误提前失败，现已通过新增 `build/icon.png` + `build.linux.icon` 修正。
-2. 当前 Linux/WSL 环境只能验证 Linux 制品产出，无法直接验证 Windows NSIS 安装器初始化；对应调查记录见 `docs/plans/2026-03-22-installer-init-investigation.md`。
+1. 本轮已把发布脚本改回 Windows NSIS 优先：`package` / `package:signed` / `release` 现在都会显式走 `electron-builder --win`，避免在 Linux/WSL 中默认产出 AppImage / Snap。
+2. 当前 Linux/WSL 环境仍不能直接证明 Windows NSIS 安装器初始化是否跑通；对应调查记录见 `docs/plans/2026-03-22-installer-init-investigation.md`。
 3. 若仍需关闭“安装包初始化偶发失败”这一问题，下一步必须在真实 Windows 环境里运行 `dist/BlogForEveryone Setup 1.1.0.exe` 并记录失败签名。
 
 ## 5. 测试脚本有效性仍需持续加强

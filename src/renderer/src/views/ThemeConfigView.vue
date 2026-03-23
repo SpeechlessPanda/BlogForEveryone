@@ -1158,49 +1158,60 @@ watch(
 </script>
 
 <template>
-  <section class="panel">
-    <h2>主题配置（全可视化）</h2>
-    <p class="muted">
-      按“先基础、后高级”的顺序整理博客外观。常用项放在前面，原始配置放在最后折叠区。
-    </p>
-    <p>
-      <a href="#" @click.prevent="goTutorialCenter"
-        >打开教程中心：主题个性化完整指南</a
-      >
-    </p>
-    <div class="actions" style="margin-top: 6px">
-      <button class="secondary" type="button" @click="goPreviewPage">
-        前往本地预览页面
-      </button>
-    </div>
+  <div class="page-shell page-shell--theme" data-page-role="theme-config">
+    <div class="page-layer" data-page-layer="primary">
+      <section class="panel page-hero">
+        <div class="page-hero-grid">
+          <div>
+            <p class="page-kicker">Brand workspace</p>
+            <h2 class="page-title">品牌与外观工作台</h2>
+            <p class="page-lead">
+              主题配置页优先处理品牌、素材与阅读体验，高感知项始终排在前面；高级与原始配置留到后面，避免技术参数压过品牌工作流。
+            </p>
+            <div class="page-link-row">
+              <a href="#" @click.prevent="goTutorialCenter"
+                >打开教程中心：主题个性化完整指南</a
+              >
+              <button class="secondary" type="button" @click="goPreviewPage">
+                前往本地预览页面
+              </button>
+            </div>
+          </div>
+          <div class="page-hero-aside">
+            <div class="page-signal page-signal--accent">
+              <p class="section-eyebrow">建议下一步</p>
+              <strong>先改品牌与阅读体验，再去预览确认真实页面。</strong>
+              <p class="section-helper">高级与原始配置属于次级区域，等基础外观跑通后再处理。</p>
+            </div>
+          </div>
+        </div>
 
-    <div class="section-card-grid">
-      <div class="context-card">
-        <p class="section-eyebrow">当前工作区</p>
-        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
-        <p class="section-helper">
-          {{
-            selectedWorkspace
-              ? `${selectedWorkspace.framework.toUpperCase()} · ${selectedWorkspace.projectDir}`
-              : "先选择或创建博客工程，主题和图片配置才会落到正确目录里。"
-          }}
-        </p>
-      </div>
-      <div class="context-card">
-        <p class="section-eyebrow">当前主题</p>
-        <strong>{{ selectedThemeName }}</strong>
-        <p class="section-helper">
-          先完成标题、背景、图标这类高感知项，再去处理主题专属高级参数。
-        </p>
-      </div>
-      <div class="context-card">
-        <p class="section-eyebrow">兼容提示</p>
-        <strong>图片与头像会自动转存</strong>
-        <p class="section-helper">{{ backgroundSupportHint }}</p>
-      </div>
-    </div>
+        <div class="page-status-grid">
+          <div class="page-signal page-signal--accent">
+            <p class="section-eyebrow">当前工作区</p>
+            <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+            <p class="section-helper">
+              {{
+                selectedWorkspace
+                  ? `${selectedWorkspace.framework.toUpperCase()} · ${selectedWorkspace.projectDir}`
+                  : "先选择或创建博客工程，主题和图片配置才会落到正确目录里。"
+              }}
+            </p>
+          </div>
+          <div class="page-signal">
+            <p class="section-eyebrow">当前主题</p>
+            <strong>{{ selectedThemeName }}</strong>
+            <p class="section-helper">先完成标题、背景、图标这类高感知项，再处理主题专属高级参数。</p>
+          </div>
+          <div class="page-signal page-signal--quiet">
+            <p class="section-eyebrow">兼容提示</p>
+            <strong>图片与头像会自动转存</strong>
+            <p class="section-helper">{{ backgroundSupportHint }}</p>
+          </div>
+        </div>
+      </section>
 
-    <div class="panel page-section">
+      <div class="panel page-section">
       <p class="section-eyebrow">第一步</p>
       <h2>确认当前博客与主题</h2>
       <p class="section-helper">
@@ -1249,9 +1260,9 @@ watch(
           </button>
         </div>
       </div>
-    </div>
+      </div>
 
-    <div class="panel page-section">
+      <div class="panel page-section">
       <p class="section-eyebrow">第二步</p>
       <h2>博客基础信息</h2>
       <p class="section-helper">
@@ -1316,9 +1327,9 @@ watch(
           </div>
         </template>
       </div>
-    </div>
+      </div>
 
-    <div class="panel page-section">
+      <div class="panel page-section">
       <p class="section-eyebrow">第三步</p>
       <h2>图片与品牌素材</h2>
       <p class="section-helper">
@@ -1431,9 +1442,9 @@ watch(
           转存并应用头像（自动写入配置）
         </button>
       </div>
-    </div>
+      </div>
 
-    <div class="panel page-section">
+      <div class="panel page-section">
       <p class="section-eyebrow">第四步</p>
       <h2>阅读体验</h2>
       <p class="section-helper">
@@ -1452,9 +1463,11 @@ watch(
           ><input v-model="basicFields.bodyFontSize" />
         </div>
       </div>
+      </div>
     </div>
 
-    <div class="panel page-section split-section">
+    <div class="page-layer" data-page-layer="explanation">
+      <div class="panel page-section split-section">
       <div>
         <p class="section-eyebrow">第五步</p>
         <h2>可选增强项</h2>
@@ -1544,65 +1557,77 @@ watch(
           </div>
         </div>
       </div>
+      </div>
+
+      <section class="priority-panel priority-panel--support">
+        <p class="section-eyebrow">保存与确认</p>
+        <strong>完成品牌与外观后，先保存，再去本地预览确认真实呈现。</strong>
+        <div class="actions">
+          <button class="primary" @click="saveAllConfig">保存全部配置</button>
+        </div>
+        <p class="page-result-note">{{ status || "保存后建议立刻去本地预览，确认外观变更已真实生效。" }}</p>
+      </section>
     </div>
 
-    <details v-if="selectedThemeSchema" class="advanced-panel">
-      <summary>
-        主题专属高级配置（{{ selectedThemeSchema.options.length }} 项）
-      </summary>
-      <div class="advanced-panel-content">
-        <p class="section-helper">
-          只有当你已经跑通基础外观、预览和内容后，再建议回来调这些主题特有参数。
-        </p>
-        <div class="grid-2">
-          <div v-for="opt in selectedThemeSchema.options" :key="opt.key">
-            <label>{{ opt.label }} ({{ opt.key }})</label>
-            <select v-if="opt.type === 'enum'" v-model="optionValues[opt.key]">
-              <option v-for="v in opt.enumValues" :key="v" :value="v">
-                {{ v }}
-              </option>
-            </select>
-            <select
-              v-else-if="opt.type === 'boolean'"
-              v-model="optionValues[opt.key]"
-            >
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-            <input
-              v-else-if="opt.type === 'array'"
-              v-model="optionValues[opt.key]"
-              :placeholder="(opt.default || []).join(',')"
-            />
-            <input
-              v-else
-              v-model="optionValues[opt.key]"
-              :placeholder="String(opt.default || '')"
-            />
+    <div class="page-layer" data-page-layer="detail">
+      <section class="priority-panel priority-panel--subtle">
+        <p class="section-eyebrow">次级区域</p>
+        <strong>高级与原始配置属于次级区域</strong>
+        <p class="page-result-note">只有当基础品牌、素材与阅读体验已经跑通时，再回来处理下面这两组技术参数。</p>
+      </section>
+
+      <details v-if="selectedThemeSchema" class="advanced-panel">
+        <summary>
+          主题专属高级配置（{{ selectedThemeSchema.options.length }} 项）
+        </summary>
+        <div class="advanced-panel-content">
+          <p class="section-helper">
+            只有当你已经跑通基础外观、预览和内容后，再建议回来调这些主题特有参数。
+          </p>
+          <div class="grid-2">
+            <div v-for="opt in selectedThemeSchema.options" :key="opt.key">
+              <label>{{ opt.label }} ({{ opt.key }})</label>
+              <select v-if="opt.type === 'enum'" v-model="optionValues[opt.key]">
+                <option v-for="v in opt.enumValues" :key="v" :value="v">
+                  {{ v }}
+                </option>
+              </select>
+              <select
+                v-else-if="opt.type === 'boolean'"
+                v-model="optionValues[opt.key]"
+              >
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+              <input
+                v-else-if="opt.type === 'array'"
+                v-model="optionValues[opt.key]"
+                :placeholder="(opt.default || []).join(',')"
+              />
+              <input
+                v-else
+                v-model="optionValues[opt.key]"
+                :placeholder="String(opt.default || '')"
+              />
+            </div>
           </div>
         </div>
-      </div>
-    </details>
+      </details>
 
-    <details class="advanced-panel">
-      <summary>全部配置项（{{ allConfigEntries.length }} 项，适合高级用户）</summary>
-      <div class="advanced-panel-content">
-        <p class="section-helper">
-          这里会直接影响最终配置文件。只有当上面的可视化项无法覆盖你的需求时，再修改这一组原始条目。
-        </p>
-        <div class="grid-2">
-          <div v-for="item in allConfigEntries" :key="item.key">
-            <label>{{ item.key }}</label>
-            <input v-model="item.value" />
+      <details class="advanced-panel">
+        <summary>全部配置项（{{ allConfigEntries.length }} 项，适合高级用户）</summary>
+        <div class="advanced-panel-content">
+          <p class="section-helper">
+            这里会直接影响最终配置文件。只有当上面的可视化项无法覆盖你的需求时，再修改这一组原始条目。
+          </p>
+          <div class="grid-2">
+            <div v-for="item in allConfigEntries" :key="item.key">
+              <label>{{ item.key }}</label>
+              <input v-model="item.value" />
+            </div>
           </div>
         </div>
-      </div>
-    </details>
-
-    <div class="actions">
-      <button class="primary" @click="saveAllConfig">保存全部配置</button>
+      </details>
     </div>
-    <p class="muted">保存后建议立刻去本地预览，确认外观变更已真实生效。</p>
-    <p class="muted">{{ status }}</p>
-  </section>
+  </div>
 </template>

@@ -387,6 +387,178 @@ body::before {
   line-height: 1.14;
 }
 
+.page-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.page-layer {
+  display: grid;
+  gap: 14px;
+}
+
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(131, 110, 85, 0.36);
+  background:
+    radial-gradient(circle at top right, rgba(47, 109, 91, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 240, 230, 0.9)),
+    var(--panel);
+}
+
+.page-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.18), transparent 72%);
+  pointer-events: none;
+}
+
+.page-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.page-shell--rss .page-hero,
+.page-shell--tutorial .page-hero {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(243, 236, 225, 0.86)),
+    var(--panel);
+}
+
+.page-kicker {
+  margin: 0 0 8px;
+}
+
+.page-title {
+  margin: 0;
+  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: clamp(2rem, 2.9vw, 2.7rem);
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.page-lead {
+  max-width: 64ch;
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.page-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.92fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.page-hero-aside {
+  display: grid;
+  gap: 10px;
+}
+
+.page-signal {
+  border: 1px solid rgba(131, 110, 85, 0.24);
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(243, 236, 225, 0.76));
+  box-shadow: 0 10px 22px rgba(var(--shadow-tint), 0.08);
+}
+
+.page-signal strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1rem;
+  line-height: 1.38;
+}
+
+.page-signal--accent {
+  border-color: rgba(47, 109, 91, 0.3);
+  background: linear-gradient(180deg, rgba(220, 235, 227, 0.92), rgba(247, 240, 230, 0.86));
+}
+
+.page-signal--quiet {
+  background: linear-gradient(180deg, rgba(250, 245, 237, 0.92), rgba(241, 233, 221, 0.82));
+}
+
+.page-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.priority-panel {
+  border: 1px solid rgba(131, 110, 85, 0.28);
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(245, 237, 226, 0.8));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.priority-panel--support {
+  background: linear-gradient(180deg, rgba(247, 240, 230, 0.88), rgba(240, 231, 218, 0.9));
+}
+
+.priority-panel--subtle {
+  border-style: dashed;
+  background: linear-gradient(180deg, rgba(248, 243, 235, 0.86), rgba(238, 230, 217, 0.86));
+}
+
+.page-guidance-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+}
+
+.page-guidance-list li + li {
+  margin-top: 6px;
+}
+
+.page-layer[data-page-layer="detail"] .panel,
+.page-layer[data-page-layer="detail"] .advanced-panel,
+.page-layer[data-page-layer="detail"] .priority-panel {
+  border-color: rgba(131, 110, 85, 0.22);
+  box-shadow: 0 10px 20px rgba(var(--shadow-tint), 0.06);
+}
+
+.page-layer[data-page-layer="detail"] .panel h2,
+.page-layer[data-page-layer="detail"] .advanced-panel summary {
+  font-size: 1.02rem;
+}
+
+.page-layer[data-page-layer="detail"] .muted,
+.page-layer[data-page-layer="detail"] .section-helper,
+.page-layer[data-page-layer="detail"] .section-eyebrow {
+  color: var(--muted);
+}
+
+.page-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.page-result-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.page-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.page-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .tutorial-panel h3 {
   margin-top: 16px;
   margin-bottom: 8px;
@@ -829,6 +1001,10 @@ a:hover {
   }
 
   .shell-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .page-hero-grid {
     grid-template-columns: 1fr;
   }
 

@@ -1,9 +1,7 @@
 import { reactive } from 'vue';
-import { createWorkspaceActions } from '../composables/useWorkspaceActions.mjs';
+import { useWorkspaceActions } from '../composables/useWorkspaceActions.mjs';
 
-function getWorkspaceActions() {
-    return createWorkspaceActions(window.bfeApi);
-}
+const workspaceActions = useWorkspaceActions();
 
 export const workspaceState = reactive({
     workspaces: [],
@@ -13,7 +11,7 @@ export const workspaceState = reactive({
 });
 
 export async function refreshWorkspaces() {
-    workspaceState.workspaces = await getWorkspaceActions().listWorkspaces();
+    workspaceState.workspaces = await workspaceActions.listWorkspaces();
     const activeWorkspaceIds = new Set(workspaceState.workspaces.map((item) => item.id));
     for (const workspaceId of Object.keys(workspaceState.workspaceThemeConfirmations)) {
         if (!activeWorkspaceIds.has(workspaceId)) {
@@ -30,7 +28,7 @@ export async function refreshWorkspaces() {
 }
 
 export async function refreshThemeCatalog() {
-    workspaceState.themeCatalog = await getWorkspaceActions().getThemeCatalog();
+    workspaceState.themeCatalog = await workspaceActions.getThemeCatalog();
 }
 
 export function getSelectedWorkspace() {

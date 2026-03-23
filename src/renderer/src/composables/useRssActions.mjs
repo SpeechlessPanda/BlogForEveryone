@@ -10,12 +10,19 @@ function assertProjectDir(projectDir) {
   }
 }
 
+function assertUrl(url) {
+  if (!url || !String(url).trim()) {
+    throw new Error("缺少 url，无法执行 RSS 操作。");
+  }
+}
+
 export function createRssActions(api) {
   return {
     async listSubscriptions() {
       return api.listSubscriptions();
     },
     async addSubscription(payload) {
+      assertUrl(payload?.url);
       return api.addSubscription({
         url: payload?.url,
         title: payload?.title,

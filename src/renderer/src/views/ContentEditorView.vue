@@ -7,6 +7,7 @@ import {
 } from "../stores/workspaceStore";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useContentActions } from "../composables/useContentActions";
 
 const ACTION_IDLE_RESET_MS = 1400;
 
@@ -32,6 +33,7 @@ const existingEditor = reactive({
   body: "",
 });
 const { run, isBusy } = useAsyncAction();
+const contentActions = useContentActions();
 
 const actionState = reactive({
   create: "idle",
@@ -58,9 +60,8 @@ async function createAndEdit() {
   await runActionWithFeedback(
     "create",
     async () => {
-      const result = await window.bfeApi.createAndOpenContent({
-        projectDir: ws.projectDir,
-        framework: ws.framework,
+      const result = await contentActions.createAndOpenContent({
+        workspaceId: ws.id,
         type: form.type,
         title: form.title,
         slug: form.slug,
@@ -70,10 +71,9 @@ async function createAndEdit() {
       await refreshExistingContents();
 
       if (form.autoPublish && form.repoUrl) {
-        const job = await window.bfeApi.watchAndAutoPublish({
+        const job = await contentActions.watchAndAutoPublish({
+          workspaceId: ws.id,
           filePath: result.filePath,
-          projectDir: ws.projectDir,
-          framework: ws.framework,
           repoUrl: form.repoUrl,
         });
         state.jobId = job.jobId;
@@ -95,9 +95,8 @@ async function refreshExistingContents() {
   }
 
   await run("load-existing", async () => {
-    const list = await window.bfeApi.listExistingContents({
-      projectDir: ws.projectDir,
-      framework: ws.framework,
+    const list = await contentActions.listExistingContents({
+      workspaceId: ws.id,
     });
     existingList.value = list || [];
     if (!existingList.value.length) {
@@ -121,14 +120,23 @@ async function refreshExistingContents() {
 
 async function loadSelectedExistingContent() {
   const filePath = selectedExistingPath.value;
+  const ws = getSelectedWorkspace();
   if (!filePath) {
+    existingEditor.title = "";
+    existingEditor.body = "";
+    return;
+  }
+  if (!ws) {
     existingEditor.title = "";
     existingEditor.body = "";
     return;
   }
 
   await run("read-existing", async () => {
-    const detail = await window.bfeApi.readExistingContent({ filePath });
+    const detail = await contentActions.readExistingContent({
+      workspaceId: ws.id,
+      filePath,
+    });
     existingEditor.title = detail.title || "";
     existingEditor.body = detail.body || "";
   });
@@ -140,8 +148,15 @@ async function saveExistingContentChanges() {
     return;
   }
 
+  const ws = getSelectedWorkspace();
+  if (!ws) {
+    openErrorModal("保存失败", "请先选择工程。");
+    return;
+  }
+
   await run("save-existing", async () => {
-    await window.bfeApi.saveExistingContent({
+    await contentActions.saveExistingContent({
+      workspaceId: ws.id,
       filePath: selectedExistingPath.value,
       title: existingEditor.title,
       body: existingEditor.body,
@@ -156,8 +171,15 @@ async function openSelectedExistingInEditor() {
     return;
   }
 
+  const ws = getSelectedWorkspace();
+  if (!ws) {
+    openErrorModal("打开失败", "请先选择工程。");
+    return;
+  }
+
   await run("open-existing", async () => {
-    await window.bfeApi.openExistingContent({
+    await contentActions.openExistingContent({
+      workspaceId: ws.id,
       filePath: selectedExistingPath.value,
     });
   });
@@ -172,12 +194,11 @@ async function refreshPublishJob() {
   await runActionWithFeedback(
     "refresh",
     async () => {
-      const job = await window.bfeApi.getPublishJobStatus({
+      const job = await contentActions.getPublishJobStatus({
         jobId: state.jobId,
       });
       if (!job) {
         throw new Error("没有找到自动发布任务。");
-        return;
       }
       state.jobStatus = job.status;
     },

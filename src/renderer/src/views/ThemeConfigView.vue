@@ -5,6 +5,9 @@ import {
   refreshThemeCatalog,
   refreshWorkspaces,
   getSelectedWorkspace,
+  getWorkspaceThemeConfirmation,
+  confirmWorkspaceSupportedTheme,
+  confirmWorkspaceUnsupportedTheme,
 } from "../stores/workspaceStore";
 import {
   getAvatarUploadDir,
@@ -14,6 +17,11 @@ import {
   readHexoBackgroundValue,
   readHexoFaviconValue,
 } from "../utils/themeConfigHelpers.mjs";
+import {
+  resolveThemeSelection,
+  isThemeSpecificMappingAllowed,
+} from "../utils/themeDetectionHelpers.mjs";
+import { useThemeConfigActions } from "../composables/useThemeConfigActions.mjs";
 
 const status = ref("");
 const selectedThemeId = ref("");
@@ -71,9 +79,61 @@ const avatarTransfer = reactive({
 
 const faviconUploadPath = ref("");
 const faviconPreferredFileName = ref("");
+const pendingSupportedThemeId = ref("");
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+const themeConfigActions = useThemeConfigActions();
+
+const selectedThemeCatalog = computed(() => {
+  const ws = selectedWorkspace.value;
+  if (!ws || !workspaceState.themeCatalog) {
+    return [];
+  }
+  return workspaceState.themeCatalog[ws.framework] || [];
+});
+
+const themeSelection = computed(() => {
+  const ws = selectedWorkspace.value;
+  if (!ws) {
+    return {
+      selectedThemeId: "",
+      needsUserConfirmation: false,
+      isSupportedTheme: false,
+      isUnsupportedOrCustom: false,
+    };
+  }
+
+  return resolveThemeSelection(
+    ws,
+    selectedThemeCatalog.value,
+    getWorkspaceThemeConfirmation(ws.id),
+  );
+});
+
+const canUseThemeSpecificMapping = computed(() =>
+  isThemeSpecificMappingAllowed(themeSelection.value),
+);
+
+const needsThemeConfirmation = computed(
+  () => themeSelection.value.needsUserConfirmation,
+);
+
+const themeConfirmationHint = computed(() => {
+  if (themeSelection.value.isUnsupportedOrCustom) {
+    return "当前主题已标记为不受支持/自定义，仅启用安全通用配置，不写入主题专属映射。";
+  }
+  if (needsThemeConfirmation.value) {
+    return "导入工程的主题尚未确认。请明确选择支持主题，或标记为不受支持/自定义。";
+  }
+  return "已确认主题，允许主题专属配置逻辑。";
+});
 
 const selectedThemeName = computed(() => {
+  if (themeSelection.value.isUnsupportedOrCustom) {
+    return `${themeSelection.value.selectedThemeId || "custom"}（不受支持/自定义）`;
+  }
+  if (needsThemeConfirmation.value) {
+    return `${themeSelection.value.selectedThemeId || "unknown"}（待确认）`;
+  }
   if (!selectedThemeSchema.value) {
     return selectedThemeId.value || "未识别";
   }
@@ -113,6 +173,26 @@ const backgroundSupportHint = computed(() => {
 });
 
 const optionValues = reactive({});
+
+function confirmAsSupportedTheme() {
+  const ws = selectedWorkspace.value;
+  if (!ws || !pendingSupportedThemeId.value) {
+    return;
+  }
+  confirmWorkspaceSupportedTheme(ws.id, pendingSupportedThemeId.value);
+  status.value = `已确认支持主题：${pendingSupportedThemeId.value}`;
+  applyThemeFromWorkspace();
+}
+
+function confirmAsUnsupportedTheme() {
+  const ws = selectedWorkspace.value;
+  if (!ws) {
+    return;
+  }
+  confirmWorkspaceUnsupportedTheme(ws.id, ws.theme || "custom");
+  status.value = "已标记为不受支持/自定义主题，已切换到安全通用模式。";
+  applyThemeFromWorkspace();
+}
 
 function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
@@ -231,6 +311,7 @@ function parseInputValue(value) {
 }
 
 function applyPersonalization(config, framework) {
+  const allowThemeSpecificMapping = canUseThemeSpecificMapping.value;
   config.title = basicFields.siteTitle || config.title;
 
   if (framework === "hexo") {
@@ -321,7 +402,7 @@ function applyPersonalization(config, framework) {
       );
     }
 
-    if (selectedThemeId.value === "next") {
+    if (allowThemeSpecificMapping && selectedThemeId.value === "next") {
       setByPath(config, "theme_config.sidebar.display", "always");
       setByPath(
         config,
@@ -395,7 +476,7 @@ function applyPersonalization(config, framework) {
     }
     setByPath(config, "outputs.home", outputList);
 
-    if (selectedThemeId.value === "stack") {
+    if (allowThemeSpecificMapping && selectedThemeId.value === "stack") {
       setByPath(config, "params.sidebar.subtitle", basicFields.subtitle || "");
       if (basicFields.avatarImage) {
         setByPath(config, "params.sidebar.avatar", basicFields.avatarImage);
@@ -471,7 +552,7 @@ function applyPersonalization(config, framework) {
       ]);
     }
 
-    if (selectedThemeId.value === "anatole") {
+    if (allowThemeSpecificMapping && selectedThemeId.value === "anatole") {
       if (basicFields.avatarImage) {
         setByPath(config, "params.profilePicture", basicFields.avatarImage);
       } else {
@@ -496,7 +577,7 @@ function applyPersonalization(config, framework) {
       setByPath(config, "params.socialIcons", socialIcons);
     }
 
-    if (selectedThemeId.value === "papermod") {
+    if (allowThemeSpecificMapping && selectedThemeId.value === "papermod") {
       setByPath(config, "params.assets.favicon", basicFields.favicon || "");
       setByPath(
         config,
@@ -541,14 +622,14 @@ function applyPersonalization(config, framework) {
       }
     }
 
-    if (selectedThemeId.value === "loveit") {
+    if (allowThemeSpecificMapping && selectedThemeId.value === "loveit") {
       setByPath(config, "params.home.profile.enable", false);
       setByPath(config, "params.home.posts.enable", true);
       setByPath(config, "params.home.posts.paginate", 6);
       setByPath(config, "mainSections", ["posts", "post"]);
     }
 
-    if (selectedThemeId.value === "mainroad") {
+    if (allowThemeSpecificMapping && selectedThemeId.value === "mainroad") {
       setByPath(config, "Params.mainSections", ["post"]);
       setByPath(config, "Params.sidebar.home", "right");
       setByPath(config, "Params.sidebar.list", "right");
@@ -566,10 +647,10 @@ function applyPersonalization(config, framework) {
 }
 
 async function syncPreviewOverrides(projectDir, framework) {
-  if (framework !== "hugo") {
+  if (framework !== "hugo" || !canUseThemeSpecificMapping.value) {
     return;
   }
-  await window.bfeApi.applyThemePreviewOverrides({
+  await themeConfigActions.applyThemePreviewOverrides({
     projectDir,
     framework,
     themeId: selectedThemeId.value,
@@ -583,7 +664,7 @@ async function loadConfig() {
   if (!ws) {
     return;
   }
-  const config = await window.bfeApi.getThemeConfig({
+  const config = await themeConfigActions.getThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
   });
@@ -745,7 +826,7 @@ async function loadConfig() {
       : true),
   );
 
-  const preferences = await window.bfeApi.getPreferences();
+  const preferences = await themeConfigActions.getPreferences();
   rssFields.autoSyncRssSubscriptions =
     preferences.autoSyncRssSubscriptions !== false;
 }
@@ -756,9 +837,9 @@ async function saveAllConfig() {
     return;
   }
 
-  const validateResult = await window.bfeApi.validateThemeSettings({
+  const validateResult = await themeConfigActions.validateThemeSettings({
     framework: ws.framework,
-    themeId: selectedThemeId.value,
+    themeId: canUseThemeSpecificMapping.value ? selectedThemeId.value : "",
     basicFields: {
       siteTitle: basicFields.siteTitle,
       email: basicFields.email,
@@ -772,7 +853,7 @@ async function saveAllConfig() {
     status.value = `保存失败：${(validateResult?.errors || []).join("；")}`;
     return;
   }
-  const config = await window.bfeApi.getThemeConfig({
+  const config = await themeConfigActions.getThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
   });
@@ -781,33 +862,35 @@ async function saveAllConfig() {
     setByPath(config, item.key, parseInputValue(item.value));
   }
 
-  for (const option of selectedThemeSchema.value?.options || []) {
-    let value = optionValues[option.key];
-    if (option.type === "boolean") {
-      value = value === true || value === "true";
+  if (canUseThemeSpecificMapping.value) {
+    for (const option of selectedThemeSchema.value?.options || []) {
+      let value = optionValues[option.key];
+      if (option.type === "boolean") {
+        value = value === true || value === "true";
+      }
+      if (option.type === "array" && typeof value === "string") {
+        value = value
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+      }
+      if (value === undefined || value === null || value === "") {
+        value = option.default;
+      }
+      setByPath(config, option.key, value);
     }
-    if (option.type === "array" && typeof value === "string") {
-      value = value
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean);
-    }
-    if (value === undefined || value === null || value === "") {
-      value = option.default;
-    }
-    setByPath(config, option.key, value);
   }
 
   applyPersonalization(config, ws.framework);
 
-  await window.bfeApi.saveThemeConfig({
+  await themeConfigActions.saveThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
     nextConfig: config,
   });
   await syncPreviewOverrides(ws.projectDir, ws.framework);
 
-  await window.bfeApi.savePreferences({
+  await themeConfigActions.savePreferences({
     generateBlogRss: rssFields.generateBlogRss,
     autoSyncRssSubscriptions: rssFields.autoSyncRssSubscriptions,
   });
@@ -830,7 +913,7 @@ async function applyLocalBackgroundImage() {
     return;
   }
 
-  const result = await window.bfeApi.saveThemeLocalAsset({
+  const result = await themeConfigActions.saveThemeLocalAsset({
     projectDir: ws.projectDir,
     framework: ws.framework,
     localFilePath: backgroundTransfer.localFilePath,
@@ -844,7 +927,7 @@ async function applyLocalBackgroundImage() {
 
   basicFields.backgroundImage = result.webPath;
   backgroundTransfer.preferredFileName = deriveFileNameFromPath(result.webPath);
-  const config = await window.bfeApi.getThemeConfig({
+  const config = await themeConfigActions.getThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
   });
@@ -856,11 +939,11 @@ async function applyLocalBackgroundImage() {
     );
   } else {
     setByPath(config, "params.backgroundImage", result.webPath);
-    if (selectedThemeId.value === "papermod") {
+    if (canUseThemeSpecificMapping.value && selectedThemeId.value === "papermod") {
       setByPath(config, "params.assets.disableFingerprinting", true);
     }
   }
-  await window.bfeApi.saveThemeConfig({
+  await themeConfigActions.saveThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
     nextConfig: config,
@@ -876,7 +959,7 @@ async function uploadLocalFavicon() {
     status.value = "请先选择工程。";
     return;
   }
-  const result = await window.bfeApi.saveThemeLocalAsset({
+  const result = await themeConfigActions.saveThemeLocalAsset({
     projectDir: ws.projectDir,
     framework: ws.framework,
     localFilePath: faviconUploadPath.value,
@@ -886,7 +969,7 @@ async function uploadLocalFavicon() {
     preferredFileName: faviconPreferredFileName.value || "favicon",
   });
   basicFields.favicon = result.webPath;
-  const config = await window.bfeApi.getThemeConfig({
+  const config = await themeConfigActions.getThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
   });
@@ -898,13 +981,13 @@ async function uploadLocalFavicon() {
     );
   } else {
     setByPath(config, "params.favicon", result.webPath);
-    if (selectedThemeId.value === "papermod") {
+    if (canUseThemeSpecificMapping.value && selectedThemeId.value === "papermod") {
       setByPath(config, "params.assets.favicon", result.webPath);
       setByPath(config, "params.assets.favicon16x16", result.webPath);
       setByPath(config, "params.assets.favicon32x32", result.webPath);
     }
   }
-  await window.bfeApi.saveThemeConfig({
+  await themeConfigActions.saveThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
     nextConfig: config,
@@ -924,12 +1007,16 @@ async function applyLocalAvatarImage() {
     status.value = "当前主题不支持头像配置。";
     return;
   }
+  if (!canUseThemeSpecificMapping.value) {
+    status.value = "未确认受支持主题，已阻止头像主题映射写入。";
+    return;
+  }
   if (!avatarTransfer.localFilePath) {
     status.value = "请先填写头像本地路径。";
     return;
   }
 
-  const result = await window.bfeApi.saveThemeLocalAsset({
+  const result = await themeConfigActions.saveThemeLocalAsset({
     projectDir: ws.projectDir,
     framework: ws.framework,
     localFilePath: avatarTransfer.localFilePath,
@@ -947,19 +1034,19 @@ async function applyLocalAvatarImage() {
   basicFields.avatarImage = avatarValue;
   avatarTransfer.preferredFileName = deriveFileNameFromPath(avatarValue);
 
-  const config = await window.bfeApi.getThemeConfig({
+  const config = await themeConfigActions.getThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
   });
 
-  if (selectedThemeId.value === "stack") {
+  if (canUseThemeSpecificMapping.value && selectedThemeId.value === "stack") {
     setByPath(config, "params.sidebar.avatar", avatarValue);
   }
-  if (selectedThemeId.value === "anatole") {
+  if (canUseThemeSpecificMapping.value && selectedThemeId.value === "anatole") {
     setByPath(config, "params.profilePicture", avatarValue);
   }
 
-  await window.bfeApi.saveThemeConfig({
+  await themeConfigActions.saveThemeConfig({
     projectDir: ws.projectDir,
     framework: ws.framework,
     nextConfig: config,
@@ -973,21 +1060,25 @@ function applyThemeFromWorkspace() {
   const ws = selectedWorkspace.value;
   if (!ws) {
     selectedThemeId.value = "";
+    pendingSupportedThemeId.value = "";
     return;
   }
 
-  const list = workspaceState.themeCatalog?.[ws.framework] || [];
-  if (!list.length) {
-    selectedThemeId.value = ws.theme || "";
-    return;
-  }
+  const resolved = themeSelection.value;
+  selectedThemeId.value = resolved.selectedThemeId;
 
-  const preferred = list.find((item) => item.id === ws.theme);
-  selectedThemeId.value = preferred ? preferred.id : list[0].id;
+  if (
+    !pendingSupportedThemeId.value ||
+    !selectedThemeCatalog.value.some(
+      (item) => item.id === pendingSupportedThemeId.value,
+    )
+  ) {
+    pendingSupportedThemeId.value = selectedThemeCatalog.value[0]?.id || "";
+  }
 }
 
 async function pickBackgroundImageFile() {
-  const result = await window.bfeApi.pickFile({
+  const result = await themeConfigActions.pickFile({
     title: "选择背景图文件",
     defaultPath: backgroundTransfer.localFilePath || undefined,
     filters: [
@@ -1003,7 +1094,7 @@ async function pickBackgroundImageFile() {
 }
 
 async function pickFaviconImageFile() {
-  const result = await window.bfeApi.pickFile({
+  const result = await themeConfigActions.pickFile({
     title: "选择博客图标文件",
     defaultPath: faviconUploadPath.value || undefined,
     filters: [
@@ -1017,7 +1108,7 @@ async function pickFaviconImageFile() {
 }
 
 async function pickAvatarImageFile() {
-  const result = await window.bfeApi.pickFile({
+  const result = await themeConfigActions.pickFile({
     title: "选择头像文件",
     defaultPath: avatarTransfer.localFilePath || undefined,
     filters: [
@@ -1055,6 +1146,14 @@ watch(
   () => {
     applyThemeFromWorkspace();
   },
+);
+
+watch(
+  () => workspaceState.workspaceThemeConfirmations,
+  () => {
+    applyThemeFromWorkspace();
+  },
+  { deep: true },
 );
 </script>
 
@@ -1124,6 +1223,30 @@ watch(
         <div>
           <label>主题（由工程自动确定）</label>
           <input :value="selectedThemeName" readonly />
+        </div>
+      </div>
+      <p class="muted" style="margin-top: 8px">{{ themeConfirmationHint }}</p>
+      <div v-if="needsThemeConfirmation" class="grid-2" style="margin-top: 8px">
+        <div>
+          <label>确认一个受支持主题</label>
+          <select v-model="pendingSupportedThemeId">
+            <option value="">请选择</option>
+            <option
+              v-for="theme in selectedThemeCatalog"
+              :key="theme.id"
+              :value="theme.id"
+            >
+              {{ theme.name }} ({{ theme.id }})
+            </option>
+          </select>
+        </div>
+        <div class="actions" style="align-items: end">
+          <button class="secondary" type="button" @click="confirmAsSupportedTheme">
+            确认受支持主题
+          </button>
+          <button class="secondary" type="button" @click="confirmAsUnsupportedTheme">
+            标记为不受支持/自定义
+          </button>
         </div>
       </div>
     </div>

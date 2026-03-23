@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from "vue";
 import { refreshWorkspaces } from "../stores/workspaceStore";
+import { useImportActions } from "../composables/useImportActions.mjs";
 
 const form = reactive({
   name: "",
@@ -8,11 +9,16 @@ const form = reactive({
 });
 
 const result = ref("");
+const importActions = useImportActions();
 
 async function doImport() {
   try {
-    const data = await window.bfeApi.importWorkspace({ ...form });
-    result.value = JSON.stringify(data, null, 2);
+    const data = await importActions.importWorkspace({ ...form });
+    const confirmationHint =
+      data?.theme === "unknown"
+        ? "\n\n提示：该工程主题尚未确认，请前往“主题配置”页面明确选择受支持主题，或标记为不受支持/自定义。"
+        : "";
+    result.value = `${JSON.stringify(data, null, 2)}${confirmationHint}`;
     await refreshWorkspaces();
   } catch (error) {
     result.value = `导入失败：${String(error?.message || error)}`;
@@ -21,7 +27,7 @@ async function doImport() {
 
 async function pickProjectDirectory() {
   try {
-    const data = await window.bfeApi.pickDirectory({
+    const data = await importActions.pickDirectory({
       title: "选择已存在的博客工程目录",
       defaultPath: form.projectDir || undefined,
     });
@@ -35,7 +41,7 @@ async function pickProjectDirectory() {
 
 async function restoreRssFromProject() {
   try {
-    const data = await window.bfeApi.importSubscriptions({
+    const data = await importActions.importSubscriptions({
       projectDir: form.projectDir,
       strategy: "merge",
     });

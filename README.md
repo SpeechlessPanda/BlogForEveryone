@@ -1,121 +1,145 @@
 # BlogForEveryone
 
-面向所有想要输出自己想法观点的小白的博客搭建桌面平台，技术栈为 Electron + Vue + JavaScript。
+BlogForEveryone 是一个面向新手的博客搭建与管理桌面应用，目标是用全可视化流程替代命令行操作，让用户可以完成从创建到发布再到迁移恢复的完整链路。
 
-## 产品定位
+当前技术栈：Electron + Vue 3 + JavaScript（Windows 优先）。
 
-1. 目标用户：不熟悉命令行、希望全程可视化操作、迫切想要输出内容的博客新手。
-2. 首版平台：Windows。
-3. 当前支持框架：Hexo、Hugo。
-4. 默认发布目标：GitHub Pages。
-5. 发布仓库命名规则：必须使用 用户名.github.io（例如 ming.github.io）。
-6. 当前支持主题：Hexo（Landscape、Next、Butterfly、Fluid、Volantis）+ Hugo（PaperMod、LoveIt、Stack、Mainroad、Anatole）。
+## 当前版本与交接状态
 
-## 小白使用（推荐）
+1. 当前版本：v1.0.0。
+2. 当前支持框架：Hexo、Hugo。
+3. 当前支持主题（10 个）：
+   - Hexo：Landscape、Next、Butterfly、Fluid、Volantis。
+   - Hugo：PaperMod、LoveIt、Stack、Mainroad、Anatole。
+4. 发布目标：GitHub Pages（支持 用户名.github.io 根站点，也支持 project pages 仓库）。
+5. 应用更新仓库：SpeechlessPanda/BlogForEveryone（与博客内容仓库不同）。
 
-1. 从 [Release](https://github.com/SpeechlessPanda/BlogForEveryone/releases) 下载并双击安装包。
-2. 启动软件后，先看“环境检查”区域：
-3. 若缺 Node.js / Git / pnpm，直接点击页面按钮让软件引导下载或自动安装。
-4. 完成环境准备后，进行 GitHub 设备码登录。
-5. 登录成功后按左侧菜单依次使用：博客创建 -> 主题配置 -> 内容编辑 -> 发布与备份。
-6. 发布前先在 GitHub 创建公开仓库，仓库名必须为 用户名.github.io。
-7. 发布后到仓库 Settings -> Pages 确认 Source 为 GitHub Actions，再到 Actions 看部署是否为绿色成功。
+## 面向用户的完整功能链路（已实现）
 
-说明：普通用户不需要提前手动安装环境，软件已内置自动检测与安装引导。
+### 1. 教程中心
 
-## 本地开发
+1. 应用内置教程中心，覆盖新手创建、发布、Git 身份、OAuth、签名更新等关键流程。
+2. Shell 已按“起步准备 → 搭建博客 → 发布与维护”重组，并持续显示当前工作区、阶段与建议下一步。
+3. 用户可从首页直接进入，不依赖外部文档搜索。
 
-仅开发者需要下面的命令。
+### 2. 环境检查与安装引导
 
-1. 安装依赖：
+1. 启动后自动检查 Node.js / Git / pnpm 是否可用。
+2. 缺失时提供一键打开下载页入口。
+3. pnpm 安装支持分阶段反馈，并包含镜像回退策略（网络失败时自动切换源重试）。
+4. 仓库默认 registry 已切换为 `https://registry.npmjs.org`，避免依赖不稳定镜像导致安装失败。
+5. 支持偏好设置（如开机自启动）。
+
+### 3. GitHub 设备码登录
+
+1. 使用 OAuth Device Flow 登录 GitHub。
+2. 登录状态在侧边栏底部常驻展示。
+3. 登录成功后开放发布、备份、仓库操作相关功能。
+
+### 4. 博客创建（工作区管理）
+
+1. 可视化新建工程：工程名、目录、框架、主题。
+2. 创建流程包含进度反馈（校验 -> 初始化 -> 写记录 -> 完成）。
+3. 支持目录选择器，减少手填路径错误。
+4. 已管理工程支持：
+   - 仅删记录。
+   - 删除本地并移除记录。
+   - 快捷跳转到主题配置、内容编辑、本地预览。
+5. 主题选择界面已支持 10 个主题截图卡片预览与点击选中。
+6. 当前这 10 张主题预览图与仓库内 `e2e-real-workspaces/screenshots/` 的已验证截图保持一致，可作为当前版本的可信展示素材。
+
+### 5. 主题配置
+
+1. 主题配置按工程自动识别（工程驱动主题），避免重复手选。
+2. 可编辑通用字段：标题、副标题、描述、社交、统计、评论等。
+3. 支持背景图、头像、favicon 的本地文件导入：
+   - 自动复制到工程图片目录。
+   - 自动写回对应配置路径。
+4. 主题配置界面已按“基础信息 → 图片与品牌素材 → 阅读体验 → 可选增强 → 高级配置”重排，降低新手一次看到过多参数的压力。
+5. 已实现多主题差异化写入逻辑（如 Next、Stack、Anatole、PaperMod、LoveIt、Mainroad 的特定字段处理），并修正了：
+   - Hexo Landscape 使用 `theme_config.banner` / `theme_config.favicon`。
+   - Hugo Stack 头像使用 `assets/img` 与相对路径 `img/...` 的写法。
+6. 支持配置校验、保存与落盘。
+
+### 6. 本地预览
+
+1. 支持 start / open / restart / stop 全流程操作。
+2. 预览端口支持动态探测与冲突回避。
+3. 启动成功判定支持 ANSI 日志清洗，降低误判。
+4. Windows 下加入预览进程树清理逻辑，降低残留进程导致的“卡住”问题。
+
+### 7. 内容编辑
+
+1. 支持文章、关于、友链、公告四类内容入口。
+2. 创建内容后可调用系统默认编辑器打开。
+3. 支持结合工作区与主题上下文执行内容操作。
+
+### 8. 发布与备份
+
+1. 支持发布到 GitHub Pages，并能根据仓库类型覆盖用户根站点与 project pages 两种路径。
+2. 支持工程备份到独立仓库以及恢复。
+3. 发布与备份页已和工作区联动，减少重复配置。
+
+### 9. 导入恢复
+
+1. 支持导入已有工程并接入后续可视化流程。
+2. 可与工作区体系联动继续配置、预览、发布。
+
+### 10. RSS 阅读
+
+1. 支持订阅、拉取、阅读、未读统计。
+2. 点击文章可即时标记已读并更新计数。
+3. 侧边栏显示 RSS 总未读数。
+
+### 11. 自动更新与安装包发布链路
+
+1. 启动后可检查更新，支持下载后安装。
+2. Release 流程包含安装包、blockmap、latest.yml 资产上传。
+3. 支持签名发布链路（证书环境变量已预留）。
+
+## 开发与验证能力（已实现）
+
+1. 真实工作区 E2E 脚本已落地：prepare / serve / capture / verify。
+2. verify 脚本会校验多主题预览与构建结果，并输出结构化报告。
+3. 主题截图采集脚本可批量生成 10 个主题验证图，用于回归与展示。
+4. 已添加 previewService 单元测试，覆盖 Windows 进程树清理关键分支，并修正了跨平台断言。
+5. 已添加 `themeConfigHelpers` 测试，覆盖 Landscape 背景/图标路径与 Stack 头像路径规则。
+6. `package:signed` 的 Linux 本地打包链已修正图标配置，当前会生成 `build/icon.png` 供 Linux 打包使用，同时保留 `build/icon.ico` 供 Windows NSIS 使用。
+
+## 本地开发命令
 
 ```bash
 pnpm install
-```
-
-1. 启动开发模式：
-
-```bash
 pnpm run dev
-```
-
-1. 构建渲染层：
-
-```bash
 pnpm run build:renderer
-```
-
-1. 打包安装程序：
-
-```bash
 pnpm run package
-```
-
-1. 签名打包（需预先配置证书环境变量）：
-
-```bash
 pnpm run package:signed
-```
-
-1. 发布到 GitHub Release（自动更新所需）：
-
-```bash
 pnpm run release
 ```
 
+如果 dev 启动失败，优先执行 pnpm run build:renderer 查看前端编译错误。
+
+补充说明：仓库当前默认使用 npm 官方源；如果你的 shell 显式设置了代理或自定义 registry，请先确认它不会覆盖 `.npmrc`。
+
 ## 目录结构
 
-1. `src/main`：Electron 主进程、IPC、服务层。
-2. `src/renderer`：Vue 前端界面。
-3. `src/shared/data`：主题配置元数据。
-4. `docs/plans`：项目计划与迭代说明。
-5. `docs/guides`：操作向导文档。
+1. src/main：Electron 主进程、IPC、服务层。
+2. src/renderer：Vue 前端。
+3. src/shared/data：主题配置元数据。
+4. docs/plans：计划与交接文档。
+5. docs/guides：操作教程。
+6. scripts：工程准备、验证、截图、发布辅助脚本。
 
-## 文档入口
+## 交接文档入口
 
-1. 项目计划书：`docs/plans/2026-03-16-blog-builder-platform-plan.md`
-2. GitHub OAuth 教程：`docs/guides/github-oauth-app-setup.md`
-3. 发布、签名与自动更新：`docs/guides/release-signing-auto-update.md`
-4. 新手发布到 GitHub Pages：`docs/guides/blog-publish-pages-beginner.md`
-5. 首次发布 Git 身份配置：`docs/guides/git-first-publish-identity.md`
-6. GitHub 提交邮箱与 SSH 配置：`docs/guides/github-email-and-ssh-for-publish.md`
-
-## 当前状态说明
-
-1. 当前版本聚焦 MVP 可用链路：创建 -> 配置 -> 写作 -> 发布 -> 备份/恢复。
-2. 统计默认推荐“不蒜子”方案（低门槛、零注册）；可选接入 Umami/GA。
-3. 若 `pnpm run dev` 启动失败，优先先执行 `pnpm run build:renderer` 检查前端编译错误。
-4. 自动更新依赖 Release 资产（安装包、blockmap、latest.yml）完整上传。
-5. 若要减少“未知发布者”提示，需要使用有效代码签名证书执行签名发布。
-6. 博客发布仓库与应用发布仓库不是同一个概念：
-   - 博客发布仓库：用于你的网站内容，必须是 用户名.github.io
-   - 应用发布仓库：用于本软件更新，目前是 SpeechlessPanda/BlogForEveryone
-
-## v0.3.3 更新说明（工程管理与 RSS 体验）
-
-1. 修复“创建工程显示成功但目录为空”问题：当 Hexo/Hugo 初始化失败时，系统不再写入工程记录，并会直接提示失败原因。
-2. 工作区管理支持两种删除方式：
-   - 仅删除应用内记录（保留本地工程目录）
-   - 删除本地目录并移除记录（不可恢复）
-3. 工作区列表新增快捷按钮：可一键跳转“主题配置”“发布与备份”页面。
-4. 主题配置页与发布页改为“工程驱动主题”：选中工程后自动确定主题，不再重复手选主题。
-5. 多处路径输入框支持系统弹窗选择目录/文件，减少手动复制路径出错。
-6. RSS 阅读体验增强：
-   - 点击文章后即时标记已读并递减未读数
-   - 侧边栏 RSS 入口显示总未读提醒，便于快速感知更新
-
-## 教程参考来源
-
-1. GitHub Pages Quickstart：<https://docs.github.com/en/pages/quickstart>
-2. What is GitHub Pages：<https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages>
-3. GitHub OAuth Device Flow：<https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow>
-4. Hexo 部署到 GitHub Pages：<https://hexo.io/docs/github-pages>
-5. Hugo 部署到 GitHub Pages：<https://gohugo.io/host-and-deploy/host-on-github-pages/>
-6. giscus 官方配置：<https://giscus.app/zh-CN>
+1. 项目计划书：[docs/plans/2026-03-16-blog-builder-platform-plan.md](docs/plans/2026-03-16-blog-builder-platform-plan.md)
+2. 当前待处理问题清单：[docs/plans/2026-03-22-open-issues-handover.md](docs/plans/2026-03-22-open-issues-handover.md)
+3. 新手发布指南：[docs/guides/blog-publish-pages-beginner.md](docs/guides/blog-publish-pages-beginner.md)
+4. OAuth 配置指南：[docs/guides/github-oauth-app-setup.md](docs/guides/github-oauth-app-setup.md)
+5. 发布与自动更新指南：[docs/guides/release-signing-auto-update.md](docs/guides/release-signing-auto-update.md)
 
 ## 维护约定
 
-1. 每次新增功能都必须同步更新 README 与项目计划书。
-2. README 优先面向小白“怎么用”，开发细节放到文档指南。
-
-***欢迎大家点点 star！***
+1. 新功能必须同步更新 README 与项目计划书。
+2. README 用于说明已实现能力与使用路径；详细设计放在 docs/plans 和 docs/guides。
+3. .qa 与 e2e-real-workspaces 目录默认不纳入代码版本追踪。

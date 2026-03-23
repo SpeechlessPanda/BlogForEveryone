@@ -7,6 +7,7 @@ import {
 } from "../stores/workspaceStore";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useWorkspaceActions } from "../composables/useWorkspaceActions.mjs";
 
 const form = reactive({
   name: "",
@@ -17,6 +18,7 @@ const form = reactive({
 
 const logs = reactive({ output: "" });
 const { run, isBusy } = useAsyncAction();
+const workspaceActions = useWorkspaceActions();
 const flow = reactive({
   creating: false,
   currentStep: "idle",
@@ -47,6 +49,14 @@ const currentFrameworkThemes = computed(() => {
       selected: item.id === form.theme,
     };
   });
+});
+
+const selectedWorkspace = computed(() => {
+  return (
+    workspaceState.workspaces.find(
+      (item) => item.id === workspaceState.selectedWorkspaceId,
+    ) || null
+  );
 });
 
 let flowPulseTimer = null;
@@ -133,7 +143,7 @@ async function handleCreateWorkspace() {
 
     try {
       markStep("init");
-      const result = await window.bfeApi.createWorkspace({ ...form });
+      const result = await workspaceActions.createWorkspace({ ...form });
       markStep("save");
       workspaceState.selectedWorkspaceId = result.workspace.id;
       logs.output = JSON.stringify(result, null, 2);
@@ -154,7 +164,7 @@ async function handleCreateWorkspace() {
 
 async function pickProjectDirectory() {
   try {
-    const result = await window.bfeApi.pickDirectory({
+    const result = await workspaceActions.pickDirectory({
       title: "选择博客工程目录",
       defaultPath: form.projectDir || undefined,
     });
@@ -168,7 +178,7 @@ async function pickProjectDirectory() {
 
 async function removeWorkspaceRecord(id, deleteLocal = false) {
   try {
-    const result = await window.bfeApi.removeWorkspace({ id, deleteLocal });
+    const result = await workspaceActions.removeWorkspace({ id, deleteLocal });
     logs.output = JSON.stringify(result, null, 2);
     if (workspaceState.selectedWorkspaceId === id) {
       workspaceState.selectedWorkspaceId = "";
@@ -207,7 +217,7 @@ async function handleInstallDeps() {
       return;
     }
     try {
-      const result = await window.bfeApi.installProjectDependencies({
+      const result = await workspaceActions.installProjectDependencies({
         projectDir: form.projectDir,
       });
       logs.output = JSON.stringify(result, null, 2);
@@ -261,6 +271,27 @@ function goTutorialCenter() {
         >不知道怎么填？打开教程中心（新建博客保姆指南）</a
       >
     </p>
+
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">推荐顺序</p>
+        <strong>创建工程 → 安装依赖 → 去主题配置</strong>
+        <p class="section-helper">
+          先拿到一个可运行工作区，再继续调整外观、预览和内容，会比一开始就改高级项更稳。
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">当前工作区</p>
+        <strong>{{ selectedWorkspace?.name || "还没有选中的工作区" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework} · ${selectedWorkspace.projectDir}`
+              : "创建成功后，这里会成为后续主题配置、预览和发布的默认上下文。"
+          }}
+        </p>
+      </div>
+    </div>
 
     <div class="grid-2">
       <div>
@@ -365,6 +396,9 @@ function goTutorialCenter() {
 
   <section class="panel">
     <h2>已管理工程</h2>
+    <p class="section-helper">
+      如果你已经有工作区，优先继续去主题配置、内容编辑或本地预览。删除动作放在最后，避免误操作。
+    </p>
     <div class="list" v-if="workspaceState.workspaces.length">
       <div
         class="list-item"
@@ -378,14 +412,16 @@ function goTutorialCenter() {
         </div>
         <div class="actions" style="margin-top: 8px">
           <button class="secondary" @click="jumpToThemeConfig(ws)">
-            去主题配置
+            继续去主题配置
           </button>
           <button class="secondary" @click="jumpToContentEditor(ws)">
-            去发布内容
+            去内容编辑
           </button>
           <button class="secondary" @click="jumpToPreview(ws)">
             去本地预览
           </button>
+        </div>
+        <div class="actions workspace-danger-actions">
           <button class="danger" @click="removeWorkspaceRecord(ws.id, false)">
             仅删记录
           </button>
@@ -465,6 +501,11 @@ function goTutorialCenter() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.workspace-danger-actions {
+  padding-top: 8px;
+  border-top: 1px dashed rgba(131, 110, 85, 0.24);
 }
 
 @media (max-width: 640px) {

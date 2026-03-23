@@ -8,6 +8,7 @@ import {
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
+import { usePreviewActions } from "../composables/usePreviewActions.mjs";
 
 const status = ref("");
 const preview = reactive({
@@ -18,6 +19,7 @@ const preview = reactive({
 });
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["preview"]);
+const previewActions = usePreviewActions();
 
 const selectedWorkspace = computed(() => getSelectedWorkspace());
 
@@ -43,9 +45,9 @@ async function runPreviewAction(action) {
     }
 
     try {
-      const port = Number(preview.port || getDefaultPort(ws.framework));
-      if (action === "start") {
-        const result = await window.bfeApi.startLocalPreview({
+        const port = Number(preview.port || getDefaultPort(ws.framework));
+        if (action === "start") {
+        const result = await previewActions.startLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
           port,
@@ -58,32 +60,45 @@ async function runPreviewAction(action) {
         }
         preview.running = true;
         preview.url = result.url;
-        await window.bfeApi.openLocalPreview({
+        const openResult = await previewActions.openLocalPreview({
           framework: ws.framework,
           projectDir: ws.projectDir,
           url: result.url,
         });
+        if (!openResult?.ok) {
+          status.value = `预览已启动，但未能打开地址：${openResult?.message || "请手动打开预览地址。"}`;
+          return;
+        }
         status.value = `预览已启动：${result.url}`;
         return;
       }
 
       if (action === "open") {
-        const result = await window.bfeApi.openLocalPreview({
+        const result = await previewActions.openLocalPreview({
           framework: ws.framework,
           projectDir: ws.projectDir,
           port,
         });
+        if (!result?.ok) {
+          status.value = result?.message || "预览地址打开失败。";
+          return;
+        }
         preview.url = result.url;
         status.value = `已打开：${result.url}`;
         return;
       }
 
       if (action === "restart") {
-        await window.bfeApi.stopLocalPreview({
+        const stopResult = await previewActions.stopLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
         });
-        const result = await window.bfeApi.startLocalPreview({
+        if (!stopResult?.ok) {
+          preview.running = false;
+          status.value = stopResult?.message || "预览重启失败，停止旧进程时出错。";
+          return;
+        }
+        const result = await previewActions.startLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
           port,
@@ -96,21 +111,29 @@ async function runPreviewAction(action) {
         }
         preview.running = true;
         preview.url = result.url;
-        await window.bfeApi.openLocalPreview({
+        const openResult = await previewActions.openLocalPreview({
           framework: ws.framework,
           projectDir: ws.projectDir,
           url: result.url,
         });
+        if (!openResult?.ok) {
+          status.value = `预览已重启，但未能打开地址：${openResult?.message || "请手动打开预览地址。"}`;
+          return;
+        }
         status.value = `预览已重启：${result.url}`;
         return;
       }
 
       if (action === "stop") {
-        await window.bfeApi.stopLocalPreview({
+        const result = await previewActions.stopLocalPreview({
           projectDir: ws.projectDir,
           framework: ws.framework,
         });
         preview.running = false;
+        if (!result?.ok) {
+          status.value = result?.message || "预览停止失败。";
+          return;
+        }
         status.value = "预览已停止。";
       }
     } catch (error) {
@@ -151,6 +174,34 @@ watch(
         >打开教程中心（预览与调试说明）</a
       >
     </p>
+
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">当前博客</p>
+        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework.toUpperCase()} · 默认端口 ${getDefaultPort(selectedWorkspace.framework)}`
+              : "先从下拉框里选中工作区，预览才知道要启动哪一个博客。"
+          }}
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">当前状态</p>
+        <strong>{{ preview.running ? "预览运行中" : "预览未启动" }}</strong>
+        <p class="section-helper">
+          {{ status || "启动后应用会自动打开地址；如果页面没更新，优先使用“重启并刷新预览”。" }}
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">建议下一步</p>
+        <strong>先确认 localhost 能打开</strong>
+        <p class="section-helper">
+          只要预览页能正常打开，说明主题、内容和依赖链路已经基本打通，可以继续去写内容或发布。
+        </p>
+      </div>
+    </div>
 
     <div class="grid-2">
       <div>
@@ -212,21 +263,23 @@ watch(
     </div>
 
     <p class="muted">{{ status }}</p>
-    <pre v-if="preview.logs">{{ preview.logs }}</pre>
   </section>
 
-  <section class="panel" v-if="events.length">
-    <h2>预览链路事件</h2>
-    <div class="list">
-      <div
-        class="list-item"
-        v-for="evt in events"
-        :key="`${evt.opId}-${evt.ts}`"
-      >
-        <strong>{{ evt.phase }}</strong>
-        <div class="muted">{{ evt.message }}</div>
-        <div class="muted">{{ evt.ts }}</div>
+  <details class="advanced-panel" v-if="preview.logs || events.length">
+    <summary>查看详细日志与链路事件</summary>
+    <div class="advanced-panel-content">
+      <pre v-if="preview.logs">{{ preview.logs }}</pre>
+      <div v-if="events.length" class="list" style="margin-top: 12px">
+        <div
+          class="list-item"
+          v-for="evt in events"
+          :key="`${evt.opId}-${evt.ts}`"
+        >
+          <strong>{{ evt.phase }}</strong>
+          <div class="muted">{{ evt.message }}</div>
+          <div class="muted">{{ evt.ts }}</div>
+        </div>
       </div>
     </div>
-  </section>
+  </details>
 </template>

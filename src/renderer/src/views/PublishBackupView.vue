@@ -8,6 +8,7 @@ import {
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
+import { usePublishBackupActions } from "../composables/usePublishBackupActions.mjs";
 
 const publishForm = reactive({
   repoUrl: "",
@@ -27,6 +28,7 @@ const pagesUrl = ref("");
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["publish"]);
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+const publishBackupActions = usePublishBackupActions();
 
 function parseGithubRepo(repoUrl) {
   const clean = String(repoUrl || "")
@@ -58,7 +60,7 @@ async function publish() {
     }
 
     try {
-      const result = await window.bfeApi.publishToGitHub({
+      const result = await publishBackupActions.publishToGitHub({
         projectDir: ws.projectDir,
         framework: ws.framework,
         repoUrl: publishForm.repoUrl,
@@ -66,6 +68,12 @@ async function publish() {
         gitUserName: publishForm.gitUserName,
         gitUserEmail: publishForm.gitUserEmail,
       });
+
+      if (!result?.ok) {
+        pagesUrl.value = "";
+        logs.value = `发布失败：${result?.message || "发布流程未完成。"}\n${JSON.stringify(result.logs || result, null, 2)}`;
+        return;
+      }
 
       pagesUrl.value = result.pagesUrl || "";
       logs.value = JSON.stringify(result.logs || result, null, 2);
@@ -91,7 +99,7 @@ async function backup() {
     }
 
     try {
-      const result = await window.bfeApi.backupWorkspace({
+      const result = await publishBackupActions.backupWorkspace({
         projectDir: ws.projectDir,
         backupDir: backupForm.backupDir,
         repoUrl: backupForm.backupRepoUrl,
@@ -107,7 +115,7 @@ async function backup() {
 
 async function pickBackupDirectory() {
   try {
-    const result = await window.bfeApi.pickDirectory({
+    const result = await publishBackupActions.pickDirectory({
       title: "选择备份目录",
       defaultPath: backupForm.backupDir || undefined,
     });
@@ -119,15 +127,15 @@ async function pickBackupDirectory() {
   }
 }
 
-onMounted(async () => {
+  onMounted(async () => {
   await refreshWorkspaces();
   try {
-    const auth = await window.bfeApi.getGithubAuthState();
-    if (auth?.user?.login && !publishForm.gitUserName) {
-      publishForm.gitUserName = auth.user.login;
+    const auth = await publishBackupActions.getGithubAuthState();
+    if (auth?.account?.login && !publishForm.gitUserName) {
+      publishForm.gitUserName = auth.account.login;
     }
-    if (auth?.user?.email && !publishForm.gitUserEmail) {
-      publishForm.gitUserEmail = auth.user.email;
+    if (auth?.account?.email && !publishForm.gitUserEmail) {
+      publishForm.gitUserEmail = auth.account.email;
     }
   } catch {
     // Ignore auth prefill failures.
@@ -150,6 +158,38 @@ function goTutorialCenter() {
         >不知道仓库地址怎么填？打开教程中心（发布与访问地址）</a
       >
     </p>
+
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">当前工作区</p>
+        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
+              : "先选择一个博客工程，再填写仓库地址和 Git 身份。"
+          }}
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">推荐发布方式</p>
+        <strong>GitHub Actions（默认推荐）</strong>
+        <p class="section-helper">
+          Hexo 和 Hugo 都更适合先用 Actions 跑通；只有明确需要时再切到 Hexo 命令发布。
+        </p>
+      </div>
+    </div>
+
+    <div class="context-card" style="margin-top: 12px">
+      <p class="section-eyebrow">发布前检查清单</p>
+      <strong>先确认这 4 件事</strong>
+      <ul class="checklist">
+        <li>已经选中正确的博客工程</li>
+        <li>仓库地址是完整的 GitHub URL</li>
+        <li>Git 提交用户名和邮箱已填写</li>
+        <li>本地预览和内容都已经检查过</li>
+      </ul>
+    </div>
 
     <div class="grid-2">
       <div>
@@ -276,23 +316,21 @@ function goTutorialCenter() {
     </div>
   </section>
 
-  <section class="panel" v-if="events.length">
-    <h2>发布链路事件</h2>
-    <div class="list">
-      <div
-        class="list-item"
-        v-for="evt in events"
-        :key="`${evt.opId}-${evt.ts}`"
-      >
-        <strong>{{ evt.phase }}</strong>
-        <div class="muted">{{ evt.message }}</div>
-        <div class="muted">{{ evt.ts }}</div>
+  <details class="advanced-panel" v-if="events.length || logs">
+    <summary>查看发布日志与链路事件</summary>
+    <div class="advanced-panel-content">
+      <div v-if="events.length" class="list">
+        <div
+          class="list-item"
+          v-for="evt in events"
+          :key="`${evt.opId}-${evt.ts}`"
+        >
+          <strong>{{ evt.phase }}</strong>
+          <div class="muted">{{ evt.message }}</div>
+          <div class="muted">{{ evt.ts }}</div>
+        </div>
       </div>
+      <pre v-if="logs" style="margin-top: 12px">{{ logs }}</pre>
     </div>
-  </section>
-
-  <section class="panel" v-if="logs">
-    <h2>执行结果</h2>
-    <pre>{{ logs }}</pre>
-  </section>
+  </details>
 </template>

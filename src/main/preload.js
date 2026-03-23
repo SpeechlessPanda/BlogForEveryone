@@ -1,5 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+function invokeAuth(channel, payload) {
+    return ipcRenderer.invoke(channel, payload);
+}
+
 contextBridge.exposeInMainWorld('bfeApi', {
     getAppState: () => ipcRenderer.invoke('app:getState'),
     getPreferences: () => ipcRenderer.invoke('app:getPreferences'),
@@ -19,11 +23,11 @@ contextBridge.exposeInMainWorld('bfeApi', {
     autoInstallTool: (payload) => ipcRenderer.invoke('env:autoInstallTool', payload),
     ensurePnpm: () => ipcRenderer.invoke('env:ensurePnpm'),
     installProjectDependencies: (payload) => ipcRenderer.invoke('project:installDependencies', payload),
-    beginGithubDeviceLogin: (payload) => ipcRenderer.invoke('githubAuth:beginDeviceLogin', payload),
-    completeGithubDeviceLogin: (payload) => ipcRenderer.invoke('githubAuth:completeDeviceLogin', payload),
-    githubLoginWithDeviceCode: (payload) => ipcRenderer.invoke('githubAuth:loginWithDeviceCode', payload),
-    getGithubAuthState: () => ipcRenderer.invoke('githubAuth:getState'),
-    githubLogout: () => ipcRenderer.invoke('githubAuth:logout'),
+    beginGithubDeviceLogin: (payload) => invokeAuth('githubAuth:beginDeviceLogin', payload),
+    completeGithubDeviceLogin: (payload) => invokeAuth('githubAuth:completeDeviceLogin', payload),
+    githubLoginWithDeviceCode: (payload) => invokeAuth('githubAuth:loginWithDeviceCode', payload),
+    getGithubAuthState: () => invokeAuth('githubAuth:getState'),
+    githubLogout: () => invokeAuth('githubAuth:logout'),
 
     listWorkspaces: () => ipcRenderer.invoke('workspace:list'),
     createWorkspace: (payload) => ipcRenderer.invoke('workspace:create', payload),

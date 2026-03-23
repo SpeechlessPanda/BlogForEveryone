@@ -6,6 +6,7 @@ const { setAutoSyncEnabled } = require('./services/rssService');
 const { readStore } = require('./services/storeService');
 const { initAutoUpdate } = require('./services/updateService');
 const { applyLaunchAtStartupPreference } = require('./services/startupService');
+const { evaluateExternalUrl, EXTERNAL_URL_RULES } = require('./policies/externalUrlPolicy');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -60,7 +61,10 @@ function createMainWindow() {
     }
 
     win.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
+        const decision = evaluateExternalUrl(url, EXTERNAL_URL_RULES.windowOpen);
+        if (decision.allowed) {
+            shell.openExternal(decision.normalizedUrl);
+        }
         return { action: 'deny' };
     });
 

@@ -1,10 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const { readStore } = require('./storeService');
+const { getAccessTokenForPrivilegedUse } = require('./githubAuthService');
 
 function getGithubToken() {
-    const state = readStore();
-    const token = state.githubAuth?.accessToken;
+    const token = getAccessTokenForPrivilegedUse();
     if (!token) {
         throw new Error('请先完成 GitHub 登录。');
     }

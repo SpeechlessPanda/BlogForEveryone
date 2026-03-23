@@ -7,6 +7,7 @@ import {
 } from "../stores/workspaceStore";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useContentActions } from "../composables/useContentActions";
 
 const ACTION_IDLE_RESET_MS = 1400;
 
@@ -32,6 +33,7 @@ const existingEditor = reactive({
   body: "",
 });
 const { run, isBusy } = useAsyncAction();
+const contentActions = useContentActions();
 
 const actionState = reactive({
   create: "idle",
@@ -58,9 +60,8 @@ async function createAndEdit() {
   await runActionWithFeedback(
     "create",
     async () => {
-      const result = await window.bfeApi.createAndOpenContent({
-        projectDir: ws.projectDir,
-        framework: ws.framework,
+      const result = await contentActions.createAndOpenContent({
+        workspaceId: ws.id,
         type: form.type,
         title: form.title,
         slug: form.slug,
@@ -70,10 +71,9 @@ async function createAndEdit() {
       await refreshExistingContents();
 
       if (form.autoPublish && form.repoUrl) {
-        const job = await window.bfeApi.watchAndAutoPublish({
+        const job = await contentActions.watchAndAutoPublish({
+          workspaceId: ws.id,
           filePath: result.filePath,
-          projectDir: ws.projectDir,
-          framework: ws.framework,
           repoUrl: form.repoUrl,
         });
         state.jobId = job.jobId;
@@ -95,9 +95,8 @@ async function refreshExistingContents() {
   }
 
   await run("load-existing", async () => {
-    const list = await window.bfeApi.listExistingContents({
-      projectDir: ws.projectDir,
-      framework: ws.framework,
+    const list = await contentActions.listExistingContents({
+      workspaceId: ws.id,
     });
     existingList.value = list || [];
     if (!existingList.value.length) {
@@ -121,14 +120,23 @@ async function refreshExistingContents() {
 
 async function loadSelectedExistingContent() {
   const filePath = selectedExistingPath.value;
+  const ws = getSelectedWorkspace();
   if (!filePath) {
+    existingEditor.title = "";
+    existingEditor.body = "";
+    return;
+  }
+  if (!ws) {
     existingEditor.title = "";
     existingEditor.body = "";
     return;
   }
 
   await run("read-existing", async () => {
-    const detail = await window.bfeApi.readExistingContent({ filePath });
+    const detail = await contentActions.readExistingContent({
+      workspaceId: ws.id,
+      filePath,
+    });
     existingEditor.title = detail.title || "";
     existingEditor.body = detail.body || "";
   });
@@ -140,8 +148,15 @@ async function saveExistingContentChanges() {
     return;
   }
 
+  const ws = getSelectedWorkspace();
+  if (!ws) {
+    openErrorModal("保存失败", "请先选择工程。");
+    return;
+  }
+
   await run("save-existing", async () => {
-    await window.bfeApi.saveExistingContent({
+    await contentActions.saveExistingContent({
+      workspaceId: ws.id,
       filePath: selectedExistingPath.value,
       title: existingEditor.title,
       body: existingEditor.body,
@@ -156,8 +171,15 @@ async function openSelectedExistingInEditor() {
     return;
   }
 
+  const ws = getSelectedWorkspace();
+  if (!ws) {
+    openErrorModal("打开失败", "请先选择工程。");
+    return;
+  }
+
   await run("open-existing", async () => {
-    await window.bfeApi.openExistingContent({
+    await contentActions.openExistingContent({
+      workspaceId: ws.id,
       filePath: selectedExistingPath.value,
     });
   });
@@ -172,12 +194,11 @@ async function refreshPublishJob() {
   await runActionWithFeedback(
     "refresh",
     async () => {
-      const job = await window.bfeApi.getPublishJobStatus({
+      const job = await contentActions.getPublishJobStatus({
         jobId: state.jobId,
       });
       if (!job) {
         throw new Error("没有找到自动发布任务。");
-        return;
       }
       state.jobStatus = job.status;
     },
@@ -258,7 +279,28 @@ watch(
       >
     </p>
 
-    <div class="grid-2">
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">当前工作区</p>
+        <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+        <p class="section-helper">
+          {{
+            selectedWorkspace
+              ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
+              : "先选择工作区，写出的文章和页面才会进入正确的博客目录。"
+          }}
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">推荐顺序</p>
+        <strong>先写第一篇内容，再考虑自动发布</strong>
+        <p class="section-helper">
+          先确认 Markdown 创建和保存都正常，再启用保存后自动发布，会更容易排查问题。
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 12px">
       <div>
         <label>当前工程</label>
         <select v-model="workspaceState.selectedWorkspaceId">
@@ -292,21 +334,32 @@ watch(
         <label>slug（可选）</label>
         <input v-model="form.slug" placeholder="例如 first-post" />
       </div>
-      <div>
-        <label>保存后自动发布（需要仓库地址）</label>
-        <select v-model="form.autoPublish">
-          <option :value="true">true</option>
-          <option :value="false">false</option>
-        </select>
-      </div>
-      <div>
-        <label>发布仓库地址</label>
-        <input
-          v-model="form.repoUrl"
-          placeholder="https://github.com/you/your-blog.git"
-        />
-      </div>
     </div>
+
+    <details class="advanced-panel">
+      <summary>自动发布（进阶，可稍后再配）</summary>
+      <div class="advanced-panel-content">
+        <p class="section-helper">
+          如果只是先把文章写出来，可以先不配这部分。等你确认手动预览和发布都正常后，再打开自动发布。
+        </p>
+        <div class="grid-2">
+          <div>
+            <label>保存后自动发布（需要仓库地址）</label>
+            <select v-model="form.autoPublish">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>发布仓库地址</label>
+            <input
+              v-model="form.repoUrl"
+              placeholder="https://github.com/you/your-blog.git"
+            />
+          </div>
+        </div>
+      </div>
+    </details>
 
     <div class="actions">
       <AsyncActionButton

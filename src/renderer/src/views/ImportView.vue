@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from "vue";
 import { refreshWorkspaces } from "../stores/workspaceStore";
+import { useImportActions } from "../composables/useImportActions.mjs";
 
 const form = reactive({
   name: "",
@@ -8,11 +9,16 @@ const form = reactive({
 });
 
 const result = ref("");
+const importActions = useImportActions();
 
 async function doImport() {
   try {
-    const data = await window.bfeApi.importWorkspace({ ...form });
-    result.value = JSON.stringify(data, null, 2);
+    const data = await importActions.importWorkspace({ ...form });
+    const confirmationHint =
+      data?.theme === "unknown"
+        ? "\n\n提示：该工程主题尚未确认，请前往“主题配置”页面明确选择受支持主题，或标记为不受支持/自定义。"
+        : "";
+    result.value = `${JSON.stringify(data, null, 2)}${confirmationHint}`;
     await refreshWorkspaces();
   } catch (error) {
     result.value = `导入失败：${String(error?.message || error)}`;
@@ -21,7 +27,7 @@ async function doImport() {
 
 async function pickProjectDirectory() {
   try {
-    const data = await window.bfeApi.pickDirectory({
+    const data = await importActions.pickDirectory({
       title: "选择已存在的博客工程目录",
       defaultPath: form.projectDir || undefined,
     });
@@ -35,7 +41,7 @@ async function pickProjectDirectory() {
 
 async function restoreRssFromProject() {
   try {
-    const data = await window.bfeApi.importSubscriptions({
+    const data = await importActions.importSubscriptions({
       projectDir: form.projectDir,
       strategy: "merge",
     });
@@ -60,6 +66,23 @@ function goTutorialCenter() {
       >
     </p>
 
+    <div class="section-card-grid">
+      <div class="context-card">
+        <p class="section-eyebrow">这页适合谁</p>
+        <strong>已经有旧博客，想继续可视化维护的人</strong>
+        <p class="section-helper">
+          导入后你可以直接回到主题配置、本地预览和发布流程里，不需要重新从零创建。
+        </p>
+      </div>
+      <div class="context-card">
+        <p class="section-eyebrow">可选恢复</p>
+        <strong>RSS 恢复是附加项</strong>
+        <p class="section-helper">
+          先把博客工程导入成功，再决定要不要恢复项目里的订阅快照。
+        </p>
+      </div>
+    </div>
+
     <div class="grid-2">
       <div>
         <label>显示名称</label>
@@ -78,6 +101,15 @@ function goTutorialCenter() {
 
     <div class="actions">
       <button class="primary" @click="doImport">导入工程</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>可选：恢复 RSS 订阅</h2>
+    <p class="section-helper">
+      只有当这个工程目录里已经包含订阅快照时，才需要执行这一步。
+    </p>
+    <div class="actions">
       <button class="secondary" @click="restoreRssFromProject">
         恢复 RSS 订阅
       </button>

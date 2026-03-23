@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { ensureFrameworkEnvironment, runPnpmDlxWithRetry, resolveExecutable } = require('./envService');
+const { ensureFrameworkEnvironment, runPnpmDlxWithRetry, resolveExecutable, installDependenciesWithRetry } = require('./envService');
 
 function detectFramework(projectDir) {
     const hasHexoConfig = fs.existsSync(path.join(projectDir, '_config.yml'));
@@ -44,6 +44,23 @@ function runSpawnCommand(command, args, options = {}) {
     });
 }
 
+function hasHexoProjectScaffold(projectDir) {
+    return fs.existsSync(path.join(projectDir, '_config.yml'))
+        && fs.existsSync(path.join(projectDir, 'package.json'))
+        && fs.existsSync(path.join(projectDir, 'scaffolds'))
+        && fs.existsSync(path.join(projectDir, 'source'));
+}
+
+function shouldRecoverHexoInit(execute, projectDir) {
+    const stderr = execute?.result?.stderr || '';
+    return Boolean(
+        execute?.retried
+        && execute?.result?.status !== 0
+        && /not empty|target not empty/i.test(stderr)
+        && hasHexoProjectScaffold(projectDir)
+    );
+}
+
 async function initProject({ framework, projectDir }) {
     fs.mkdirSync(projectDir, { recursive: true });
 
@@ -61,6 +78,31 @@ async function initProject({ framework, projectDir }) {
         const execute = runPnpmDlxWithRetry(['hexo', 'init', projectDir], {
             cwd: process.cwd()
         });
+
+        if (shouldRecoverHexoInit(execute, projectDir)) {
+            const installResult = installDependenciesWithRetry(projectDir);
+            const recovered = Boolean(installResult?.ok);
+            return {
+                status: recovered ? 0 : 1,
+                stdout: execute.result.stdout,
+                stderr: execute.result.stderr,
+                logs: [
+                    ...(envReady.logs || []),
+                    ...(execute.logs || []),
+                    {
+                        event: 'hexo-init-recovery',
+                        ok: recovered,
+                        message: recovered
+                            ? 'Hexo 初始化首次已写入项目结构，重试命中非空目录，已改为依赖安装恢复。'
+                            : 'Hexo 初始化进入恢复路径，但依赖安装失败。'
+                    },
+                    ...(installResult?.logs || [])
+                ],
+                retried: execute.retried,
+                recoveredFromPartialInit: recovered
+            };
+        }
+
         return {
             status: execute.result.status,
             stdout: execute.result.stdout,

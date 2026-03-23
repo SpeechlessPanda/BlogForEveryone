@@ -53,4 +53,8 @@ test("import actions reject missing projectDir for rss restore", async () => {
     () => actions.importSubscriptions({ strategy: "merge" }),
     /projectDir/,
   );
+  await assert.rejects(
+    () => actions.importWorkspace({ name: "Old Blog" }),
+    /projectDir/,
+  );
 });

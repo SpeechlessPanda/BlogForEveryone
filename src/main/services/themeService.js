@@ -69,7 +69,8 @@ function inferRecognizedThemeIdFromProject(projectDir, framework) {
 function runCommandAsync(command, args = [], options = {}) {
     return new Promise((resolve) => {
         const timeoutMs = Number(options.timeoutMs || 0);
-        const { timeoutMs: _timeoutMs, ...spawnOptions } = options;
+        const spawnOptions = { ...options };
+        delete spawnOptions.timeoutMs;
         const child = spawn(command, args, {
             shell: true,
             windowsHide: true,

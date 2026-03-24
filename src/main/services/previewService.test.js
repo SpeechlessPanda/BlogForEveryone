@@ -47,3 +47,25 @@ test('stopLocalPreview triggers cleanup chain for tracked process', () => {
     previewService.__test__.setProcessTreeKillerForTests(null);
     previewService.__test__.clearPreviewProcesses();
 });
+
+test('openLocalPreview blocks explicit non-local preview url', () => {
+    const result = previewService.openLocalPreview({
+        framework: 'hexo',
+        projectDir: 'D:/tmp/project',
+        url: 'https://evil.example.com/preview'
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'PREVIEW_URL_BLOCKED');
+});
+
+test('stopLocalPreview returns explicit failed outcome when preview is not running', () => {
+    previewService.__test__.clearPreviewProcesses();
+
+    const result = previewService.stopLocalPreview({ framework: 'hexo', projectDir: 'D:/tmp/missing' });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.stopped, false);
+    assert.equal(result.reason, 'PREVIEW_NOT_RUNNING');
+    assert.match(result.message, /没有正在运行的预览进程/);
+});

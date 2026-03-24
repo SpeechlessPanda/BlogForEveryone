@@ -1,290 +1,352 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Module = require('module');
-const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
-function loadIpcModule({ inferredThemeId = 'unknown', framework = 'hexo' } = {}) {
-    const originalLoad = Module._load;
+function loadIpcWithMocks({
+    openLocalPreviewResult,
+    stopLocalPreviewResult = { ok: true, stopped: true },
+    publishToGitHubResult = { ok: true, logs: [] }
+}) {
     const handlers = new Map();
-    const state = { workspaces: [] };
+    const events = [];
+    const registrarCalls = [];
 
-    Module._load = function patchedLoad(request, parent, isMain) {
-        if (request === 'electron') {
-            return {
-                app: {
-                    getVersion() {
-                        return 'test-version';
-                    },
-                    isPackaged: false
-                },
-                ipcMain: {
-                    handle(channel, handler) {
-                        handlers.set(channel, handler);
+    const mocks = {
+        electron: {
+            app: { getVersion: () => '1.1.0' },
+            dialog: {},
+            ipcMain: {
+                handle(channel, handler) {
+                    handlers.set(channel, handler);
+                }
+            }
+        },
+        './services/storeService': {
+            readStore: () => ({ preferences: {}, workspaces: [] }),
+            updateStore: (updater) => updater({ preferences: {} })
+        },
+        './services/themeService': {
+            getThemeCatalog: async () => [],
+            readThemeConfig: async () => ({}),
+            saveThemeConfig: () => {},
+            saveLocalAssetToBlog: async () => ({}),
+            applyPreviewOverrides: async () => ({})
+        },
+        './services/configValidationService': {
+            validateThemeSettings: async () => ({ ok: true }),
+            validatePublishPayload: () => ({ ok: true, warnings: [] })
+        },
+        './services/publishService': {
+            publishToGitHub: () => publishToGitHubResult
+        },
+        './services/githubRepoService': {
+            uploadImageToRepo: async () => ({ ok: true })
+        },
+        './services/envService': {
+            checkEnvironment: () => ({}),
+            openInstaller: () => ({ ok: true }),
+            autoInstallToolWithWinget: () => ({ ok: true }),
+            ensurePnpm: () => ({ ok: true }),
+            installDependenciesWithRetry: () => ({ ok: true })
+        },
+        './services/updateService': {
+            checkForUpdatesNow: async () => ({}),
+            quitAndInstallUpdate: () => ({ ok: true }),
+            getUpdateState: () => ({ status: 'ready' })
+        },
+        './services/startupService': {
+            getLaunchAtStartup: () => false,
+            setLaunchAtStartup: () => ({ launchAtStartup: false, effective: false })
+        },
+        './services/previewService': {
+            startLocalPreview: async () => ({ ok: true }),
+            openLocalPreview: () => openLocalPreviewResult,
+            stopLocalPreview: () => stopLocalPreviewResult
+        },
+        './services/rssService': {
+            listSubscriptions: async () => [],
+            addSubscription: async () => ({}),
+            removeSubscription: async () => ({}),
+            syncSubscriptions: async () => ({}),
+            exportSubscriptions: async () => ({}),
+            importSubscriptions: async () => ({}),
+            markItemRead: async () => ({}),
+            getUnreadSummary: async () => ({ totalUnread: 0 }),
+            setAutoSyncEnabled: () => {},
+            getAutoSyncState: () => ({})
+        },
+        './policies/workspacePathPolicy': {
+            createWorkspacePathPolicy: () => ({})
+        },
+        './ipc/workspaceIpc': {
+            registerWorkspaceIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'workspace', args });
+            }
+        },
+        './ipc/contentIpc': {
+            registerContentIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'content', args });
+            }
+        },
+        './ipc/authIpc': {
+            registerAuthIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'auth', args });
+            }
+        },
+        './ipc/appIpc': {
+            registerAppIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'app', args });
+            }
+        },
+        './ipc/envIpc': {
+            registerEnvIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'env', args });
+            }
+        },
+        './ipc/themeIpc': {
+            registerThemeIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'theme', args });
+            }
+        },
+        './ipc/previewIpc': {
+            registerPreviewIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'preview', args });
+                args.ipcMain.handle('preview:open', async (event, payload) => {
+                    const opId = `preview-open-${Date.now()}`;
+                    const result = args.evaluatePreviewOpenResult(args.openLocalPreview(payload));
+                    args.emitOperationEvent(event.sender, {
+                        opId,
+                        scope: 'preview',
+                        phase: result.phase,
+                        framework: payload?.framework,
+                        url: result.url || '',
+                        message: result.message
+                    });
+                    return { ...result, opId };
+                });
+
+                args.ipcMain.handle('preview:stop', async (event, payload) => {
+                    const opId = `preview-stop-${Date.now()}`;
+                    const result = args.evaluatePreviewStopResult(args.stopLocalPreview(payload));
+                    args.emitOperationEvent(event.sender, {
+                        opId,
+                        scope: 'preview',
+                        phase: result.phase,
+                        framework: payload?.framework,
+                        message: result.message
+                    });
+                    return { ...result, opId };
+                });
+            }
+        },
+        './ipc/publishIpc': {
+            registerPublishIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'publish', args });
+                args.ipcMain.handle('publish:github', async (event, payload) => {
+                    const opId = `publish-${Date.now()}`;
+                    const validation = args.validatePublishPayload(payload);
+                    if (!validation.ok) {
+                        args.emitOperationEvent(event.sender, {
+                            opId,
+                            scope: 'publish',
+                            phase: 'failed',
+                            message: validation.errors.join('；')
+                        });
+                        throw new Error(validation.errors.join('；'));
                     }
-                },
-                dialog: {
-                    async showOpenDialog() {
-                        return { canceled: true, filePaths: [] };
-                    }
-                }
-            };
-        }
 
-        if (request === './services/storeService') {
-            return {
-                readStore() {
-                    return state;
-                },
-                updateStore(updater) {
-                    return updater(state);
-                }
-            };
-        }
+                    args.emitOperationEvent(event.sender, {
+                        opId,
+                        scope: 'publish',
+                        phase: 'started',
+                        framework: payload.framework,
+                        mode: payload.publishMode || 'actions',
+                        message: '开始发布流程。'
+                    });
 
-        if (request === './services/frameworkService') {
-            return {
-                detectFramework() {
-                    return framework;
-                },
-                async initProject() {
-                    return { status: 0, stdout: '', stderr: '', logs: [] };
-                }
-            };
-        }
+                    const result = args.normalizePublishResult(args.publishToGitHub(payload));
+                    args.emitOperationEvent(event.sender, {
+                        opId,
+                        scope: 'publish',
+                        phase: result.ok ? 'succeeded' : 'failed',
+                        framework: payload.framework,
+                        mode: payload.publishMode || 'actions',
+                        pagesUrl: result.ok ? (result.pagesUrl || '') : '',
+                        message: result.ok ? '发布流程完成。' : (result.message || '发布流程失败。')
+                    });
 
-        if (request === './services/themeService') {
-            return {
-                getThemeCatalog() {
-                    return {};
-                },
-                readThemeConfig() {
-                    return {};
-                },
-                saveThemeConfig() {},
-                saveLocalAssetToBlog() {
-                    return { ok: true };
-                },
-                async installAndApplyTheme() {
-                    return { ok: true, logs: [] };
-                },
-                applyPreviewOverrides() {
-                    return { ok: true };
-                },
-                inferRecognizedThemeIdFromProject() {
-                    return inferredThemeId;
-                }
-            };
+                    return {
+                        ...result,
+                        opId,
+                        validationWarnings: validation.warnings || []
+                    };
+                });
+            }
+        },
+        './ipc/rssIpc': {
+            registerRssIpcHandlers: (args) => {
+                registrarCalls.push({ name: 'rss', args });
+            }
         }
-
-        if (request === './services/frameworkToolingService') {
-            return {
-                async ensureFrameworkPublishPackages() {
-                    return { ok: true, logs: [] };
-                }
-            };
-        }
-
-        if (request === './services/configValidationService') {
-            return {
-                validateThemeSettings() {
-                    return { ok: true };
-                },
-                validatePublishPayload() {
-                    return { ok: true, warnings: [] };
-                }
-            };
-        }
-
-        if (request === './services/publishService') {
-            return {
-                publishToGitHub() {
-                    return { logs: [], pagesUrl: '' };
-                }
-            };
-        }
-
-        if (request === './services/githubRepoService') {
-            return {
-                uploadImageToRepo() {
-                    return { ok: true };
-                }
-            };
-        }
-
-        if (request === './services/backupService') {
-            return {
-                backupWorkspace() {
-                    return 'snapshot';
-                },
-                pushBackupToRepo() {
-                    return [];
-                }
-            };
-        }
-
-        if (request === './services/envService') {
-            return {
-                checkEnvironment() {
-                    return {};
-                },
-                openInstaller() {
-                    return { ok: true };
-                },
-                autoInstallToolWithWinget() {
-                    return { ok: true };
-                },
-                ensurePnpm() {
-                    return { ok: true };
-                },
-                installDependenciesWithRetry() {
-                    return { ok: true };
-                }
-            };
-        }
-
-        if (request === './services/githubAuthService') {
-            return {
-                beginDeviceLogin() {
-                    return {};
-                },
-                completeDeviceLogin() {
-                    return {};
-                },
-                loginWithDeviceCode() {
-                    return {};
-                },
-                getAuthState() {
-                    return {};
-                },
-                logout() {
-                    return {};
-                }
-            };
-        }
-
-        if (request === './services/contentService') {
-            return {
-                createAndOpenContent() {
-                    return {};
-                },
-                listExistingContents() {
-                    return [];
-                },
-                readExistingContent() {
-                    return {};
-                },
-                saveExistingContent() {
-                    return {};
-                },
-                openExistingContent() {
-                    return {};
-                },
-                watchSaveAndAutoPublish() {
-                    return {};
-                },
-                getPublishJobStatus() {
-                    return {};
-                }
-            };
-        }
-
-        if (request === './services/updateService') {
-            return {
-                checkForUpdatesNow() {
-                    return {};
-                },
-                quitAndInstallUpdate() {},
-                getUpdateState() {
-                    return {};
-                }
-            };
-        }
-
-        if (request === './services/startupService') {
-            return {
-                getLaunchAtStartup() {
-                    return false;
-                },
-                setLaunchAtStartup() {
-                    return { launchAtStartup: false, effective: false };
-                }
-            };
-        }
-
-        if (request === './services/previewService') {
-            return {
-                async startLocalPreview() {
-                    return { ok: true };
-                },
-                openLocalPreview() {
-                    return { ok: true };
-                },
-                stopLocalPreview() {
-                    return { ok: true, stopped: true };
-                }
-            };
-        }
-
-        if (request === './services/rssService') {
-            return {
-                listSubscriptions() {
-                    return [];
-                },
-                async addSubscription() {
-                    return [];
-                },
-                removeSubscription() {
-                    return [];
-                },
-                async syncSubscriptions() {
-                    return [];
-                },
-                exportSubscriptions() {
-                    return '';
-                },
-                importSubscriptions() {
-                    return { restored: 0, subscriptions: [] };
-                },
-                markItemRead() {
-                    return [];
-                },
-                getUnreadSummary() {
-                    return { totalUnread: 0, subscriptionCount: 0 };
-                },
-                setAutoSyncEnabled() {},
-                getAutoSyncState() {
-                    return { enabled: true, running: false };
-                }
-            };
-        }
-
-        return originalLoad(request, parent, isMain);
     };
 
-    try {
-        delete require.cache[require.resolve('./ipc')];
-        const ipcModule = require('./ipc');
-        return { ipcModule, handlers };
-    } finally {
-        Module._load = originalLoad;
-    }
-}
+    const originalLoad = Module._load;
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (Object.prototype.hasOwnProperty.call(mocks, request)) {
+            return mocks[request];
+        }
+        return originalLoad.call(this, request, parent, isMain);
+    };
 
-test('workspace import stores inferred recognized theme id', async (t) => {
-    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-ipc-import-'));
-    t.after(() => {
-        fs.rmSync(projectDir, { recursive: true, force: true });
-    });
+    const ipcPath = path.join(__dirname, 'ipc.js');
+    delete require.cache[ipcPath];
+    const ipcModule = require('./ipc');
+    Module._load = originalLoad;
 
-    const { ipcModule, handlers } = loadIpcModule({ inferredThemeId: 'stack', framework: 'hugo' });
     ipcModule.registerIpcHandlers();
 
-    const handler = handlers.get('workspace:import');
-    assert.equal(typeof handler, 'function');
+    return {
+        invokePublish: async (payload) => {
+            const handler = handlers.get('publish:github');
+            const event = {
+                sender: {
+                    send(_channel, payloadBody) {
+                        events.push(payloadBody);
+                    }
+                }
+            };
+            const response = await handler(event, payload);
+            return { response, events };
+        },
+        invokePreviewOpen: async (payload) => {
+            const handler = handlers.get('preview:open');
+            const event = {
+                sender: {
+                    send(_channel, payloadBody) {
+                        events.push(payloadBody);
+                    }
+                }
+            };
+            const response = await handler(event, payload);
+            return { response, events };
+        },
+        invokePreviewStop: async (payload) => {
+            const handler = handlers.get('preview:stop');
+            const event = {
+                sender: {
+                    send(_channel, payloadBody) {
+                        events.push(payloadBody);
+                    }
+                }
+            };
+            const response = await handler(event, payload);
+            return { response, events };
+        },
+        registrarCalls
+    };
+}
 
-    const result = await handler({}, { projectDir, name: 'Imported Blog' });
-    assert.equal(result.workspace.framework, 'hugo');
-    assert.equal(result.workspace.theme, 'stack');
+test('ipc registers domain registrar modules as aggregator', () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: { ok: true, url: 'http://localhost:4000/' }
+    });
+
+    const registeredDomains = new Set(harness.registrarCalls.map((item) => item.name));
+
+    assert.equal(registeredDomains.has('auth'), true);
+    assert.equal(registeredDomains.has('app'), true);
+    assert.equal(registeredDomains.has('env'), true);
+    assert.equal(registeredDomains.has('theme'), true);
+    assert.equal(registeredDomains.has('preview'), true);
+    assert.equal(registeredDomains.has('publish'), true);
+    assert.equal(registeredDomains.has('rss'), true);
+    assert.equal(registeredDomains.has('workspace'), true);
+    assert.equal(registeredDomains.has('content'), true);
+});
+
+test('ipc passes shared dependencies into domain registrars', () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: { ok: true, url: 'http://localhost:4000/' }
+    });
+
+    const appRegistrar = harness.registrarCalls.find((item) => item.name === 'app');
+    const envRegistrar = harness.registrarCalls.find((item) => item.name === 'env');
+    const themeRegistrar = harness.registrarCalls.find((item) => item.name === 'theme');
+    const previewRegistrar = harness.registrarCalls.find((item) => item.name === 'preview');
+    const publishRegistrar = harness.registrarCalls.find((item) => item.name === 'publish');
+    const rssRegistrar = harness.registrarCalls.find((item) => item.name === 'rss');
+
+    assert.equal(typeof appRegistrar?.args?.ipcMain?.handle, 'function');
+    assert.equal(typeof appRegistrar?.args?.emitOperationEvent, 'function');
+    assert.equal(typeof envRegistrar?.args?.ipcMain?.handle, 'function');
+    assert.equal(typeof themeRegistrar?.args?.ipcMain?.handle, 'function');
+    assert.equal(typeof previewRegistrar?.args?.emitOperationEvent, 'function');
+    assert.equal(typeof publishRegistrar?.args?.emitOperationEvent, 'function');
+    assert.equal(typeof rssRegistrar?.args?.ipcMain?.handle, 'function');
+});
+
+test('preview:open emits failed event when preview url is blocked', async () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: {
+            ok: false,
+            reason: 'PREVIEW_URL_BLOCKED',
+            message: '预览地址不受信任，已阻止打开。'
+        }
+    });
+
+    const { events } = await harness.invokePreviewOpen({ framework: 'hexo' });
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].scope, 'preview');
+    assert.equal(events[0].phase, 'failed');
+    assert.equal(events[0].message, '预览地址不受信任，已阻止打开。');
+});
+
+test('publish:github emits failed event when publish result is not ok', async () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: { ok: true, url: 'http://localhost:4000/' },
+        publishToGitHubResult: {
+            ok: false,
+            mode: 'actions',
+            message: 'Git push 失败。',
+            logs: []
+        }
+    });
+
+    const { response, events } = await harness.invokePublish({
+        projectDir: 'D:/tmp/project',
+        framework: 'hexo',
+        repoUrl: 'https://github.com/example/example.github.io.git',
+        publishMode: 'actions'
+    });
+
+    assert.equal(response.ok, false);
+    assert.equal(events.length, 2);
+    assert.equal(events[1].scope, 'publish');
+    assert.equal(events[1].phase, 'failed');
+    assert.equal(events[1].message, 'Git push 失败。');
+});
+
+test('preview:stop emits failed event when no running preview process exists', async () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: { ok: true, url: 'http://localhost:4000/' },
+        stopLocalPreviewResult: {
+            ok: false,
+            stopped: false,
+            reason: 'PREVIEW_NOT_RUNNING',
+            message: '当前没有正在运行的预览进程。'
+        }
+    });
+
+    const { response, events } = await harness.invokePreviewStop({
+        projectDir: 'D:/tmp/project',
+        framework: 'hexo'
+    });
+
+    assert.equal(response.ok, false);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].scope, 'preview');
+    assert.equal(events[0].phase, 'failed');
+    assert.equal(events[0].message, '当前没有正在运行的预览进程。');
 });

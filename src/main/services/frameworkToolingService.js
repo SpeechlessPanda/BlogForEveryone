@@ -6,7 +6,8 @@ const { MIRROR_REGISTRY } = require('./envService');
 function runCommandAsync(command, args = [], options = {}) {
     return new Promise((resolve) => {
         const timeoutMs = Number(options.timeoutMs || 0);
-        const { timeoutMs: _timeoutMs, ...spawnOptions } = options;
+        const spawnOptions = { ...options };
+        delete spawnOptions.timeoutMs;
 
         const child = spawn(command, args, {
             shell: true,
@@ -80,7 +81,7 @@ async function runPnpmWithMirrorRetry(args, options = {}) {
     return { ok: second.status === 0, logs, retried: true };
 }
 
-function getFrameworkPackages(framework, _themeId) {
+function getFrameworkPackages(framework) {
     if (framework === 'hexo') {
         return ['hexo-deployer-git', 'hexo-generator-feed'];
     }

@@ -1,5 +1,11 @@
 const { shell, net } = require('electron');
-const { updateStore, readStore } = require('./storeService');
+const {
+    saveGithubAuthSession,
+    readGithubAuthRecord,
+    readGithubAccessToken,
+    clearGithubAuthSession
+} = require('./storeService');
+const { evaluateExternalUrl, EXTERNAL_URL_RULES } = require('../policies/externalUrlPolicy');
 
 const GITHUB_DEVICE_CODE_URL = 'https://github.com/login/device/code';
 const GITHUB_ACCESS_TOKEN_URL = 'https://github.com/login/oauth/access_token';
@@ -246,21 +252,20 @@ async function finalizeLogin({ clientId, flow }) {
 
     const user = await getJson(GITHUB_USER_API, tokenResult.access_token);
 
-    updateStore((state) => {
-        state.githubAuth = {
-            tokenType: tokenResult.token_type,
-            accessToken: tokenResult.access_token,
-            scope: tokenResult.scope,
-            user: {
-                id: user.id,
-                login: user.login,
-                name: user.name,
-                avatarUrl: user.avatar_url,
-                htmlUrl: user.html_url
-            },
-            loggedInAt: new Date().toISOString()
-        };
-        return state;
+    const permissionSummary = summarizeScope(tokenResult.scope);
+    saveGithubAuthSession({
+        tokenType: tokenResult.token_type,
+        accessToken: tokenResult.access_token,
+        scope: tokenResult.scope,
+        user: {
+            id: user.id,
+            login: user.login,
+            name: user.name,
+            avatarUrl: user.avatar_url,
+            htmlUrl: user.html_url
+        },
+        loggedInAt: new Date().toISOString(),
+        permissionSummary
     });
 
     return {
@@ -271,17 +276,28 @@ async function finalizeLogin({ clientId, flow }) {
             avatarUrl: user.avatar_url,
             htmlUrl: user.html_url
         },
-        scope: tokenResult.scope
+        permissionSummary
+    };
+}
+
+function summarizeScope(scopeText) {
+    const scopeSet = new Set(String(scopeText || '').split(/[\s,]+/).filter(Boolean));
+    return {
+        canReadProfile: scopeSet.has('read:user') || scopeSet.has('user:email') || scopeSet.has('repo'),
+        canPublishToGithub: scopeSet.has('repo')
     };
 }
 
 async function beginDeviceLogin({ clientId, scope }) {
     const flow = await startDeviceFlow({ clientId, scope });
+    const verificationUrl = flow.verification_uri_complete || flow.verification_uri;
 
-    if (flow.verification_uri_complete) {
-        shell.openExternal(flow.verification_uri_complete);
-    } else if (flow.verification_uri) {
-        shell.openExternal(flow.verification_uri);
+    if (verificationUrl) {
+        const decision = evaluateExternalUrl(verificationUrl, EXTERNAL_URL_RULES.githubDeviceVerification);
+        if (!decision.allowed) {
+            throw new Error('GitHub 设备码验证链接不受信任，已阻止打开。');
+        }
+        shell.openExternal(decision.normalizedUrl);
     }
 
     return {
@@ -321,16 +337,16 @@ async function loginWithDeviceCode({ clientId, scope }) {
 }
 
 function getAuthState() {
-    const state = readStore();
-    return state.githubAuth || null;
+    return readGithubAuthRecord();
 }
 
 function logout() {
-    updateStore((state) => {
-        state.githubAuth = null;
-        return state;
-    });
+    clearGithubAuthSession();
     return { ok: true };
+}
+
+function getAccessTokenForPrivilegedUse() {
+    return readGithubAccessToken();
 }
 
 module.exports = {
@@ -338,5 +354,7 @@ module.exports = {
     completeDeviceLogin,
     loginWithDeviceCode,
     getAuthState,
-    logout
+    logout,
+    getAccessTokenForPrivilegedUse,
+    summarizeScope
 };

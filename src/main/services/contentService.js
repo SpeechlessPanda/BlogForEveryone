@@ -5,6 +5,46 @@ const YAML = require('yaml');
 const { publishToGitHub } = require('./publishService');
 
 const publishJobs = new Map();
+let openPathImpl = (filePath) => shell.openPath(filePath);
+
+function normalizeForCompare(inputPath) {
+    const resolved = path.resolve(String(inputPath || ''));
+    if (fs.existsSync(resolved)) {
+        try {
+            const real = fs.realpathSync.native(resolved);
+            return process.platform === 'win32' ? real.toLowerCase() : real;
+        } catch {
+            const real = fs.realpathSync(resolved);
+            return process.platform === 'win32' ? real.toLowerCase() : real;
+        }
+    }
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+function isSubPath(parentPath, childPath) {
+    const parent = normalizeForCompare(parentPath);
+    const child = normalizeForCompare(childPath);
+    if (!parent || !child) {
+        return false;
+    }
+
+    if (parent === child) {
+        return true;
+    }
+
+    const relative = path.relative(parent, child);
+    return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function assertAllowedRoots(filePath, allowedRoots, actionLabel) {
+    if (!Array.isArray(allowedRoots) || !allowedRoots.length) {
+        throw new Error(`缺少受管内容路径白名单，拒绝${actionLabel}操作。`);
+    }
+
+    if (!allowedRoots.some((root) => isSubPath(root, filePath))) {
+        throw new Error(`内容路径越界，拒绝${actionLabel}操作。`);
+    }
+}
 
 function slugify(text) {
     return String(text || '')
@@ -173,10 +213,12 @@ function listExistingContents(payload) {
 }
 
 function readExistingContent(payload) {
-    const { filePath } = payload || {};
+    const { filePath, allowedRoots } = payload || {};
     if (!filePath || !fs.existsSync(filePath)) {
         throw new Error('内容文件不存在。');
     }
+
+    assertAllowedRoots(filePath, allowedRoots, 'read');
 
     const raw = fs.readFileSync(filePath, 'utf-8');
     const parsed = splitFrontMatter(raw);
@@ -190,10 +232,12 @@ function readExistingContent(payload) {
 }
 
 function saveExistingContent(payload) {
-    const { filePath, title, body } = payload || {};
+    const { filePath, title, body, allowedRoots } = payload || {};
     if (!filePath || !fs.existsSync(filePath)) {
         throw new Error('内容文件不存在，无法保存。');
     }
+
+    assertAllowedRoots(filePath, allowedRoots, 'write');
 
     const raw = fs.readFileSync(filePath, 'utf-8');
     const parsed = splitFrontMatter(raw);
@@ -216,12 +260,18 @@ function saveExistingContent(payload) {
 }
 
 function openExistingContent(payload) {
-    const { filePath } = payload || {};
+    const { filePath, allowedRoots } = payload || {};
     if (!filePath || !fs.existsSync(filePath)) {
         throw new Error('内容文件不存在，无法打开。');
     }
 
-    shell.openPath(filePath);
+    assertAllowedRoots(filePath, allowedRoots, 'open');
+
+    if (typeof openPathImpl !== 'function') {
+        throw new Error('当前环境不支持打开文件。');
+    }
+
+    openPathImpl(filePath);
     return {
         ok: true,
         filePath
@@ -256,21 +306,29 @@ function resolveContentPath({ projectDir, framework, type, title, slug }) {
 }
 
 function createAndOpenContent(payload) {
-    const { projectDir, framework, type = 'post', title = '新内容', slug = '' } = payload;
+    const { projectDir, framework, type = 'post', title = '新内容', slug = '', allowedRoots } = payload;
     const filePath = resolveContentPath({ projectDir, framework, type, title, slug });
     const content = type === 'post' ? postTemplate(title) : pageTemplate(title);
 
+    assertAllowedRoots(filePath, allowedRoots, 'write');
+
+    if (typeof openPathImpl !== 'function') {
+        throw new Error('当前环境不支持打开文件。');
+    }
+
     ensureFile(filePath, content);
-    shell.openPath(filePath);
+    openPathImpl(filePath);
 
     return { ok: true, filePath };
 }
 
 function watchSaveAndAutoPublish(payload) {
-    const { filePath, projectDir, framework, repoUrl, timeoutMs = 10 * 60 * 1000 } = payload;
+    const { filePath, projectDir, framework, repoUrl, timeoutMs = 10 * 60 * 1000, allowedRoots } = payload;
     if (!filePath || !repoUrl) {
         throw new Error('自动发布需要 filePath 与 repoUrl');
     }
+
+    assertAllowedRoots(filePath, allowedRoots, 'watch');
 
     const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const initialMtime = fs.existsSync(filePath) ? fs.statSync(filePath).mtimeMs : 0;
@@ -313,9 +371,14 @@ function watchSaveAndAutoPublish(payload) {
 
         try {
             const publishResult = publishToGitHub({ projectDir, framework, repoUrl });
-            job.status = 'done';
-            job.message = '自动发布完成。';
             job.publishResult = publishResult;
+            if (publishResult?.ok) {
+                job.status = 'done';
+                job.message = '自动发布完成。';
+            } else {
+                job.status = 'error';
+                job.message = publishResult?.message || '自动发布失败。';
+            }
         } catch (error) {
             job.status = 'error';
             job.message = error.message;
@@ -336,5 +399,12 @@ module.exports = {
     saveExistingContent,
     openExistingContent,
     watchSaveAndAutoPublish,
-    getPublishJobStatus
+    getPublishJobStatus,
+    __test__: {
+        setOpenPathForTests(nextImpl) {
+            openPathImpl = typeof nextImpl === 'function'
+                ? nextImpl
+                : ((filePath) => shell.openPath(filePath));
+        }
+    }
 };

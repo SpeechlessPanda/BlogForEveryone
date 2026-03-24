@@ -92,14 +92,14 @@ function ensureGitIdentity(projectDir, payload = {}) {
     };
 }
 
-function ensureWorkflow(projectDir, framework) {
-    const workflowDir = path.join(projectDir, '.github', 'workflows');
-    fs.mkdirSync(workflowDir, { recursive: true });
-
-    const cmd = framework === 'hexo' ? 'pnpm dlx hexo generate' : 'hugo';
+function buildWorkflowContent({ framework, repoUrl }) {
+    const inferredPagesUrl = inferPagesUrl(repoUrl);
+    const cmd = framework === 'hexo'
+        ? 'pnpm dlx hexo generate'
+        : (inferredPagesUrl ? `hugo --baseURL ${inferredPagesUrl}` : 'hugo');
     const artifactDir = framework === 'hexo' ? 'public' : 'public';
 
-    const workflow = [
+    return [
         'name: Deploy Blog',
         '',
         'on:',
@@ -146,6 +146,12 @@ function ensureWorkflow(projectDir, framework) {
         '        uses: actions/deploy-pages@v4',
         ''
     ].join('\n');
+}
+
+function ensureWorkflow(projectDir, framework, repoUrl) {
+    const workflowDir = path.join(projectDir, '.github', 'workflows');
+    fs.mkdirSync(workflowDir, { recursive: true });
+    const workflow = buildWorkflowContent({ framework, repoUrl });
 
     fs.writeFileSync(path.join(workflowDir, 'deploy.yml'), workflow, 'utf-8');
 }
@@ -287,7 +293,7 @@ function publishToGitHub(payload) {
         return publishWithHexoDeploy(payload);
     }
 
-    ensureWorkflow(projectDir, framework);
+    ensureWorkflow(projectDir, framework, repoUrl);
     const logs = runGitCommands(projectDir, repoUrl, payload);
     return {
         logs,
@@ -316,5 +322,8 @@ function inferPagesUrl(repoUrl) {
 }
 
 module.exports = {
-    publishToGitHub
+    publishToGitHub,
+    __test__: {
+        buildWorkflowContent
+    }
 };

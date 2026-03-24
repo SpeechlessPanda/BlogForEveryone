@@ -10,6 +10,7 @@ import RssReaderView from "./views/RssReaderView.vue";
 import TutorialCenterView from "./views/TutorialCenterView.vue";
 import ContentEditorView from "./views/ContentEditorView.vue";
 import { getSelectedWorkspace, refreshWorkspaces } from "./stores/workspaceStore";
+import { isAuthRequiredForTab } from "./utils/workflowViewHelpers.mjs";
 
 const ACTION_IDLE_RESET_MS = 1400;
 
@@ -180,7 +181,7 @@ const nextStep = computed(() => {
     };
   }
 
-  if (!isLoggedIn.value && activeTab.value !== "tutorial") {
+  if (!isLoggedIn.value && isAuthRequiredForTab(activeTab.value)) {
     return {
       title: "完成 GitHub 登录",
       detail: "登录成功后，发布、备份和仓库相关能力才会变得顺畅。",
@@ -199,10 +200,10 @@ const nextStep = computed(() => {
 
   if (activeTab.value === "tutorial") {
     return {
-      title: isLoggedIn.value ? "开始创建第一个博客工程" : "先完成设备码登录",
+      title: "开始创建第一个博客工程",
       detail: isLoggedIn.value
         ? "进入“博客创建”，选框架、主题和目录，拿到第一个可运行工作区。"
-        : "教程读完后先完成登录，后面的发布链路会少很多来回切换。",
+        : "可以先创建、预览和写内容；等需要发布、备份或仓库操作时再登录 GitHub。",
     };
   }
 
@@ -875,7 +876,7 @@ onUnmounted(() => {
         <pre v-if="envActionLog">{{ envActionLog }}</pre>
       </section>
 
-      <section class="panel" v-if="!isLoggedIn && activeTab !== 'tutorial'">
+      <section class="panel" v-if="!isLoggedIn && isAuthRequiredForTab(activeTab)">
         <h2>GitHub 登录（OAuth 设备码）</h2>
         <p class="muted">
           填写你的 GitHub OAuth App Client ID
@@ -912,13 +913,13 @@ onUnmounted(() => {
       </section>
 
       <TutorialCenterView v-if="activeTab === 'tutorial'" />
-      <WorkspaceView v-if="isLoggedIn && activeTab === 'workspace'" />
-      <ThemeConfigView v-if="isLoggedIn && activeTab === 'theme'" />
-      <PreviewView v-if="isLoggedIn && activeTab === 'preview'" />
-      <ContentEditorView v-if="isLoggedIn && activeTab === 'content'" />
+      <WorkspaceView v-if="activeTab === 'workspace'" />
+      <ThemeConfigView v-if="activeTab === 'theme'" />
+      <PreviewView v-if="activeTab === 'preview'" />
+      <ContentEditorView v-if="activeTab === 'content'" />
       <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
-      <ImportView v-if="isLoggedIn && activeTab === 'import'" />
-      <RssReaderView v-if="isLoggedIn && activeTab === 'rss'" />
+      <ImportView v-if="activeTab === 'import'" />
+      <RssReaderView v-if="activeTab === 'rss'" />
     </main>
 
     <div

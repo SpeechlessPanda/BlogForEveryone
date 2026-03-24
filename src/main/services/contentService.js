@@ -246,7 +246,9 @@ function resolveContentPath({ projectDir, framework, type, title, slug }) {
         return path.join(projectDir, 'content', 'posts', `${safeSlug}.md`);
     }
 
-    const pageName = safeSlug || type;
+    const pageName = ['about', 'links', 'announcement'].includes(type)
+        ? type
+        : (safeSlug || type);
     if (framework === 'hexo') {
         return path.join(projectDir, 'source', pageName, 'index.md');
     }

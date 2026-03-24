@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { exportSubscriptions } = require('./rssService');
 
 function copyDir(src, dest) {
     if (!fs.existsSync(dest)) {
@@ -24,6 +25,8 @@ function backupWorkspace({ projectDir, backupDir, metadata }) {
     fs.mkdirSync(backupDir, { recursive: true });
     const projectName = path.basename(projectDir);
     const snapshotDir = path.join(backupDir, `${projectName}-snapshot`);
+
+    exportSubscriptions({ projectDir });
 
     if (fs.existsSync(snapshotDir)) {
         fs.rmSync(snapshotDir, { recursive: true, force: true });

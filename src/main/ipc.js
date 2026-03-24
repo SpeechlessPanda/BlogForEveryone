@@ -3,7 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const { readStore, updateStore } = require('./services/storeService');
 const { detectFramework, initProject } = require('./services/frameworkService');
-const { getThemeCatalog, readThemeConfig, saveThemeConfig, saveLocalAssetToBlog, installAndApplyTheme, applyPreviewOverrides } = require('./services/themeService');
+const {
+    getThemeCatalog,
+    readThemeConfig,
+    saveThemeConfig,
+    saveLocalAssetToBlog,
+    installAndApplyTheme,
+    applyPreviewOverrides,
+    inferRecognizedThemeIdFromProject
+} = require('./services/themeService');
 const { ensureFrameworkPublishPackages } = require('./services/frameworkToolingService');
 const { validateThemeSettings, validatePublishPayload } = require('./services/configValidationService');
 const { publishToGitHub } = require('./services/publishService');
@@ -242,12 +250,13 @@ function registerIpcHandlers() {
         }
 
         const framework = detectFramework(projectDir);
+        const inferredThemeId = inferRecognizedThemeIdFromProject(projectDir, framework);
         const workspace = {
             id: Date.now().toString(),
             name: name || path.basename(projectDir),
             projectDir,
             framework,
-            theme: 'unknown',
+            theme: inferredThemeId,
             importedAt: new Date().toISOString()
         };
 

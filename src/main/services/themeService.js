@@ -23,6 +23,49 @@ const HUGO_THEME_INSTALLERS = {
     anatole: { repo: 'github.com/lxndrblz/anatole', dirName: 'anatole', themeName: 'anatole' }
 };
 
+function buildRecognizedThemeLookup(framework) {
+    const installers = framework === 'hexo' ? HEXO_THEME_INSTALLERS : framework === 'hugo' ? HUGO_THEME_INSTALLERS : null;
+    if (!installers) {
+        return new Map();
+    }
+
+    const lookup = new Map();
+    for (const [themeId, installer] of Object.entries(installers)) {
+        lookup.set(themeId.toLowerCase(), themeId);
+        if (installer?.themeName) {
+            lookup.set(String(installer.themeName).toLowerCase(), themeId);
+        }
+    }
+
+    const catalog = getThemeCatalog()[framework] || [];
+    for (const item of catalog) {
+        if (item?.id) {
+            lookup.set(String(item.id).toLowerCase(), String(item.id));
+        }
+        if (item?.name) {
+            lookup.set(String(item.name).toLowerCase(), String(item.id));
+        }
+    }
+
+    return lookup;
+}
+
+function inferRecognizedThemeIdFromProject(projectDir, framework) {
+    if (!projectDir || !framework || framework === 'unknown') {
+        return 'unknown';
+    }
+
+    const config = readThemeConfig(projectDir, framework);
+    const rawTheme = Array.isArray(config.theme) ? config.theme[0] : config.theme;
+    const normalized = String(rawTheme || '').trim().toLowerCase();
+    if (!normalized) {
+        return 'unknown';
+    }
+
+    const lookup = buildRecognizedThemeLookup(framework);
+    return lookup.get(normalized) || 'unknown';
+}
+
 function runCommandAsync(command, args = [], options = {}) {
     return new Promise((resolve) => {
         const timeoutMs = Number(options.timeoutMs || 0);
@@ -415,5 +458,6 @@ module.exports = {
     saveThemeConfig,
     saveLocalAssetToBlog,
     installAndApplyTheme,
-    applyPreviewOverrides
+    applyPreviewOverrides,
+    inferRecognizedThemeIdFromProject
 };

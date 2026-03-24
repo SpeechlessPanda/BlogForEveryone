@@ -7,6 +7,7 @@ import {
 } from "../stores/workspaceStore";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { resolveThemePreviewPath } from "../utils/workflowViewHelpers.mjs";
 
 const form = reactive({
   name: "",
@@ -25,27 +26,29 @@ const flow = reactive({
 });
 
 const themePreviewMap = {
-  "hexo:landscape": "/theme-previews/hexo-landscape.png",
-  "hexo:next": "/theme-previews/hexo-next.png",
-  "hexo:butterfly": "/theme-previews/hexo-butterfly.png",
-  "hexo:fluid": "/theme-previews/hexo-fluid.png",
-  "hexo:volantis": "/theme-previews/hexo-volantis.png",
-  "hugo:papermod": "/theme-previews/hugo-papermod.png",
-  "hugo:loveit": "/theme-previews/hugo-loveit.png",
-  "hugo:stack": "/theme-previews/hugo-stack.png",
-  "hugo:mainroad": "/theme-previews/hugo-mainroad.png",
-  "hugo:anatole": "/theme-previews/hugo-anatole.png",
+  "hexo:landscape": "theme-previews/hexo-landscape.png",
+  "hexo:next": "theme-previews/hexo-next.png",
+  "hexo:butterfly": "theme-previews/hexo-butterfly.png",
+  "hexo:fluid": "theme-previews/hexo-fluid.png",
+  "hexo:volantis": "theme-previews/hexo-volantis.png",
+  "hugo:papermod": "theme-previews/hugo-papermod.png",
+  "hugo:loveit": "theme-previews/hugo-loveit.png",
+  "hugo:stack": "theme-previews/hugo-stack.png",
+  "hugo:mainroad": "theme-previews/hugo-mainroad.png",
+  "hugo:anatole": "theme-previews/hugo-anatole.png",
 };
+
+const previewBaseUrl = import.meta.env.BASE_URL || "./";
 
 const currentFrameworkThemes = computed(() => {
   const list = workspaceState.themeCatalog?.[form.framework] || [];
   return list.map((item) => {
     const key = `${form.framework}:${item.id}`;
-    return {
-      ...item,
-      preview: themePreviewMap[key] || "",
-      selected: item.id === form.theme,
-    };
+      return {
+        ...item,
+        preview: resolveThemePreviewPath(previewBaseUrl, themePreviewMap[key] || ""),
+        selected: item.id === form.theme,
+      };
   });
 });
 

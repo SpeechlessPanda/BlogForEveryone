@@ -10,9 +10,13 @@ import {
   getAvatarUploadDir,
   getHexoBackgroundConfigPath,
   getHexoFaviconConfigPath,
+  getHugoDescriptionConfigPath,
+  hydrateThemeOptionValues,
   normalizeAvatarConfigValue,
   readHexoBackgroundValue,
   readHexoFaviconValue,
+  resolveWorkspaceThemeId,
+  syncHugoOutputs,
 } from "../utils/themeConfigHelpers.mjs";
 
 const status = ref("");
@@ -122,6 +126,16 @@ function goPreviewPage() {
   window.dispatchEvent(
     new CustomEvent("bfe:open-tab", { detail: { tabKey: "preview" } }),
   );
+}
+
+function ensureRecognizedTheme() {
+  if (selectedThemeSchema.value) {
+    return true;
+  }
+
+  status.value =
+    "当前工程主题未识别，已停止自动猜测。请先确认这是受支持的主题后再保存配置。";
+  return false;
 }
 
 function getDefaultAssetDir(framework) {
@@ -340,7 +354,11 @@ function applyPersonalization(config, framework) {
       );
     }
   } else {
-    setByPath(config, "params.description", basicFields.subtitle);
+    setByPath(
+      config,
+      getHugoDescriptionConfigPath(selectedThemeId.value),
+      basicFields.subtitle,
+    );
     setByPath(config, "params.backgroundImage", basicFields.backgroundImage);
     setByPath(config, "params.favicon", basicFields.favicon);
     setByPath(config, "params.social.email", basicFields.email);
@@ -382,18 +400,7 @@ function applyPersonalization(config, framework) {
       analyticsFields.gaMeasurementId,
     );
 
-    const outputs = getByPath(config, "outputs.home");
-    const outputList = Array.isArray(outputs) ? [...outputs] : ["HTML"];
-    const hasRss = outputList.includes("RSS");
-    if (rssFields.generateBlogRss && !hasRss) {
-      outputList.push("RSS");
-    }
-    if (!rssFields.generateBlogRss && hasRss) {
-      const filtered = outputList.filter((item) => item !== "RSS");
-      setByPath(config, "outputs.home", filtered.length ? filtered : ["HTML"]);
-      return;
-    }
-    setByPath(config, "outputs.home", outputList);
+    syncHugoOutputs(config, rssFields.generateBlogRss, getByPath, setByPath);
 
     if (selectedThemeId.value === "stack") {
       setByPath(config, "params.sidebar.subtitle", basicFields.subtitle || "");
@@ -591,7 +598,10 @@ async function loadConfig() {
 
   basicFields.siteTitle = String(config.title || "");
   basicFields.subtitle = String(
-    config.subtitle || getByPath(config, "params.description") || "",
+    config.subtitle ||
+      getByPath(config, getHugoDescriptionConfigPath(selectedThemeId.value)) ||
+      getByPath(config, "params.description") ||
+      "",
   );
   basicFields.email = String(
     getByPath(config, "author.email") ||
@@ -748,11 +758,24 @@ async function loadConfig() {
   const preferences = await window.bfeApi.getPreferences();
   rssFields.autoSyncRssSubscriptions =
     preferences.autoSyncRssSubscriptions !== false;
+
+  const nextOptionValues = hydrateThemeOptionValues(
+    config,
+    selectedThemeSchema.value?.options || [],
+    getByPath,
+  );
+  for (const key of Object.keys(optionValues)) {
+    delete optionValues[key];
+  }
+  Object.assign(optionValues, nextOptionValues);
 }
 
 async function saveAllConfig() {
   const ws = selectedWorkspace.value;
   if (!ws) {
+    return;
+  }
+  if (!ensureRecognizedTheme()) {
     return;
   }
 
@@ -825,6 +848,9 @@ async function applyLocalBackgroundImage() {
     status.value = "请先选择工程。";
     return;
   }
+  if (!ensureRecognizedTheme()) {
+    return;
+  }
   if (!backgroundTransfer.localFilePath) {
     status.value = "请先填写背景图本地路径。";
     return;
@@ -874,6 +900,9 @@ async function uploadLocalFavicon() {
   const ws = selectedWorkspace.value;
   if (!ws) {
     status.value = "请先选择工程。";
+    return;
+  }
+  if (!ensureRecognizedTheme()) {
     return;
   }
   const result = await window.bfeApi.saveThemeLocalAsset({
@@ -982,8 +1011,7 @@ function applyThemeFromWorkspace() {
     return;
   }
 
-  const preferred = list.find((item) => item.id === ws.theme);
-  selectedThemeId.value = preferred ? preferred.id : list[0].id;
+  selectedThemeId.value = resolveWorkspaceThemeId(ws.theme, list);
 }
 
 async function pickBackgroundImageFile() {

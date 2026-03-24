@@ -31,7 +31,8 @@
 检查点：
 
 1. 软件会根据仓库类型自动推断最终 Pages 地址。
-2. 发布日志中应看到 git push 成功信息。
+2. Hugo 工程的一键发布会生成 GitHub Actions 工作流，并把推断出的 Pages URL 写入 `hugo --baseURL ...`，用于 project pages 子路径。
+3. 发布日志中应看到 git push 成功信息。
 
 ## 3. 在 GitHub 开启 Pages
 

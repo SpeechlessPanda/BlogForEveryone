@@ -70,6 +70,13 @@ function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
 }
 
+function jumpToZone(zoneId) {
+  document.getElementById(zoneId)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
+
 async function createAndEdit() {
   const ws = getSelectedWorkspace();
   if (!ws) {
@@ -288,9 +295,13 @@ watch(
 </script>
 
 <template>
-  <div class="page-shell page-shell--content" data-page-role="content-editor">
+  <div
+    class="page-shell page-shell--content"
+    data-page-role="content-editor"
+    data-workflow-surface="editorial-workflow"
+  >
     <div class="page-layer" data-page-layer="primary">
-      <section class="panel page-hero">
+      <section class="panel page-hero" data-workflow-zone="hero">
         <div class="page-hero-grid">
           <div>
             <p class="page-kicker">Writing hub</p>
@@ -298,6 +309,32 @@ watch(
             <p class="page-lead">
               内容编辑页优先服务写作本身：先创建或进入内容工作，再理解当前结果，最后才看自动发布等次级自动化。发布相关能力必须辅助写作，而不是压过写作。
             </p>
+            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+              <button
+                class="primary"
+                type="button"
+                data-workflow-action-level="primary"
+                @click="jumpToZone('content-create-zone')"
+              >
+                前往新建内容
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="secondary"
+                @click="jumpToZone('content-existing-zone')"
+              >
+                继续编辑已有内容
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="tertiary"
+                @click="goTutorialCenter"
+              >
+                查看写作教程
+              </button>
+            </div>
             <div class="page-link-row">
               <a href="#" @click.prevent="goTutorialCenter"
                 >打开教程中心：内容编辑与自动发布完整步骤</a
@@ -338,9 +375,25 @@ watch(
         </div>
       </section>
 
-      <section class="panel">
-        <h2>新建内容</h2>
-        <p class="muted">新建博客/关于/友链/公告时，软件会自动创建 Markdown 并打开系统默认编辑器。</p>
+      <section
+        id="content-create-zone"
+        class="panel workflow-section-panel"
+        data-workflow-zone="create-content"
+      >
+        <div class="workflow-section-heading">
+          <div class="workflow-section-heading-copy">
+            <p class="section-eyebrow">Step 01 · 新建内容</p>
+            <h2>新建内容</h2>
+            <p class="section-helper">
+              新建博客、关于、友链或公告时，优先完成写作入口，再决定是否刷新自动发布状态。
+            </p>
+          </div>
+          <aside class="workflow-inline-note priority-panel priority-panel--support">
+            <p class="section-eyebrow">写作结果摘要</p>
+            <strong>{{ contentRecentResult }}</strong>
+            <p class="page-result-note">{{ contentNextStep }}</p>
+          </aside>
+        </div>
 
         <div class="grid-2 stack-top">
           <div>
@@ -382,10 +435,12 @@ watch(
             label="创建并打开编辑器"
             busy-label="创建中..."
             :busy="actionState.create === 'loading' || isBusy('create')"
+            data-workflow-action-level="primary"
             @click="createAndEdit"
           />
           <button
             class="secondary"
+            data-workflow-action-level="tertiary"
             :class="{
               'is-loading': actionState.refresh === 'loading',
               'is-success': actionState.refresh === 'success',
@@ -404,11 +459,25 @@ watch(
         </div>
       </section>
 
-      <section class="panel">
-        <h2>已有内容二次编辑</h2>
-        <p class="muted">
-          读取当前工程已有文章/页面，支持直接修改标题与正文后保存，也可以一键用外部编辑器打开。
-        </p>
+      <section
+        id="content-existing-zone"
+        class="panel workflow-section-panel"
+        data-workflow-zone="existing-content"
+      >
+        <div class="workflow-section-heading">
+          <div class="workflow-section-heading-copy">
+            <p class="section-eyebrow">Step 02 · 继续写作</p>
+            <h2>已有内容二次编辑</h2>
+            <p class="section-helper">
+              读取当前工程已有文章或页面，继续改标题、正文，再决定是否改用外部编辑器深化写作。
+            </p>
+          </div>
+          <aside class="workflow-inline-note priority-panel priority-panel--subtle">
+            <p class="section-eyebrow">当前写作状态</p>
+            <strong>{{ existingList.length ? `已有 ${existingList.length} 项内容` : "还没有已载入内容" }}</strong>
+            <p class="page-result-note">已存在内容也能在这里直接继续编辑。</p>
+          </aside>
+        </div>
         <div class="grid-2">
           <div>
             <label>选择已有内容</label>
@@ -442,6 +511,7 @@ watch(
             label="刷新内容列表"
             busy-label="刷新中..."
             :busy="isBusy('load-existing')"
+            data-workflow-action-level="secondary"
             @click="refreshExistingContents"
           />
           <AsyncActionButton
@@ -449,6 +519,7 @@ watch(
             label="保存标题与正文"
             busy-label="保存中..."
             :busy="isBusy('save-existing')"
+            data-workflow-action-level="primary"
             @click="saveExistingContentChanges"
           />
           <AsyncActionButton
@@ -456,6 +527,7 @@ watch(
             label="用外部编辑器打开"
             busy-label="打开中..."
             :busy="isBusy('open-existing')"
+            data-workflow-action-level="secondary"
             @click="openSelectedExistingInEditor"
           />
         </div>
@@ -463,7 +535,10 @@ watch(
     </div>
 
     <div class="page-layer" data-page-layer="explanation">
-      <section class="priority-panel priority-panel--support">
+      <section
+        class="priority-panel priority-panel--support workflow-result-panel"
+        data-workflow-zone="recent-result"
+      >
         <p class="section-eyebrow">最近结果</p>
         <strong>{{ contentRecentResult }}</strong>
         <p class="page-result-note">{{ contentNextStep }}</p>
@@ -472,7 +547,7 @@ watch(
 
     <div class="page-layer" data-page-layer="detail">
       <details class="advanced-panel">
-        <summary>自动发布（次级流程）</summary>
+        <summary>自动流程（后置）</summary>
         <div class="advanced-panel-content">
           <p class="section-helper">
             如果只是先把文章写出来，可以先不配这部分。等你确认手动预览和发布都正常后，再打开自动发布。

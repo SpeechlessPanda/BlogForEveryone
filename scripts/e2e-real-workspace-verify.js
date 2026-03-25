@@ -77,7 +77,7 @@ function checkMarkers(item) {
     const htmlText = readText(path.join(projectDir, 'public', 'index.html'));
     const partialText = readText(path.join(projectDir, 'layouts', 'partials', 'extend_head.html'));
 
-    const backgroundOk = /background_image|banner_img|backgroundImage|background-image|bfe-preview-overrides/i.test(`${configText}\n${htmlText}\n${partialText}`);
+    const backgroundOk = /background_image|banner_img|theme_config:\s*[\s\S]*\bbanner\b|backgroundImage|background-image|bfe-preview-overrides/i.test(`${configText}\n${htmlText}\n${partialText}`);
     const faviconOk = /favicon|shortcut icon|apple-touch-icon|params\.assets\.favicon/i.test(`${configText}\n${htmlText}\n${partialText}`);
 
     let avatarOk = true;

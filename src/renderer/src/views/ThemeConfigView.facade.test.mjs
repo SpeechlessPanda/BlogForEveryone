@@ -62,6 +62,11 @@ test("ThemeConfigView presents the brand-workspace hierarchy while keeping advan
   const source = await readFile(themeConfigViewPath, "utf8");
 
   assert.match(source, /data-page-role="theme-config"/);
+  assert.match(source, /data-theme-surface="editorial-studio"/);
+  assert.match(
+    source,
+    /data-theme-zone="identity-rhythm"[\s\S]*data-theme-zone="asset-studio"[\s\S]*data-theme-zone="advanced-config"/,
+  );
   assert.match(source, /品牌与外观工作台/);
   assert.match(
     source,

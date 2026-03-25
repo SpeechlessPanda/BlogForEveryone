@@ -11,6 +11,8 @@ defineProps({
   nextStep: { type: Object, required: true },
   rssUnreadTotal: { type: Number, required: true },
   selectedWorkspace: { type: Object, default: null },
+  shellAppearance: { type: String, required: true },
+  shellAppearanceToggleLabel: { type: String, required: true },
   sidebarLoginText: { type: String, required: true },
   updateState: { type: Object, required: true },
   environmentStatusText: { type: String, required: true },
@@ -21,21 +23,26 @@ defineEmits([
   "check-updates",
   "install-update",
   "open-info",
+  "toggle-shell-appearance",
   "toggle-launch-at-startup",
   "logout",
 ]);
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" data-shell-surface="sidebar">
     <div class="sidebar-inner">
       <div class="sidebar-primary">
-        <div>
+        <div class="sidebar-brand" data-sidebar-block="brand">
+          <p class="sidebar-brand-mark">Editorial workbench</p>
           <h1>{{ appState.appName }}</h1>
           <p class="version">v{{ appState.version }}</p>
+          <p class="muted sidebar-brand-copy">
+            让创建、配置、预览与发布保持同一节奏，不再像工具箱一样跳来跳去。
+          </p>
         </div>
 
-        <div class="sidebar-focus-card">
+        <div class="sidebar-focus-card" data-sidebar-block="current-stage">
           <p class="sidebar-kicker">当前阶段</p>
           <strong>{{ activeSectionMeta.label }}</strong>
           <p class="muted sidebar-focus-copy">
@@ -52,38 +59,45 @@ defineEmits([
           v-for="section in groupedWorkflowSections"
           :key="section.key"
           class="sidebar-group"
+          data-sidebar-block="workflow"
         >
-          <p class="sidebar-group-kicker">Workflow</p>
-          <h2 class="sidebar-group-title">{{ section.label }}</h2>
-          <p class="muted sidebar-group-copy">{{ section.summary }}</p>
-          <div class="workflow-nav">
-            <button
-              v-for="tab in section.tabs"
-              :key="tab.key"
-              :class="['tab', { active: activeTab === tab.key }]"
-              @click="$emit('navigate', tab.key)"
-            >
-              <span class="tab-copy">
-                <span class="tab-kicker">{{ tab.step }}</span>
-                <span class="tab-label-row">
-                  <span>{{ tab.label }}</span>
-                  <span
-                    v-if="tab.key === 'rss' && rssUnreadTotal > 0"
-                    class="tab-badge"
-                  >
-                    {{ rssUnreadTotal }}
+          <div class="sidebar-group-frame">
+            <p class="sidebar-group-kicker">Workflow</p>
+            <h2 class="sidebar-group-title">{{ section.label }}</h2>
+            <p class="muted sidebar-group-copy">{{ section.summary }}</p>
+            <div class="workflow-nav">
+              <button
+                v-for="tab in section.tabs"
+                :key="tab.key"
+                :class="['tab', { active: activeTab === tab.key }]"
+                @click="$emit('navigate', tab.key)"
+              >
+                <span class="tab-copy">
+                  <span class="tab-kicker">{{ tab.step }}</span>
+                  <span class="tab-label-row">
+                    <span>{{ tab.label }}</span>
+                    <span
+                      v-if="tab.key === 'rss' && rssUnreadTotal > 0"
+                      class="tab-badge"
+                    >
+                      {{ rssUnreadTotal }}
+                    </span>
                   </span>
+                  <span class="tab-note">{{ tab.note }}</span>
                 </span>
-                <span class="tab-note">{{ tab.note }}</span>
-              </span>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="sidebar-footer">
-        <div class="sidebar-utility-card">
-          <p class="sidebar-kicker">辅助状态</p>
+        <div class="sidebar-utility-card" data-sidebar-block="utilities">
+          <div class="sidebar-utility-meta">
+            <p class="sidebar-kicker">辅助状态</p>
+            <strong>{{ shellAppearance === "dark" ? "暗色编辑台" : "亮色编辑台" }}</strong>
+            <p class="muted action-note">让系统操作退后一步，先判断状态，再决定动作。</p>
+          </div>
           <div class="sidebar-status-list">
             <div class="sidebar-status-item">
               <span class="muted">环境</span>
@@ -113,6 +127,13 @@ defineEmits([
         </div>
 
         <div class="actions actions-tight sidebar-utility-actions">
+          <button
+            class="secondary shell-theme-toggle"
+            data-shell-theme-toggle
+            @click="$emit('toggle-shell-appearance')"
+          >
+            {{ shellAppearanceToggleLabel }}
+          </button>
           <button
             class="secondary"
             :class="{

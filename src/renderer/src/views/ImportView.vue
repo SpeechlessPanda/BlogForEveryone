@@ -70,9 +70,13 @@ function goWorkspacePage() {
 </script>
 
 <template>
-  <div class="page-shell page-shell--import" data-page-role="import">
+  <div
+    class="page-shell page-shell--import"
+    data-page-role="import"
+    data-workflow-surface="editorial-workflow"
+  >
     <div class="page-layer" data-page-layer="primary">
-      <section class="panel page-hero">
+      <section class="panel page-hero" data-workflow-zone="hero">
         <div class="page-hero-grid">
           <div>
             <p class="page-kicker">Secondary entry path</p>
@@ -80,6 +84,32 @@ function goWorkspacePage() {
             <p class="page-lead">
               这是进入创作流程的次级入口：适合已经有旧博客、但想回到可视化工作流继续维护的人。导入成功后，重点不是停在结果页，而是接回主流程继续完成品牌、预览和发布。
             </p>
+            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+              <button
+                class="primary"
+                type="button"
+                data-workflow-action-level="primary"
+                @click="$el?.querySelector('#import-workbench')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+              >
+                前往导入设置
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="secondary"
+                @click="$el?.querySelector('#import-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+              >
+                查看最近结果
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="tertiary"
+                @click="goThemeConfig"
+              >
+                前往主题配置
+              </button>
+            </div>
             <div class="page-link-row">
               <a href="#" @click.prevent="goTutorialCenter"
                 >打开教程中心（导入与恢复）</a
@@ -114,7 +144,11 @@ function goWorkspacePage() {
         </div>
       </section>
 
-      <section class="panel">
+      <section
+        id="import-workbench"
+        class="panel workflow-section-panel"
+        data-workflow-zone="import-workbench"
+      >
         <h2>导入设置</h2>
         <p class="muted">支持导入已有目录后继续可视化编辑与发布。</p>
 
@@ -141,7 +175,7 @@ function goWorkspacePage() {
     </div>
 
     <div class="page-layer" data-page-layer="explanation">
-      <section class="priority-panel priority-panel--support">
+      <section class="priority-panel priority-panel--support workflow-result-panel">
         <p class="section-eyebrow">建议下一步</p>
         <strong>导入成功后，立即去主题配置检查主题识别与品牌素材。</strong>
         <ul class="page-guidance-list">
@@ -154,14 +188,20 @@ function goWorkspacePage() {
         </div>
       </section>
 
-      <section class="panel" v-if="result">
+      <section
+        id="import-result"
+        class="panel workflow-result-panel"
+        v-if="result"
+        data-workflow-zone="recent-result"
+      >
+        <p class="section-eyebrow">导入结果摘要</p>
         <h2>导入结果</h2>
         <pre>{{ result }}</pre>
       </section>
     </div>
 
     <div class="page-layer" data-page-layer="detail">
-      <section class="panel">
+      <section class="panel workflow-section-panel" data-workflow-zone="rss-restore">
         <h2>可选：恢复 RSS 订阅</h2>
         <p class="section-helper">
           只有当这个工程目录里已经包含订阅快照时，才需要执行这一步。

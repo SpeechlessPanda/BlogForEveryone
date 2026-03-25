@@ -82,8 +82,13 @@ function applyThemeSpecificConfig(config, row, assets) {
 
     if (framework === 'hexo') {
         setByPath(config, 'subtitle', 'End-to-end preview validation');
-        setByPath(config, 'favicon', assets.favicon);
-        setByPath(config, 'theme_config.background_image', assets.background);
+        if (themeId === 'landscape') {
+            setByPath(config, 'theme_config.favicon', assets.favicon);
+            setByPath(config, 'theme_config.banner', assets.background);
+        } else {
+            setByPath(config, 'favicon', assets.favicon);
+            setByPath(config, 'theme_config.background_image', assets.background);
+        }
 
         if (themeId === 'next') {
             setByPath(config, 'theme_config.scheme', 'Muse');

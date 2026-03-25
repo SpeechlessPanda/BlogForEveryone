@@ -44,7 +44,7 @@ function registerPreviewIpcHandlers({
 
     ipcMain.handle('preview:stop', async (event, payload) => {
         const opId = `preview-stop-${Date.now()}`;
-        const result = evaluatePreviewStopResult(stopLocalPreview(payload));
+        const result = evaluatePreviewStopResult(await stopLocalPreview(payload));
         emitOperationEvent(event.sender, {
             opId,
             scope: 'preview',

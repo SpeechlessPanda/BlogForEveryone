@@ -7,13 +7,15 @@ const { evaluateExternalUrl, EXTERNAL_URL_RULES } = require('../policies/externa
 const ANSI_COLOR_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
 const previewProcesses = new Map();
-let processTreeKiller = (pid) => {
+let processTreeKiller = (pid) => new Promise((resolve) => {
     const killer = spawn('cmd', buildWindowsKillArgs(pid), {
         windowsHide: true,
         stdio: 'ignore'
     });
+    killer.once('error', () => resolve());
+    killer.once('close', () => resolve());
     killer.unref();
-};
+});
 
 function getDefaultPort(framework) {
     return framework === 'hexo' ? 4000 : 1313;
@@ -55,6 +57,28 @@ async function findAvailablePort(preferredPort, host) {
     }
 
     return base + 31;
+}
+
+async function waitForPortRelease(port, host, timeoutMs = 5000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        // eslint-disable-next-line no-await-in-loop
+        const busy = await isPortBusy(port, host);
+        if (!busy) {
+            return true;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return false;
+}
+
+function waitForCleanupStep(step, timeoutMs = 3000) {
+    return Promise.race([
+        Promise.resolve(step),
+        new Promise((resolve) => setTimeout(resolve, timeoutMs))
+    ]);
 }
 
 function waitForServerReady(proc, timeoutMs = 15000) {
@@ -110,7 +134,30 @@ function buildWindowsKillArgs(pid) {
     return ['/c', 'taskkill', '/PID', String(pid), '/T', '/F'];
 }
 
-function terminateProcessTree(proc) {
+function waitForProcessExit(proc, timeoutMs = 3000) {
+    if (!proc || typeof proc.once !== 'function') {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+            if (done) {
+                return;
+            }
+            done = true;
+            resolve();
+        };
+
+        const timer = setTimeout(finish, timeoutMs);
+        proc.once('exit', () => {
+            clearTimeout(timer);
+            finish();
+        });
+    });
+}
+
+async function terminateProcessTree(proc) {
     if (!proc) {
         return;
     }
@@ -118,7 +165,7 @@ function terminateProcessTree(proc) {
     const pid = Number(proc.pid);
     if (process.platform === 'win32' && Number.isFinite(pid) && pid > 0) {
         try {
-            processTreeKiller(pid);
+            await waitForCleanupStep(processTreeKiller(pid));
         } catch {
             // Fallback to default kill below.
         }
@@ -131,6 +178,8 @@ function terminateProcessTree(proc) {
     } catch {
         // Ignore cleanup failures.
     }
+
+    await waitForProcessExit(proc);
 }
 
 async function startLocalPreview(payload) {
@@ -162,8 +211,13 @@ async function startLocalPreview(payload) {
     let args = [];
 
     if (framework === 'hexo') {
-        command = 'pnpm';
-        args = ['exec', 'hexo', 'server', '--port', String(preferredPort), '--host', '127.0.0.1'];
+        if (process.platform === 'win32') {
+            command = process.env.ComSpec || 'cmd.exe';
+            args = ['/d', '/s', '/c', `pnpm exec hexo server --port ${preferredPort} --host 127.0.0.1`];
+        } else {
+            command = 'pnpm';
+            args = ['exec', 'hexo', 'server', '--port', String(preferredPort), '--host', '127.0.0.1'];
+        }
     } else if (framework === 'hugo') {
         command = resolveHugoExecutable({ requireExtended: true });
         if (!command) {
@@ -191,12 +245,14 @@ async function startLocalPreview(payload) {
         selectedPort = await findAvailablePort(preferredPort + attempt, '127.0.0.1');
 
         const launchArgs = framework === 'hexo'
-            ? ['exec', 'hexo', 'server', '--port', String(selectedPort), '--host', '127.0.0.1']
+            ? (process.platform === 'win32'
+                ? ['/d', '/s', '/c', `pnpm exec hexo server --port ${selectedPort} --host 127.0.0.1`]
+                : ['exec', 'hexo', 'server', '--port', String(selectedPort), '--host', '127.0.0.1'])
             : ['server', '--port', String(selectedPort), '--bind', '127.0.0.1', '--buildDrafts', '--buildFuture'];
 
         const proc = spawn(command, launchArgs, {
             cwd: projectDir,
-            shell: framework === 'hexo',
+            shell: false,
             windowsHide: true,
             env: framework === 'hugo' ? getHugoExecutionEnv().env : process.env
         });
@@ -232,7 +288,8 @@ async function startLocalPreview(payload) {
             };
         }
 
-        terminateProcessTree(proc);
+        // eslint-disable-next-line no-await-in-loop
+        await terminateProcessTree(proc);
         previewProcesses.delete(key);
 
         if (!isPortInUseError(ready)) {
@@ -283,7 +340,7 @@ function openLocalPreview(payload) {
     return { ok: true, url: decision.normalizedUrl };
 }
 
-function stopLocalPreview(payload) {
+async function stopLocalPreview(payload) {
     const { projectDir, framework } = payload || {};
     const key = `${framework}:${projectDir}`;
     const item = previewProcesses.get(key);
@@ -296,7 +353,8 @@ function stopLocalPreview(payload) {
         };
     }
 
-    terminateProcessTree(item.proc);
+    await terminateProcessTree(item.proc);
+    await waitForPortRelease(item.port, '127.0.0.1');
     previewProcesses.delete(key);
     return { ok: true, stopped: true, message: '已停止本地预览。' };
 }
@@ -324,13 +382,15 @@ module.exports = {
                 return;
             }
 
-            processTreeKiller = (pid) => {
+            processTreeKiller = (pid) => new Promise((resolve) => {
                 const proc = spawn('cmd', buildWindowsKillArgs(pid), {
                     windowsHide: true,
                     stdio: 'ignore'
                 });
+                proc.once('error', () => resolve());
+                proc.once('close', () => resolve());
                 proc.unref();
-            };
+            });
         }
     }
 };

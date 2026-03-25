@@ -58,6 +58,16 @@ const publishResultSummary = computed(() => {
   return "还没有最近一次发布结果。";
 });
 
+const publishNextStep = computed(() => {
+  if (pagesUrl.value) {
+    return "先打开博客地址确认线上结果，再决定是否生成一份恢复用备份。";
+  }
+  if (publishReadiness.value !== "已具备基础发布条件。") {
+    return "先补齐仓库地址、Git 身份和工作区上下文，再执行发布。";
+  }
+  return "进入发布设置，先完成一次可访问的线上发布。";
+});
+
 function parseGithubRepo(repoUrl) {
   const clean = String(repoUrl || "")
     .trim()
@@ -173,12 +183,23 @@ async function pickBackupDirectory() {
 function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
 }
+
+function jumpToZone(zoneId) {
+  document.getElementById(zoneId)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
 </script>
 
 <template>
-  <div class="page-shell page-shell--publish" data-page-role="publish">
+  <div
+    class="page-shell page-shell--publish"
+    data-page-role="publish"
+    data-workflow-surface="editorial-workflow"
+  >
     <div class="page-layer" data-page-layer="primary">
-      <section class="panel page-hero">
+      <section class="panel page-hero" data-workflow-zone="hero">
         <div class="page-hero-grid">
           <div>
             <p class="page-kicker">Release control center</p>
@@ -186,6 +207,32 @@ function goTutorialCenter() {
             <p class="page-lead">
               先确认博客是否准备好，再决定发布模式并执行。发布结果和可访问地址应该先于技术日志出现，帮助你更快判断是否可以对外交付。
             </p>
+            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+              <button
+                class="primary"
+                type="button"
+                data-workflow-action-level="primary"
+                @click="jumpToZone('publish-workbench')"
+              >
+                前往发布设置
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="secondary"
+                @click="jumpToZone('publish-result')"
+              >
+                查看最近结果
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="tertiary"
+                @click="jumpToZone('backup-workbench')"
+              >
+                跳到备份设置
+              </button>
+            </div>
             <div class="page-link-row">
               <a href="#" @click.prevent="goTutorialCenter"
                 >不知道仓库地址怎么填？打开教程中心（发布与访问地址）</a
@@ -226,8 +273,25 @@ function goTutorialCenter() {
         </div>
       </section>
 
-      <section class="panel">
-        <h2>发布到 GitHub Pages</h2>
+      <section
+        id="publish-workbench"
+        class="panel workflow-section-panel"
+        data-workflow-zone="publish-workbench"
+      >
+        <div class="workflow-section-heading">
+          <div class="workflow-section-heading-copy">
+            <p class="section-eyebrow">Step 01 · 对外发布</p>
+            <h2>发布到 GitHub Pages</h2>
+            <p class="section-helper">
+              先让访问地址变成可交付结果，再决定是否补一份离线恢复用的备份仓库。
+            </p>
+          </div>
+          <aside class="workflow-inline-note priority-panel priority-panel--support">
+            <p class="section-eyebrow">发布结果摘要</p>
+            <strong>{{ publishResultSummary }}</strong>
+            <p class="page-result-note">{{ publishNextStep }}</p>
+          </aside>
+        </div>
 
         <div class="context-card">
           <p class="section-eyebrow">发布前检查清单</p>
@@ -302,15 +366,27 @@ function goTutorialCenter() {
             label="开始发布"
             busy-label="发布中..."
             :busy="isBusy('publish')"
+            data-workflow-action-level="primary"
             @click="publish"
           />
-          <button class="secondary" @click="goTutorialCenter">查看发布教程</button>
+          <button
+            class="secondary"
+            type="button"
+            data-workflow-action-level="secondary"
+            @click="goTutorialCenter"
+          >
+            查看发布教程
+          </button>
         </div>
       </section>
     </div>
 
     <div class="page-layer" data-page-layer="explanation">
-      <section class="priority-panel priority-panel--support">
+      <section
+        id="publish-result"
+        class="priority-panel priority-panel--support workflow-result-panel"
+        data-workflow-zone="recent-result"
+      >
         <p class="section-eyebrow">最近结果</p>
         <strong>{{ publishResultSummary }}</strong>
         <p class="page-result-note">
@@ -321,11 +397,25 @@ function goTutorialCenter() {
         </div>
       </section>
 
-      <section class="panel">
-        <h2>备份到底层仓库</h2>
-        <p class="muted">
-          将本地博客工程打包到快照目录，可选推送到另一个 GitHub 仓库用于换设备恢复。
-        </p>
+      <section
+        id="backup-workbench"
+        class="panel workflow-section-panel"
+        data-workflow-zone="backup-workbench"
+      >
+        <div class="workflow-section-heading">
+          <div class="workflow-section-heading-copy">
+            <p class="section-eyebrow">Step 02 · 备份支线</p>
+            <h2>备份到底层仓库</h2>
+            <p class="section-helper">
+              将本地博客工程打包到快照目录，可选推送到另一个 GitHub 仓库，用于换设备恢复。
+            </p>
+          </div>
+          <aside class="workflow-inline-note priority-panel priority-panel--subtle">
+            <p class="section-eyebrow">备份适用场景</p>
+            <strong>发布跑通后，再补一份恢复用底仓快照。</strong>
+            <p class="page-result-note">这样不会让备份动作盖过本页最重要的对外发布。</p>
+          </aside>
+        </div>
 
         <div class="grid-2">
           <div>
@@ -362,6 +452,7 @@ function goTutorialCenter() {
             label="生成并推送备份"
             busy-label="备份中..."
             :busy="isBusy('backup')"
+            data-workflow-action-level="tertiary"
             @click="backup"
           />
         </div>

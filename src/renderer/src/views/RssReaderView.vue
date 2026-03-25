@@ -27,6 +27,16 @@ const totalUnread = computed(() => {
   return list.value.reduce((sum, item) => sum + Number(item.unreadCount || 0), 0);
 });
 
+const rssResultSummary = computed(() => {
+  if (message.value) {
+    return message.value;
+  }
+  if (list.value.length) {
+    return `当前共维护 ${list.value.length} 个订阅源。`;
+  }
+  return "还没有最近一次 RSS 处理结果。";
+});
+
 function getItemKey(post) {
   return post?.key || post?.guid || post?.id || post?.link || post?.title || "";
 }
@@ -153,9 +163,13 @@ onMounted(refresh);
 </script>
 
 <template>
-  <div class="page-shell page-shell--rss" data-page-role="rss">
+  <div
+    class="page-shell page-shell--rss"
+    data-page-role="rss"
+    data-workflow-surface="editorial-workflow"
+  >
     <div class="page-layer" data-page-layer="primary">
-      <section class="panel page-hero">
+      <section class="panel page-hero" data-workflow-zone="hero">
         <div class="page-hero-grid">
           <div>
             <p class="page-kicker">Extension zone</p>
@@ -163,6 +177,32 @@ onMounted(refresh);
             <p class="page-lead">
               这是更安静的扩展区：它能提供灵感和订阅管理，但不会和博客创建、预览、发布争抢优先级。主流程跑通后，再慢慢补齐这里即可。
             </p>
+            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+              <button
+                class="primary"
+                type="button"
+                data-workflow-action-level="primary"
+                @click="$el?.querySelector('#rss-add-subscription')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+              >
+                前往新增订阅
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="secondary"
+                @click="syncNow"
+              >
+                立即同步订阅
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="tertiary"
+                @click="$el?.querySelector('#rss-export-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+              >
+                导出订阅快照
+              </button>
+            </div>
             <div class="page-link-row">
               <a href="#" @click.prevent="goTutorialCenter"
                 >打开教程中心（RSS 配置指南）</a
@@ -179,7 +219,11 @@ onMounted(refresh);
         </div>
       </section>
 
-      <section class="panel">
+      <section
+        id="rss-add-subscription"
+        class="panel workflow-section-panel"
+        data-workflow-zone="add-subscription"
+      >
         <h2>新增订阅</h2>
         <div class="grid-2">
           <div>
@@ -205,7 +249,13 @@ onMounted(refresh);
     </div>
 
     <div class="page-layer" data-page-layer="explanation">
-      <section class="panel">
+      <section
+        id="rss-export-result"
+        class="panel workflow-result-panel"
+        data-workflow-zone="recent-result"
+      >
+        <p class="section-eyebrow">订阅结果摘要</p>
+        <strong>{{ rssResultSummary }}</strong>
         <h2>导出订阅快照</h2>
         <label>博客工程目录</label>
         <div class="path-input-row">
@@ -230,7 +280,7 @@ onMounted(refresh);
     </div>
 
     <div class="page-layer" data-page-layer="detail">
-      <section class="panel">
+      <section class="panel workflow-section-panel" data-workflow-zone="subscription-list">
         <div class="page-hero-grid">
           <h2>订阅列表</h2>
           <div class="actions actions-tight">

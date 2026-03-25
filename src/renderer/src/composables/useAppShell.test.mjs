@@ -29,6 +29,8 @@ test("useAppShell keeps Task 5 shell tab keys and shell summary state", async ()
     "updateState",
     "authState",
     "deviceFlow",
+    "shellAppearance",
+    "shellAppearanceToggleLabel",
   ];
 
   for (const stateName of expectedShellState) {
@@ -91,6 +93,18 @@ test("useAppShell delegates shell-global utilities to shell actions facade", asy
       `expected useAppShell to avoid direct shell globals: ${snippet}`,
     );
   }
+});
+
+test("useAppShell owns shell appearance presentation state without changing workflow boundaries", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(source, /const shellAppearance = ref\("light"\)/);
+  assert.match(
+    source,
+    /const shellAppearanceToggleLabel = computed\(\(\) =>[\s\S]*切换到暗色编辑台[\s\S]*切换到亮色编辑台/,
+  );
+  assert.match(source, /function toggleShellAppearance\(\)/);
+  assert.match(source, /shellAppearance\.value = shellAppearance\.value === "light" \? "dark" : "light"/);
 });
 
 test("useAppShell matches approved IA workflow grouping metadata", async () => {

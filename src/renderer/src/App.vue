@@ -55,14 +55,17 @@ const {
   rssUnreadTotal,
   selectedWorkspace,
   setActiveTab,
+  shellAppearance,
+  shellAppearanceToggleLabel,
   sidebarLoginText,
+  toggleShellAppearance,
   updateState,
   workspaceSummary,
 } = useAppShell();
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout layout--editorial" :data-shell-appearance="shellAppearance">
     <WorkflowSidebar
       :active-section-meta="activeSectionMeta"
       :active-tab="activeTab"
@@ -76,12 +79,15 @@ const {
       :next-step="nextStep"
       :rss-unread-total="rssUnreadTotal"
       :selected-workspace="selectedWorkspace"
+      :shell-appearance="shellAppearance"
+      :shell-appearance-toggle-label="shellAppearanceToggleLabel"
       :sidebar-login-text="sidebarLoginText"
       :update-state="updateState"
       @navigate="setActiveTab"
       @check-updates="handleCheckUpdatesNow"
       @install-update="handleInstallUpdateNow"
       @open-info="openInfoModal"
+      @toggle-shell-appearance="toggleShellAppearance"
       @toggle-launch-at-startup="handleToggleLaunchAtStartup"
       @logout="handleGithubLogout"
     />

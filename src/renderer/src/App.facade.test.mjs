@@ -12,12 +12,17 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /WorkflowSummary/);
   assert.match(source, /SystemStatusPanel/);
   assert.match(source, /ShellModalLayer/);
+  assert.match(source, /:data-shell-appearance="shellAppearance"/);
+  assert.match(source, /:shell-appearance="shellAppearance"/);
+  assert.match(source, /:shell-appearance-toggle-label="shellAppearanceToggleLabel"/);
+  assert.match(source, /@toggle-shell-appearance="toggleShellAppearance"/);
 
   const forbiddenInlineShellPresentation = [
     "GitHub 登录（OAuth 设备码）",
     "modal-backdrop",
     "device-code-card",
     "当前设备码",
+    "切换到暗色编辑台",
   ];
 
   for (const snippet of forbiddenInlineShellPresentation) {

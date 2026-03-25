@@ -146,6 +146,7 @@ export function useAppShell() {
   const envActionLog = ref("");
   const pnpmProgress = ref([]);
   const pnpmInstalling = ref(false);
+  const shellAppearance = ref("light");
   const updateState = ref({
     status: "idle",
     message: "未检测更新",
@@ -316,11 +317,20 @@ export function useAppShell() {
   const activeInfoModal = computed(() => {
     return appContents[infoModal.value.key] || appContents.about;
   });
+  const shellAppearanceToggleLabel = computed(() =>
+    shellAppearance.value === "light"
+      ? "切换到暗色编辑台"
+      : "切换到亮色编辑台",
+  );
 
   function setActiveTab(tabKey) {
     if (tabs.some((item) => item.key === tabKey)) {
       activeTab.value = tabKey;
     }
+  }
+
+  function toggleShellAppearance() {
+    shellAppearance.value = shellAppearance.value === "light" ? "dark" : "light";
   }
 
   function openInfoModal(key) {
@@ -660,7 +670,10 @@ export function useAppShell() {
     rssUnreadTotal,
     selectedWorkspace,
     setActiveTab,
+    shellAppearance,
+    shellAppearanceToggleLabel,
     sidebarLoginText,
+    toggleShellAppearance,
     updateState,
     workspaceSummary,
   };

@@ -31,6 +31,8 @@ test("useAppShell keeps Task 5 shell tab keys and shell summary state", async ()
     "deviceFlow",
     "shellAppearance",
     "shellAppearanceToggleLabel",
+    "isShellPopupOpen",
+    "shellUserEntryLabel",
   ];
 
   for (const stateName of expectedShellState) {
@@ -105,6 +107,17 @@ test("useAppShell owns shell appearance presentation state without changing work
   );
   assert.match(source, /function toggleShellAppearance\(\)/);
   assert.match(source, /shellAppearance\.value = shellAppearance\.value === "light" \? "dark" : "light"/);
+});
+
+test("useAppShell owns popup utility state for the refined shell", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(source, /const isShellPopupOpen = ref\(false\)/);
+  assert.match(source, /const shellUserEntryLabel = computed\(/);
+  assert.match(source, /function toggleShellPopup\(\)/);
+  assert.match(source, /function closeShellPopup\(\)/);
+  assert.match(source, /isShellPopupOpen\.value = !isShellPopupOpen\.value/);
+  assert.match(source, /isShellPopupOpen\.value = false/);
 });
 
 test("useAppShell matches approved IA workflow grouping metadata", async () => {

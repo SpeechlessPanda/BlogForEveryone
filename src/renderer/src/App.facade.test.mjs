@@ -8,13 +8,16 @@ test("App uses shell composable and thin shell components instead of raw window.
   const source = await readFile(appPath, "utf8");
 
   assert.match(source, /useAppShell/);
+  assert.match(source, /ShellTopBar/);
   assert.match(source, /WorkflowSidebar/);
   assert.match(source, /WorkflowSummary/);
   assert.match(source, /SystemStatusPanel/);
   assert.match(source, /ShellModalLayer/);
   assert.match(source, /:data-shell-appearance="shellAppearance"/);
-  assert.match(source, /:shell-appearance="shellAppearance"/);
-  assert.match(source, /:shell-appearance-toggle-label="shellAppearanceToggleLabel"/);
+  assert.match(source, /:is-shell-popup-open="isShellPopupOpen"/);
+  assert.match(source, /:shell-user-entry-label="shellUserEntryLabel"/);
+  assert.match(source, /@toggle-shell-popup="toggleShellPopup"/);
+  assert.match(source, /@close-shell-popup="closeShellPopup"/);
   assert.match(source, /@toggle-shell-appearance="toggleShellAppearance"/);
 
   const forbiddenInlineShellPresentation = [
@@ -23,6 +26,9 @@ test("App uses shell composable and thin shell components instead of raw window.
     "device-code-card",
     "当前设备码",
     "切换到暗色编辑台",
+    'data-sidebar-block="current-stage"',
+    'data-status-block="overview"',
+    'data-summary-card="lead"',
   ];
 
   for (const snippet of forbiddenInlineShellPresentation) {

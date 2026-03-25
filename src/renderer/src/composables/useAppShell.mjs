@@ -147,6 +147,7 @@ export function useAppShell() {
   const pnpmProgress = ref([]);
   const pnpmInstalling = ref(false);
   const shellAppearance = ref("light");
+  const isShellPopupOpen = ref(false);
   const updateState = ref({
     status: "idle",
     message: "未检测更新",
@@ -314,6 +315,12 @@ export function useAppShell() {
     const account = authState.value?.account;
     return `登录状态：${account?.login || "已登录"}`;
   });
+  const shellUserEntryLabel = computed(() => {
+    if (!isLoggedIn.value) {
+      return "未登录";
+    }
+    return authState.value?.account?.login || "GitHub 已登录";
+  });
   const activeInfoModal = computed(() => {
     return appContents[infoModal.value.key] || appContents.about;
   });
@@ -326,11 +333,20 @@ export function useAppShell() {
   function setActiveTab(tabKey) {
     if (tabs.some((item) => item.key === tabKey)) {
       activeTab.value = tabKey;
+      isShellPopupOpen.value = false;
     }
   }
 
   function toggleShellAppearance() {
     shellAppearance.value = shellAppearance.value === "light" ? "dark" : "light";
+  }
+
+  function toggleShellPopup() {
+    isShellPopupOpen.value = !isShellPopupOpen.value;
+  }
+
+  function closeShellPopup() {
+    isShellPopupOpen.value = false;
   }
 
   function openInfoModal(key) {
@@ -658,6 +674,7 @@ export function useAppShell() {
     handleOpenInstaller,
     handleToggleLaunchAtStartup,
     infoModal,
+    isShellPopupOpen,
     isLoggedIn,
     launchAtStartupEnabled,
     loginStatusText,
@@ -672,7 +689,10 @@ export function useAppShell() {
     setActiveTab,
     shellAppearance,
     shellAppearanceToggleLabel,
+    shellUserEntryLabel,
     sidebarLoginText,
+    closeShellPopup,
+    toggleShellPopup,
     toggleShellAppearance,
     updateState,
     workspaceSummary,

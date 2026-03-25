@@ -1,4 +1,5 @@
 <script setup>
+import ShellTopBar from "./components/shell/ShellTopBar.vue";
 import WorkflowSidebar from "./components/shell/WorkflowSidebar.vue";
 import WorkflowSummary from "./components/shell/WorkflowSummary.vue";
 import SystemStatusPanel from "./components/shell/SystemStatusPanel.vue";
@@ -18,7 +19,6 @@ const {
   activeSectionMeta,
   activeTab,
   activeTabMeta,
-  actionState,
   appState,
   authClientId,
   authLog,
@@ -26,13 +26,12 @@ const {
   closeErrorModal,
   closeInfoModal,
   copyUserCode,
+  closeShellPopup,
   deviceFlow,
   envActionLog,
   envStatus,
-  environmentStatusText,
   errorModal,
   fillDemoClientIdGuide,
-  getActionLabel,
   groupedWorkflowSections,
   handleAutoInstall,
   handleCheckUpdatesNow,
@@ -41,13 +40,10 @@ const {
   handleInstallPnpm,
   handleInstallUpdateNow,
   handleOpenInstaller,
-  handleToggleLaunchAtStartup,
   infoModal,
+  isShellPopupOpen,
   isLoggedIn,
-  launchAtStartupEnabled,
-  loginStatusText,
   nextStep,
-  openInfoModal,
   pnpmInstalling,
   pnpmProgress,
   refreshAuthState,
@@ -57,7 +53,8 @@ const {
   setActiveTab,
   shellAppearance,
   shellAppearanceToggleLabel,
-  sidebarLoginText,
+  shellUserEntryLabel,
+  toggleShellPopup,
   toggleShellAppearance,
   updateState,
   workspaceSummary,
@@ -67,66 +64,63 @@ const {
 <template>
   <div class="layout layout--editorial" :data-shell-appearance="shellAppearance">
     <WorkflowSidebar
-      :active-section-meta="activeSectionMeta"
       :active-tab="activeTab"
-      :action-state="actionState"
       :app-state="appState"
-      :environment-status-text="environmentStatusText"
-      :get-action-label="getActionLabel"
       :grouped-workflow-sections="groupedWorkflowSections"
-      :is-logged-in="isLoggedIn"
-      :launch-at-startup-enabled="launchAtStartupEnabled"
-      :next-step="nextStep"
       :rss-unread-total="rssUnreadTotal"
-      :selected-workspace="selectedWorkspace"
       :shell-appearance="shellAppearance"
-      :shell-appearance-toggle-label="shellAppearanceToggleLabel"
-      :sidebar-login-text="sidebarLoginText"
-      :update-state="updateState"
+      :shell-user-entry-label="shellUserEntryLabel"
       @navigate="setActiveTab"
-      @check-updates="handleCheckUpdatesNow"
-      @install-update="handleInstallUpdateNow"
-      @open-info="openInfoModal"
-      @toggle-shell-appearance="toggleShellAppearance"
-      @toggle-launch-at-startup="handleToggleLaunchAtStartup"
-      @logout="handleGithubLogout"
+      @toggle-shell-popup="toggleShellPopup"
     />
 
     <main class="content">
-      <WorkflowSummary
+      <ShellTopBar
         :active-section-meta="activeSectionMeta"
         :active-tab-meta="activeTabMeta"
-        :environment-status-text="environmentStatusText"
-        :login-status-text="loginStatusText"
-        :next-step="nextStep"
-        :workspace-summary="workspaceSummary"
-      />
+        :is-shell-popup-open="isShellPopupOpen"
+        :shell-user-entry-label="shellUserEntryLabel"
+        @toggle-shell-popup="toggleShellPopup"
+        @close-shell-popup="closeShellPopup"
+      >
+        <template #page-actions>
+          <WorkflowSummary
+            :active-section-meta="activeSectionMeta"
+            :active-tab-meta="activeTabMeta"
+            :next-step="nextStep"
+            :workspace-summary="workspaceSummary"
+          />
+        </template>
 
-      <SystemStatusPanel
-        :active-tab="activeTab"
-        :auth-client-id="authClientId"
-        :auth-log="authLog"
-        :auth-state="authState"
-        :device-flow="deviceFlow"
-        :env-action-log="envActionLog"
-        :env-status="envStatus"
-        :is-logged-in="isLoggedIn"
-        :pnpm-installing="pnpmInstalling"
-        :pnpm-progress="pnpmProgress"
-        :update-state="updateState"
-        @update:auth-client-id="(value) => (authClientId = value)"
-        @check-updates="handleCheckUpdatesNow"
-        @install-update="handleInstallUpdateNow"
-        @fill-demo-client-id-guide="fillDemoClientIdGuide"
-        @login="handleGithubLogin"
-        @logout="handleGithubLogout"
-        @refresh-auth="refreshAuthState"
-        @copy-user-code="copyUserCode"
-        @open-installer="handleOpenInstaller"
-        @auto-install="handleAutoInstall"
-        @install-pnpm="handleInstallPnpm"
-        @refresh-env="refreshEnvStatus"
-      />
+        <SystemStatusPanel
+          :active-tab="activeTab"
+          :auth-client-id="authClientId"
+          :auth-log="authLog"
+          :auth-state="authState"
+          :device-flow="deviceFlow"
+          :env-action-log="envActionLog"
+          :env-status="envStatus"
+          :is-logged-in="isLoggedIn"
+          :pnpm-installing="pnpmInstalling"
+          :pnpm-progress="pnpmProgress"
+          :shell-appearance="shellAppearance"
+          :shell-appearance-toggle-label="shellAppearanceToggleLabel"
+          :update-state="updateState"
+          @update:auth-client-id="(value) => (authClientId = value)"
+          @check-updates="handleCheckUpdatesNow"
+          @install-update="handleInstallUpdateNow"
+          @fill-demo-client-id-guide="fillDemoClientIdGuide"
+          @login="handleGithubLogin"
+          @logout="handleGithubLogout"
+          @refresh-auth="refreshAuthState"
+          @copy-user-code="copyUserCode"
+          @open-installer="handleOpenInstaller"
+          @auto-install="handleAutoInstall"
+          @install-pnpm="handleInstallPnpm"
+          @refresh-env="refreshEnvStatus"
+          @toggle-shell-appearance="toggleShellAppearance"
+        />
+      </ShellTopBar>
 
       <TutorialCenterView v-if="activeTab === 'tutorial'" />
       <WorkspaceView v-if="activeTab === 'workspace'" />

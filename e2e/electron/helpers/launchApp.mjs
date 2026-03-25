@@ -27,8 +27,38 @@ export async function launchEditorialWorkbenchApp({ fixtureState }) {
   });
 
   const window = await electronApp.firstWindow();
-  await window.waitForLoadState("domcontentloaded");
-  await expect(window.locator('[data-tutorial-surface="editorial-workbench"]')).toBeVisible();
+  const consoleMessages = [];
+  const pageErrors = [];
+
+  window.on("console", (message) => {
+    consoleMessages.push(`[${message.type()}] ${message.text()}`);
+  });
+
+  window.on("pageerror", (error) => {
+    pageErrors.push(error.stack || error.message || String(error));
+  });
+
+  try {
+    await expect(window.locator('[data-tutorial-surface="editorial-workbench"]')).toBeVisible({
+      timeout: 30000,
+    });
+  } catch (error) {
+    const [url, title, bodyText] = await Promise.all([
+      window.url(),
+      window.title().catch(() => "<title unavailable>"),
+      window.locator("body").innerText().catch(() => "<body unavailable>"),
+    ]);
+    const diagnostic = [
+      `Electron launch did not reach editorial workbench home.`,
+      `URL: ${url}`,
+      `Title: ${title}`,
+      `Body: ${bodyText.slice(0, 2000) || "<empty body>"}`,
+      `Console: ${consoleMessages.length ? consoleMessages.join("\n") : "<none>"}`,
+      `Page errors: ${pageErrors.length ? pageErrors.join("\n") : "<none>"}`,
+    ].join("\n\n");
+
+    throw new Error(`${diagnostic}\n\nOriginal error: ${error.message}`);
+  }
 
   return {
     electronApp,

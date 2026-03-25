@@ -44,6 +44,16 @@ const previewNextStep = computed(() => {
   return "点击“启动并打开”，先确认博客首页能正常加载。";
 });
 
+const previewResultSummary = computed(() => {
+  if (preview.running && preview.url) {
+    return `最近确认：${preview.url}`;
+  }
+  if (status.value) {
+    return status.value;
+  }
+  return "还没有最近一次预览结果。";
+});
+
 function getDefaultPort(framework) {
   return framework === "hexo" ? "4000" : "1313";
 }
@@ -171,6 +181,13 @@ function goTutorialCenter() {
   window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
 }
 
+function jumpToZone(zoneId) {
+  document.getElementById(zoneId)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
+
 onMounted(async () => {
   await refreshWorkspaces();
   applyDefaultPort();
@@ -189,9 +206,13 @@ watch(
 </script>
 
 <template>
-  <div class="page-shell page-shell--preview" data-page-role="preview">
+  <div
+    class="page-shell page-shell--preview"
+    data-page-role="preview"
+    data-workflow-surface="editorial-workflow"
+  >
     <div class="page-layer" data-page-layer="primary">
-      <section class="panel page-hero">
+      <section class="panel page-hero" data-workflow-zone="hero">
         <div class="page-hero-grid">
           <div>
             <p class="page-kicker">Checkpoint surface</p>
@@ -199,6 +220,32 @@ watch(
             <p class="page-lead">
               这里不是日志监控页，而是确认博客结果的检查点。先确认当前状态，再执行打开、重启或停止动作，技术链路永远排在最后。
             </p>
+            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+              <button
+                class="primary"
+                type="button"
+                data-workflow-action-level="primary"
+                @click="jumpToZone('preview-workbench')"
+              >
+                前往预览控制台
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="secondary"
+                @click="jumpToZone('preview-result')"
+              >
+                查看最近结果
+              </button>
+              <button
+                class="secondary"
+                type="button"
+                data-workflow-action-level="tertiary"
+                @click="goTutorialCenter"
+              >
+                打开教程中心
+              </button>
+            </div>
             <div class="page-link-row">
               <a href="#" @click.prevent="goTutorialCenter"
                 >打开教程中心（预览与调试说明）</a
@@ -239,9 +286,25 @@ watch(
         </div>
       </section>
 
-      <section class="panel">
-        <h2>本地预览（localhost）</h2>
-        <p class="muted">保存内容或主题后可直接重启预览，查看最新页面变化。</p>
+      <section
+        id="preview-workbench"
+        class="panel workflow-section-panel"
+        data-workflow-zone="preview-workbench"
+      >
+        <div class="workflow-section-heading">
+          <div class="workflow-section-heading-copy">
+            <p class="section-eyebrow">Step 01 · 预览控制台</p>
+            <h2>本地预览（localhost）</h2>
+            <p class="section-helper">
+              保存内容或主题后，先在这里确认预览地址，再决定是否重启、只打开地址或停止当前会话。
+            </p>
+          </div>
+          <aside class="workflow-inline-note priority-panel priority-panel--support">
+            <p class="section-eyebrow">预览结果摘要</p>
+            <strong>{{ previewResultSummary }}</strong>
+            <p class="page-result-note">{{ previewNextStep }}</p>
+          </aside>
+        </div>
 
         <div class="grid-2">
           <div>
@@ -277,6 +340,7 @@ watch(
             label="启动并打开"
             busy-label="处理中..."
             :busy="isBusy('preview')"
+            data-workflow-action-level="primary"
             @click="runPreviewAction('start')"
           />
           <AsyncActionButton
@@ -284,6 +348,7 @@ watch(
             label="重启并刷新预览"
             busy-label="处理中..."
             :busy="isBusy('preview')"
+            data-workflow-action-level="secondary"
             @click="runPreviewAction('restart')"
           />
           <AsyncActionButton
@@ -291,6 +356,7 @@ watch(
             label="仅打开地址"
             busy-label="处理中..."
             :busy="isBusy('preview')"
+            data-workflow-action-level="secondary"
             @click="runPreviewAction('open')"
           />
           <AsyncActionButton
@@ -298,6 +364,7 @@ watch(
             label="停止预览"
             busy-label="处理中..."
             :busy="isBusy('preview')"
+            data-workflow-action-level="tertiary"
             @click="runPreviewAction('stop')"
           />
         </div>
@@ -305,9 +372,13 @@ watch(
     </div>
 
     <div class="page-layer" data-page-layer="explanation">
-      <section class="priority-panel priority-panel--support">
+      <section
+        id="preview-result"
+        class="priority-panel priority-panel--support workflow-result-panel"
+        data-workflow-zone="recent-result"
+      >
         <p class="section-eyebrow">最近结果</p>
-        <strong>{{ previewCheckpointState }}</strong>
+        <strong>{{ previewResultSummary }}</strong>
         <p class="page-result-note">
           {{ preview.url ? `预览地址：${preview.url}` : "还没有可确认的结果地址。" }}
         </p>

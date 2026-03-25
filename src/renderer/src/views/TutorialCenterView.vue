@@ -1,211 +1,319 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onMounted } from "vue";
+import { refreshWorkspaces, workspaceState } from "../stores/workspaceStore.js";
 
-const tutorialSections = [
+const frameworkLabels = {
+  hexo: "Hexo",
+  hugo: "Hugo",
+};
+
+const themeExplorationTracks = [
   {
-    key: "quick-start",
-    title: "00. 快速开始（10 分钟）",
+    key: "warm-start",
+    eyebrow: "Warm start",
+    title: "先用稳妥主题找到开笔速度",
     summary:
-      "从零开始的最短路径：环境检查、登录、创建、写作、发布。每一步都给出可验证结果。",
-    steps: [
-      "先看环境检查：Node.js、Git、pnpm 都显示已安装后再继续。",
-      "完成 GitHub 登录，侧边栏出现你的用户名才算成功。",
-      "进入博客创建，填工程名和目录后创建工程，等待流程显示“完成”。",
-      "点击安装工程依赖，日志出现成功信息再进入下一步。",
-      "进入本地预览页面，启动 localhost，确认能看到默认首页。",
-      "进入内容编辑，新建一篇文章并保存。",
-      "进入发布与备份，填写发布仓库并执行发布。",
-      "发布成功后点击“打开博客地址”验证页面可访问。",
-    ],
-    notes: [
-      "建议把工程放在 D:/blog 或 D:/workspace，避免系统目录权限问题。",
-      "任何步骤卡住都先看日志原文，不要跳步骤。",
-      "首次发布后页面可能需要 1-10 分钟生效，这是 GitHub Pages 正常行为。",
-    ],
+      "Landscape、Next、PaperMod 适合先把创建、写作、预览与发布流程走通，再决定更强的品牌表达。",
+    tags: ["低门槛", "发布友好", "适合第一次上线"],
   },
   {
-    key: "oauth",
-    title: "01. GitHub 登录（设备码）",
+    key: "brand-forward",
+    eyebrow: "Brand voice",
+    title: "想要更强首页气质，就去看表达型方向",
     summary:
-      "面向新手的 OAuth 设备码登录流程，重点区分 Client ID、设备码、访问令牌。",
-    steps: [
-      "在 GitHub 打开 Settings > Developer settings > OAuth Apps，创建一个 OAuth App。",
-      "Homepage URL 建议填 https://github.com/你的用户名，Authorization callback URL 填 http://localhost。",
-      "在 OAuth App 页面勾选 Enable Device Flow（这是设备码登录必须项）。",
-      "创建后复制 Client ID，粘贴到应用登录区，再点“设备码登录”。",
-      "如果网页要求输入 code，请填应用里显示的“当前设备码”。",
-      "授权后回到应用，点击刷新登录状态，直到看到用户名。",
-    ],
-    notes: [
-      "Client ID 通常形如 Iv1.xxxxx，它不是 Access Token。",
-      "若网页显示 Device connected 但应用失败，通常是网络或代理问题，重试并检查网络。",
-      "设备码有有效期，过期后要重新发起登录。",
-    ],
+      "Butterfly、Fluid、Stack 更适合需要首屏层次、专题感和品牌记忆点的博客方向。",
+    tags: ["首页表现", "专题感", "更有视觉记忆"],
   },
   {
-    key: "create-blog",
-    title: "02. 创建博客工程",
+    key: "calm-editorial",
+    eyebrow: "Editorial calm",
+    title: "偏安静、耐看的纸感路线也已经准备好",
     summary:
-      "解释每个输入框该填什么、慢速阶段如何判断正常，以及失败时怎么回退。",
-    steps: [
-      "工程名建议只用小写字母、数字、短横线，例如 my-first-blog。",
-      "框架选择建议：初学者优先 Hexo，追求速度可选 Hugo。",
-      "点击创建后，按“校验输入 -> 初始化工程 -> 写入记录 -> 完成”观察流程状态。",
-      "创建完成后必须安装依赖，否则主题配置和发布会失败。",
-      "网络慢时安装依赖可能较久，优先看日志是否仍在输出。",
-    ],
-    notes: [
-      "目录路径含空格一般可用，但出现异常时优先换成纯英文路径。",
-      "如果创建失败，不会写入工作区记录；修复后可直接重试。",
-    ],
-  },
-  {
-    key: "theme-images",
-    title: "03. 主题配置与图片",
-    summary: "不使用图床，只填本地图片路径，软件会自动转存并写入主题配置。",
-    steps: [
-      "先在工作区里选定工程，主题会自动跟随工程。",
-      "背景图推荐使用“选择文件”按钮，避免手输路径错误。",
-      "目录保持默认更稳：Hexo 为 source/img，Hugo 为 static/img。",
-      "若想固定资源地址，可填写背景图文件名，例如 home-bg.jpg。",
-      "点击转存并应用背景图后，确认状态提示已写入配置。",
-      "图标同理，上传后会自动写入主题配置中的 favicon 字段。",
-    ],
-    notes: [
-      "建议图片名只用英文、数字、短横线，避免空格与中文导致路径兼容问题。",
-      "更换图片后若页面没更新，先重新发布再清缓存。",
-    ],
-  },
-  {
-    key: "comments-analytics",
-    title: "04. 评论与浏览量统计",
-    summary:
-      "先用低门槛统计方案，再按需接入 Giscus、Umami、GA。每项都给最小可用配置。",
-    steps: [
-      "浏览量统计默认启用不蒜子，一般无需注册。",
-      "若需要更完整分析，再配置 Umami 或 GA。",
-      "配置 Giscus 第一步：进入你的博客仓库，打开 Settings -> Features，勾选 Discussions。",
-      "配置 Giscus 第二步：仓库主页切换到 Discussions，创建一个分类（例如 Announcements 或 General）。",
-      "配置 Giscus 第三步：打开 https://giscus.app，Language 选中文（可选），Repository 填 owner/repo。",
-      "配置 Giscus 第四步：在页面上选择 Discussion category，并复制 repoId、categoryId。",
-      "配置 Giscus 第五步：把 repo、repoId、category、categoryId、mapping 填回本软件并保存。",
-      "保存后重新发布，再打开文章页验证评论区是否出现。",
-    ],
-    notes: [
-      "Giscus 仓库必须公开、已安装 giscus app、并启用 Discussions。",
-      "广告拦截插件会影响统计脚本，排查时先临时关闭后刷新验证。",
-    ],
-  },
-  {
-    key: "content",
-    title: "05. 写文章与页面内容",
-    summary: "自动创建 Markdown 并调用系统默认编辑器，不需要命令行。",
-    steps: [
-      "进入“内容编辑”，选择内容类型：文章、关于、友链或公告。",
-      "填写标题（slug 可不填），点击创建并打开编辑器。",
-      "在系统默认 Markdown 编辑器中写完并保存。",
-      "如果开启保存后自动发布，系统会在检测到保存后触发发布。",
-      "写完后回到应用，检查自动发布状态是否显示成功。",
-    ],
-    notes: [
-      "若未自动打开编辑器，请检查系统默认应用是否可处理 .md 文件。",
-      "标题建议简洁，后续修改 slug 会改变旧链接。",
-    ],
-  },
-  {
-    key: "git-email-ssh",
-    title: "06. 提交邮箱、SSH 与发布方式",
-    summary:
-      "发布不只一种方式。本节说明 noreply 邮箱、SSH 是否必需，以及 Hexo/Hugo 推荐发布路径。",
-    steps: [
-      "优先在 GitHub 设置里开启邮箱隐私，使用 noreply 邮箱作为提交邮箱。",
-      "如果仓库地址是 HTTPS，不强制需要 SSH 公钥；如果是 git@github.com 则必须配置 SSH。",
-      "Windows 下可用 ssh-keygen -t ed25519 生成密钥，再把 .pub 公钥加到 GitHub。",
-      "本软件发布模式优先选 GitHub Actions；Hexo 还可选 hexo deploy 命令发布。",
-      "若你不确定选哪种，把用户名、仓库地址、邮箱发给我，我可以给你一键配置建议。",
-    ],
-    notes: [
-      "noreply 邮箱隐私更好，但必须保证该邮箱与 GitHub 归属规则匹配。",
-      "SSH 不是强制项，核心是你要有可用的推送凭据。",
-    ],
-  },
-  {
-    key: "publish",
-    title: "07. 发布、访问地址与备份",
-    summary:
-      "重点规则：发布仓库必须是 用户名.github.io。按检查清单执行，发布后立即可验证。",
-    steps: [
-      "先在 GitHub 创建公开仓库，仓库名必须是 用户名.github.io。",
-      "发布仓库地址填写完整 URL，例如 https://github.com/用户名/用户名.github.io.git。",
-      "首次发布前填写 Git 提交用户名和邮箱，软件会自动配置当前工程的 Git 身份。",
-      "点击一键发布，等待日志显示 push 与 deploy 成功。",
-      "进入仓库 Settings -> Pages，确认 Source 为 GitHub Actions。",
-      "进入仓库 Actions，确认 Deploy 工作流为绿色成功。",
-      "访问 https://用户名.github.io/ 验证页面。",
-      "每次大改前都执行本地备份，必要时推送到独立备份仓库。",
-    ],
-    notes: [
-      "如果仓库名不是 用户名.github.io，本软件会阻止发布并提示修正。",
-      "如果提示 Git 身份缺失，请按发布页提示填写用户名和邮箱后重试。",
-      "发布后出现 404 时，先等 1-10 分钟，再检查 Actions 和 Pages 配置。",
-    ],
-  },
-  {
-    key: "troubleshoot",
-    title: "08. 常见故障排查",
-    summary: "按症状给出最短排查路径，避免一次改动太多导致问题叠加。",
-    steps: [
-      "症状：创建工程很慢。处理：看日志是否持续输出，卡住再换网络后重试。",
-      "症状：登录后重开软件仍显示未登录。处理：检查是否点了退出登录，确认本地数据库可写。",
-      "症状：页面样式不更新。处理：保存主题配置后重新发布，并强制刷新浏览器缓存。",
-      "症状：评论区不显示。处理：检查仓库公开性、giscus app 安装、Discussions 开关与参数。",
-      "症状：发布后 404。处理：先确认仓库名是 用户名.github.io，再查 Actions 与 Pages。",
-    ],
-    notes: [
-      "排错时一次只改一个变量，改完立刻验证，避免问题叠加。",
-      "无法定位时，把日志原文复制出来再处理，不要只凭感觉判断。",
-    ],
+      "LoveIt、Mainroad、Anatole、Volantis 能提供更克制的排版基调，适合长期写作与内容沉淀。",
+    tags: ["纸感", "长期写作", "内容优先"],
   },
 ];
 
-const activeSectionKey = ref(tutorialSections[0].key);
-
-const activeSection = computed(() => {
+const selectedWorkspace = computed(() => {
   return (
-    tutorialSections.find((item) => item.key === activeSectionKey.value) ||
-    tutorialSections[0]
+    workspaceState.workspaces.find(
+      (item) => item.id === workspaceState.selectedWorkspaceId,
+    ) || workspaceState.workspaces[0] || null
   );
+});
+
+const recentWorkspaces = computed(() => {
+  return workspaceState.workspaces.slice(0, 3);
+});
+
+const heroSummary = computed(() => {
+  const workspace = selectedWorkspace.value;
+  if (!workspace) {
+    return "先创建一个可运行工作区，再回来继续主题、内容与发布节奏。";
+  }
+  return `当前已连接 ${workspace.name}，可以直接延续主题配置、内容编辑或本地预览。`;
+});
+
+const featuredWorkbenchCard = computed(() => {
+  const workspace = selectedWorkspace.value;
+  if (!workspace) {
+    return {
+      eyebrow: "Featured direction",
+      title: "把教程首页当成创作开场桌面",
+      summary:
+        "左侧动作负责开始，右侧视觉锚点负责帮你先选一个气质方向：稳妥开局、品牌表达，或更安静的纸感路线。",
+      meta: "现在最值得做的动作，是先拿到第一个可运行工作区。",
+      tags: ["中密度工作台", "温润纸感", "效率不后退"],
+      actionLabel: "前往创建页挑选主题",
+      actionTab: "workspace",
+    };
+  }
+
+  return {
+    eyebrow: "Current workbench",
+    title: workspace.name,
+    summary: `${frameworkLabels[workspace.framework] || workspace.framework} 工作区已接入当前桌面，继续完善品牌、内容和预览会最顺手。`,
+    meta: workspace.localExists
+      ? workspace.projectDir
+      : "记录已存在，但建议先检查本地目录是否仍可用。",
+    tags: [
+      frameworkLabels[workspace.framework] || workspace.framework,
+      workspace.localExists ? "本地目录可继续使用" : "需要检查本地目录",
+      "保持同一工作流节奏",
+    ],
+    actionLabel: workspace.localExists ? "继续去主题配置" : "回到工作区检查",
+    actionTab: workspace.localExists ? "theme" : "workspace",
+  };
+});
+
+const statusBand = computed(() => {
+  const workspace = selectedWorkspace.value;
+
+  return [
+    {
+      eyebrow: "当前工作区",
+      title: workspace ? workspace.name : "还没有已连接工作区",
+      detail: workspace
+        ? `${frameworkLabels[workspace.framework] || workspace.framework} · ${workspace.localExists ? "本地项目在线" : "等待本地目录确认"}`
+        : "创建或导入一个项目后，这里会成为主题、内容、预览与发布的默认上下文。",
+    },
+    {
+      eyebrow: "当前节奏",
+      title: workspace ? "先确认主题方向，再预览首页" : "先拿到可运行的第一篇博客",
+      detail: workspace
+        ? "教程首页会先把继续动作、最近工作和主题方向放在同一张桌面里。"
+        : "完成工作区创建后，就能把首页从教程目录切换成持续使用的工作台。",
+    },
+    {
+      eyebrow: "最新状态",
+      title: workspace?.localExists ? "可继续编辑与预览" : "需要先补齐工作区上下文",
+      detail: workspace?.localExists
+        ? "优先继续主题配置或内容编辑，能最快看到自己的品牌首页。"
+        : "如果你已有项目，也可以直接从导入入口接回当前工作流。",
+    },
+  ];
+});
+
+function openTab(tabKey) {
+  window.dispatchEvent(new CustomEvent("bfe:open-tab", { detail: { tabKey } }));
+}
+
+function continueLastWork() {
+  const workspace = selectedWorkspace.value;
+  if (!workspace) {
+    openTab("workspace");
+    return;
+  }
+
+  workspaceState.selectedWorkspaceId = workspace.id;
+  openTab(workspace.localExists ? "theme" : "workspace");
+}
+
+function openWorkspaceContext(workspace, tabKey) {
+  workspaceState.selectedWorkspaceId = workspace.id;
+  openTab(tabKey);
+}
+
+onMounted(() => {
+  refreshWorkspaces().catch(() => {});
 });
 </script>
 
 <template>
-  <section class="tutorial-layout-full">
-    <aside class="tutorial-directory">
-      <h2>教程中心</h2>
-      <p class="muted">点击左侧目录进入详细教程。</p>
-      <button
-        v-for="section in tutorialSections"
-        :key="section.key"
-        :class="['tutorial-link', { active: activeSectionKey === section.key }]"
-        @click="activeSectionKey = section.key"
-      >
-        {{ section.title }}
-      </button>
-    </aside>
+  <section
+    class="page-shell page-shell--tutorial tutorial-workbench"
+    data-page-role="tutorial"
+    data-tutorial-surface="editorial-workbench"
+  >
+    <header class="panel tutorial-brand-header" data-tutorial-zone="brand-header">
+      <div>
+        <p class="page-kicker">Tutorial home · Editorial workbench</p>
+        <h2 class="page-title tutorial-brand-title">BlogForEveryone</h2>
+        <p class="page-lead tutorial-brand-lead">
+          把新手引导、当前工程与主题灵感收进同一张开场桌面：既像编辑台，也保持真正能继续工作的效率。
+        </p>
+      </div>
 
-    <article class="tutorial-article">
-      <h3>{{ activeSection.title }}</h3>
-      <p class="muted">{{ activeSection.summary }}</p>
+      <div class="tutorial-brand-meta">
+        <div class="tutorial-meta-chip">
+          <span class="status-label">首屏定位</span>
+          <strong>中密度创作工作台</strong>
+        </div>
+        <p class="section-helper">
+          先判断当前项目和下一步，再决定是继续、创建，还是导入已有博客。
+        </p>
+      </div>
+    </header>
 
-      <h4>操作步骤</h4>
-      <ol>
-        <li v-for="step in activeSection.steps" :key="step">{{ step }}</li>
-      </ol>
+    <section class="panel tutorial-workbench-hero" data-tutorial-zone="hero">
+      <div class="tutorial-workbench-copy">
+        <p class="section-eyebrow">Primary workbench hero</p>
+        <h3 class="tutorial-hero-title">先延续当前创作，再开启下一篇博客。</h3>
+        <p class="tutorial-hero-lead">{{ heroSummary }}</p>
 
-      <h4>注意事项</h4>
-      <ul class="tutorial-note">
-        <li v-for="note in activeSection.notes" :key="note">{{ note }}</li>
-      </ul>
-    </article>
+        <div class="actions tutorial-workbench-actions">
+          <button class="primary" type="button" @click="continueLastWork">
+            继续上次工作
+          </button>
+          <button class="secondary" type="button" @click="openTab('workspace')">
+            新建博客
+          </button>
+          <button class="secondary" type="button" @click="openTab('import')">
+            导入已有项目
+          </button>
+        </div>
+
+        <p class="action-note tutorial-hero-note">
+          {{
+            selectedWorkspace
+              ? `当前默认工作区：${selectedWorkspace.name}`
+              : "还没有默认工作区时，创建和导入都会把这里变成后续的继续入口。"
+          }}
+        </p>
+      </div>
+
+      <article class="tutorial-feature-card">
+        <p class="section-eyebrow">{{ featuredWorkbenchCard.eyebrow }}</p>
+        <h3>{{ featuredWorkbenchCard.title }}</h3>
+        <p class="section-helper">{{ featuredWorkbenchCard.summary }}</p>
+        <p class="tutorial-feature-meta">{{ featuredWorkbenchCard.meta }}</p>
+
+        <div class="tutorial-tag-row">
+          <span
+            v-for="tag in featuredWorkbenchCard.tags"
+            :key="tag"
+            class="tutorial-tag"
+          >
+            {{ tag }}
+          </span>
+        </div>
+
+        <button
+          class="secondary tutorial-feature-action"
+          type="button"
+          @click="openTab(featuredWorkbenchCard.actionTab)"
+        >
+          {{ featuredWorkbenchCard.actionLabel }}
+        </button>
+      </article>
+    </section>
+
+    <section class="panel tutorial-status-band" data-tutorial-zone="recent-work">
+      <div class="tutorial-section-heading">
+        <div>
+          <p class="section-eyebrow">Recent work and status band</p>
+          <h3>最近工作与当前状态</h3>
+        </div>
+        <p class="section-helper tutorial-section-helper">
+          不再只是教程目录，而是把当前项目、继续动作和状态提示放在一眼就能判断的位置。
+        </p>
+      </div>
+
+      <div class="tutorial-status-grid">
+        <article v-for="item in statusBand" :key="item.eyebrow" class="tutorial-status-card">
+          <p class="status-label">{{ item.eyebrow }}</p>
+          <strong>{{ item.title }}</strong>
+          <p class="section-helper">{{ item.detail }}</p>
+        </article>
+      </div>
+
+      <div class="tutorial-recent-grid">
+        <article
+          v-for="workspace in recentWorkspaces"
+          :key="workspace.id"
+          class="tutorial-recent-card"
+        >
+          <p class="section-eyebrow">Recent workspace</p>
+          <h4>{{ workspace.name }}</h4>
+          <p class="tutorial-recent-meta">
+            {{ frameworkLabels[workspace.framework] || workspace.framework }} ·
+            {{ workspace.projectDir }}
+          </p>
+          <p class="section-helper">
+            {{
+              workspace.localExists
+                ? "可以继续主题配置、内容编辑或本地预览。"
+                : "已记录此项目，但建议先确认本地目录是否仍然存在。"
+            }}
+          </p>
+          <div class="page-link-row tutorial-recent-actions">
+            <button class="secondary" type="button" @click="openWorkspaceContext(workspace, 'theme')">
+              继续配置
+            </button>
+            <button class="secondary" type="button" @click="openWorkspaceContext(workspace, 'preview')">
+              打开预览
+            </button>
+          </div>
+        </article>
+
+        <article v-if="!recentWorkspaces.length" class="tutorial-recent-card tutorial-recent-card--empty">
+          <p class="section-eyebrow">Recent workspace</p>
+          <h4>还没有最近项目</h4>
+          <p class="section-helper">
+            先从“新建博客”拿到第一个工作区，或从“导入已有项目”把旧工程接回现在的工作台。
+          </p>
+          <div class="page-link-row tutorial-recent-actions">
+            <button class="secondary" type="button" @click="openTab('workspace')">
+              去创建页
+            </button>
+            <button class="secondary" type="button" @click="openTab('import')">
+              去导入页
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel theme-exploration-rail" data-tutorial-zone="theme-rail">
+      <div class="tutorial-section-heading">
+        <div>
+          <p class="section-eyebrow">Theme exploration rail</p>
+          <h3>主题探索入口</h3>
+        </div>
+        <p class="section-helper tutorial-section-helper">
+          首屏只给你经过筛选的气质方向，而不是一次丢出一整墙等权重缩略图。
+        </p>
+      </div>
+
+      <div class="tutorial-theme-grid">
+        <article
+          v-for="track in themeExplorationTracks"
+          :key="track.key"
+          class="tutorial-theme-card"
+        >
+          <p class="section-eyebrow">{{ track.eyebrow }}</p>
+          <h4>{{ track.title }}</h4>
+          <p class="section-helper">{{ track.summary }}</p>
+          <div class="tutorial-tag-row">
+            <span v-for="tag in track.tags" :key="tag" class="tutorial-tag tutorial-tag--quiet">
+              {{ tag }}
+            </span>
+          </div>
+          <button class="secondary tutorial-theme-action" type="button" @click="openTab('workspace')">
+            去工作区继续挑选主题
+          </button>
+        </article>
+      </div>
+    </section>
   </section>
 </template>

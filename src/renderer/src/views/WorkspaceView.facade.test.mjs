@@ -9,6 +9,7 @@ test("WorkspaceView uses workspace facade instead of raw window.bfeApi workspace
 
   assert.match(source, /useWorkspaceActions/);
   assert.match(source, /const workspaceActions = useWorkspaceActions\(\)/);
+  assert.match(source, /getThemeDisplayMetadata/);
   assert.match(source, /workspaceActions\.createWorkspace\(/);
   assert.match(source, /workspaceActions\.pickDirectory\(/);
   assert.match(source, /workspaceActions\.removeWorkspace\(/);
@@ -31,6 +32,7 @@ test("WorkspaceView uses workspace facade instead of raw window.bfeApi workspace
 
   assert.match(source, /new CustomEvent\("bfe:open-tab"/);
   assert.match(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /tabKey: "import"/);
 });
 
 test("WorkspaceView exposes the workflow-entry hierarchy cues for blog, stage, next action, and blocker state", async () => {

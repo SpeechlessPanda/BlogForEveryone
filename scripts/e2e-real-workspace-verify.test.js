@@ -70,6 +70,35 @@ function loadVerifyModuleForTests({ spawnImpl, platform = 'win32', comspec = 'C:
     };
 }
 
+function loadVerifyRealWorkspaceModuleForTests({ spawnSyncImpl } = {}) {
+    const filePath = path.join(__dirname, 'verify-real-workspace.js');
+    const mod = new Module(filePath, module);
+    mod.filename = filePath;
+    mod.paths = Module._nodeModulePaths(path.dirname(filePath));
+
+    const originalLoad = Module._load;
+    const childProcessModule = originalLoad('child_process', module, false);
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === 'child_process') {
+            return {
+                ...childProcessModule,
+                spawnSync: spawnSyncImpl || childProcessModule.spawnSync
+            };
+        }
+        return originalLoad.apply(this, arguments);
+    };
+
+    delete require.cache[filePath];
+    mod._compile(fs.readFileSync(filePath, 'utf8'), filePath);
+
+    return {
+        verifyRealWorkspaceModule: mod.exports,
+        restore() {
+            Module._load = originalLoad;
+        }
+    };
+}
+
 test('verify runner uses Windows-safe cmd wrapper for pnpm build publish path', async (t) => {
     const calls = [];
     const mocked = loadVerifyModuleForTests({
@@ -87,4 +116,36 @@ test('verify runner uses Windows-safe cmd wrapper for pnpm build publish path', 
     assert.deepEqual(calls[0][1], ['/d', '/s', '/c', 'pnpm.cmd', 'build']);
     assert.equal(calls[0][2].shell, false);
     assert.equal(calls[0][2].windowsHide, true);
+});
+
+test('verify-real-workspace wrapper runs prepare then verify and fails fast', async () => {
+    const calls = [];
+    const manifestPath = path.resolve(__dirname, '..', 'e2e-real-workspaces', 'manifest.json');
+    fs.rmSync(path.dirname(manifestPath), { recursive: true, force: true });
+
+    const loaded = loadVerifyRealWorkspaceModuleForTests({
+        spawnSyncImpl: (command, args, options) => {
+            calls.push({ command, args, options });
+            if (String(args[0]).endsWith('e2e-real-workspace-prepare.js')) {
+                fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+                fs.writeFileSync(manifestPath, '{"ok":true}\n', 'utf8');
+                return { status: 0, stdout: Buffer.from('prepared\n'), stderr: Buffer.from('') };
+            }
+            if (String(args[0]).endsWith('e2e-real-workspace-verify.js')) {
+                return { status: 2, stdout: Buffer.from(''), stderr: Buffer.from('verify failed\n') };
+            }
+            return { status: 0, stdout: Buffer.from(''), stderr: Buffer.from('') };
+        }
+    });
+
+    try {
+        const code = await loaded.verifyRealWorkspaceModule.runVerifyWorkspaceForTests();
+        assert.equal(code, 2);
+        assert.equal(calls.length, 2);
+        assert.equal(path.basename(calls[0].args[0]), 'e2e-real-workspace-prepare.js');
+        assert.equal(path.basename(calls[1].args[0]), 'e2e-real-workspace-verify.js');
+    } finally {
+        loaded.restore();
+        fs.rmSync(path.dirname(manifestPath), { recursive: true, force: true });
+    }
 });

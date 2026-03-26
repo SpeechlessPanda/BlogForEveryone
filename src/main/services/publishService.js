@@ -3,6 +3,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const YAML = require('yaml');
 const { normalizePublishResult } = require('../policies/publishResultPolicy');
+const { runCommand } = require('./env/runCommand');
 
 function runGit(projectDir, args) {
     return spawnSync('git', args, {
@@ -172,10 +173,8 @@ function ensureHexoDeployConfig(projectDir, repoUrl) {
 }
 
 function runShellCommand(projectDir, command, args) {
-    const result = spawnSync(command, args, {
-        cwd: projectDir,
-        shell: true,
-        encoding: 'utf-8'
+    const result = runCommand(command, args, {
+        cwd: projectDir
     });
     return {
         command: `${command} ${args.join(' ')}`,

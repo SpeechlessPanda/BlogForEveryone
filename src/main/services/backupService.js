@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
 const { exportSubscriptions } = require('./rssService');
+const { runCommand } = require('./env/runCommand');
 
 function copyDir(src, dest) {
     if (!fs.existsSync(dest)) {
@@ -53,11 +53,7 @@ function pushBackupToRepo(snapshotDir, repoUrl) {
 
     const resultLog = [];
     for (const [bin, args] of cmds) {
-        const res = spawnSync(bin, args, {
-            cwd: snapshotDir,
-            shell: true,
-            encoding: 'utf-8'
-        });
+        const res = runCommand(bin, args, { cwd: snapshotDir });
         resultLog.push({ bin, args, code: res.status, stdout: res.stdout, stderr: res.stderr });
         if (res.status !== 0) {
             break;

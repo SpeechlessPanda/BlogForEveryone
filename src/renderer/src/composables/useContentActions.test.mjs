@@ -1,22 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import { createContentActions } from "./useContentActions.mjs";
 
 test("useContentActions.js is a pure stable re-export of the .mjs entrypoint", async () => {
-  const jsModule = await import("./useContentActions.js");
   const mjsModule = await import("./useContentActions.mjs");
+  const jsSource = await readFile(new URL("./useContentActions.js", import.meta.url), "utf-8");
 
-  assert.equal(
-    jsModule.useContentActions,
-    mjsModule.useContentActions,
-    "expected .js entry to re-export the exact same useContentActions function",
+  assert.match(
+    jsSource.trim(),
+    /^export\s*\{\s*createContentActions,\s*useContentActions\s*\}\s*from\s*["']\.\/useContentActions\.mjs["'];?$/,
+    "expected .js entry to stay a pure re-export of the .mjs source of truth",
   );
-  assert.equal(
-    jsModule.createContentActions,
-    mjsModule.createContentActions,
-    "expected .js entry to re-export createContentActions so callers have one stable source of truth",
-  );
+  assert.equal(typeof mjsModule.useContentActions, "function");
+  assert.equal(typeof mjsModule.createContentActions, "function");
 });
 
 test("content actions call workspaceId-based IPC contract", async () => {

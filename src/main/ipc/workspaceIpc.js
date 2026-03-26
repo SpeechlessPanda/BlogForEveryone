@@ -8,20 +8,12 @@ const { ensureFrameworkPublishPackages } = require('../services/frameworkTooling
 const { backupWorkspace, pushBackupToRepo } = require('../services/backupService');
 const { importSubscriptions } = require('../services/rssService');
 const { assertSupportedImportedFramework } = require('../policies/workspaceImportPolicy');
-
-function normalizePathForCompare(inputPath) {
-    const resolved = path.resolve(String(inputPath || ''));
-    if (fs.existsSync(resolved)) {
-        try {
-            const real = fs.realpathSync.native(resolved);
-            return process.platform === 'win32' ? real.toLowerCase() : real;
-        } catch {
-            const real = fs.realpathSync(resolved);
-            return process.platform === 'win32' ? real.toLowerCase() : real;
-        }
-    }
-    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
-}
+const { normalizePath, normalizeForCompare } = require('../policies/workspacePathPolicy');
+const {
+    createWorkspaceWorkflow,
+    importWorkspaceWorkflow,
+    backupWorkspaceWorkflow
+} = require('../app/workspaceWorkflowService');
 
 function assertWorkspaceCandidatePath(projectDir, action, options = {}) {
     const mustExist = options.mustExist !== false;
@@ -29,10 +21,11 @@ function assertWorkspaceCandidatePath(projectDir, action, options = {}) {
         throw new Error(`缺少工程路径，无法${action}。`);
     }
 
-    const resolved = path.resolve(projectDir);
-    if (!path.isAbsolute(resolved)) {
+    const inputPath = String(projectDir);
+    if (!path.isAbsolute(inputPath)) {
         throw new Error(`工程路径必须为绝对路径，无法${action}。`);
     }
+    const resolved = normalizePath(inputPath);
 
     if (mustExist) {
         if (!fs.existsSync(resolved)) {
@@ -56,58 +49,18 @@ function registerWorkspaceIpcHandlers({ ipcMain, getWorkspacePolicy }) {
     });
 
     ipcMain.handle('workspace:create', async (_event, payload) => {
-        const { name, projectDir, framework, theme } = payload || {};
+        const { projectDir } = payload || {};
         assertWorkspaceCandidatePath(projectDir, '创建工程', { mustExist: false });
-        const initResult = await initProject({ framework, projectDir });
-
-        if (initResult.status !== 0) {
-            const detail = [initResult.stderr, initResult.stdout].filter(Boolean).join('\n').trim();
-            throw new Error(`初始化工程失败（${framework}）：${detail || '未知错误'}`);
-        }
-
-        const themeSetup = await installAndApplyTheme({
-            projectDir,
-            framework,
-            themeId: theme
+        return createWorkspaceWorkflow(payload, {
+            initProject,
+            installAndApplyTheme,
+            ensureFrameworkPublishPackages,
+            readStore,
+            updateStore,
+            normalizeForCompare,
+            createWorkspaceId: () => Date.now().toString(),
+            now: () => new Date().toISOString()
         });
-        if (!themeSetup.ok) {
-            throw new Error(`主题初始化失败（${theme}）：${themeSetup.message || '未知错误'}`);
-        }
-
-        const toolingSetup = await ensureFrameworkPublishPackages({
-            projectDir,
-            framework,
-            themeId: theme
-        });
-        if (!toolingSetup.ok) {
-            throw new Error(`发布依赖初始化失败：${toolingSetup.message || '未知错误'}`);
-        }
-
-        const state = readStore();
-        const normalizedProjectDir = normalizePathForCompare(projectDir);
-        if ((state.workspaces || []).some((item) => normalizePathForCompare(item.projectDir) === normalizedProjectDir)) {
-            throw new Error('该路径已存在管理记录，请勿重复创建。');
-        }
-
-        const workspace = {
-            id: Date.now().toString(),
-            name,
-            projectDir,
-            framework,
-            theme,
-            createdAt: new Date().toISOString(),
-            initCode: initResult.status,
-            initStdout: initResult.stdout,
-            initStderr: initResult.stderr,
-            initLogs: [...(initResult.logs || []), ...(themeSetup.logs || []), ...(toolingSetup.logs || [])]
-        };
-
-        const next = updateStore((draft) => {
-            draft.workspaces.push(workspace);
-            return draft;
-        });
-
-        return { workspace, workspaces: next.workspaces };
     });
 
     ipcMain.handle('workspace:remove', async (_event, payload) => {
@@ -143,48 +96,29 @@ function registerWorkspaceIpcHandlers({ ipcMain, getWorkspacePolicy }) {
     ipcMain.handle('workspace:import', async (_event, payload) => {
         const { projectDir, name } = payload || {};
         const safeProjectDir = assertWorkspaceCandidatePath(projectDir, '导入工程', { mustExist: true });
-        const state = readStore();
-        const normalizedProjectDir = normalizePathForCompare(safeProjectDir);
-        if ((state.workspaces || []).some((item) => normalizePathForCompare(item.projectDir) === normalizedProjectDir)) {
-            throw new Error('该路径已存在管理记录，请勿重复导入。');
-        }
-
-        const framework = assertSupportedImportedFramework(detectFramework(safeProjectDir));
-        const workspace = {
-            id: Date.now().toString(),
-            name: name || path.basename(safeProjectDir),
-            projectDir: safeProjectDir,
-            framework,
-            theme: inferRecognizedThemeIdFromProject(safeProjectDir, framework),
-            importedAt: new Date().toISOString()
-        };
-
-        const next = updateStore((draft) => {
-            draft.workspaces.push(workspace);
-            return draft;
-        });
-
-        const rssRestore = importSubscriptions({ projectDir: safeProjectDir, strategy: 'merge' });
-        return { workspace, workspaces: next.workspaces, rssRestore };
+        return importWorkspaceWorkflow(
+            { projectDir: safeProjectDir, name },
+            {
+                readStore,
+                updateStore,
+                normalizeForCompare,
+                detectFramework,
+                assertSupportedImportedFramework,
+                inferRecognizedThemeIdFromProject,
+                importSubscriptions,
+                getProjectName: path.basename,
+                createWorkspaceId: () => Date.now().toString(),
+                now: () => new Date().toISOString()
+            }
+        );
     });
 
     ipcMain.handle('workspace:backup', async (_event, payload) => {
-        const { projectDir, backupDir, repoUrl, visibility } = payload || {};
-        const snapshotDir = backupWorkspace({
-            projectDir,
-            backupDir,
-            metadata: {
-                visibility,
-                createdAt: new Date().toISOString()
-            }
+        return backupWorkspaceWorkflow(payload, {
+            backupWorkspace,
+            pushBackupToRepo,
+            now: () => new Date().toISOString()
         });
-
-        let pushResult = [];
-        if (repoUrl) {
-            pushResult = pushBackupToRepo(snapshotDir, repoUrl);
-        }
-
-        return { snapshotDir, pushResult };
     });
 }
 

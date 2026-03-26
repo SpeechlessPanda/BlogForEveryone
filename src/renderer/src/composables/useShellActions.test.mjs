@@ -176,6 +176,43 @@ test("shell actions expose bfe custom-event listener bridges with release callba
   ]);
 });
 
+test("shell actions expose openTutorial and openTab as centralized navigation emitters", () => {
+  const dispatchCalls = [];
+  const customEvents = [];
+
+  class FakeCustomEvent {
+    constructor(type, options = {}) {
+      this.type = type;
+      this.detail = options.detail;
+      customEvents.push([type, options.detail]);
+    }
+  }
+
+  const fakeWindow = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: (event) => {
+      dispatchCalls.push(event);
+      return true;
+    },
+    CustomEvent: FakeCustomEvent,
+  };
+
+  const actions = createShellActions({ onUpdateStatus: () => {} }, fakeWindow);
+
+  actions.openTutorial();
+  actions.openTab("theme");
+
+  assert.deepEqual(customEvents, [
+    ["bfe:open-tutorial", undefined],
+    ["bfe:open-tab", { tabKey: "theme" }],
+  ]);
+  assert.equal(dispatchCalls.length, 2);
+  assert.equal(dispatchCalls[0].type, "bfe:open-tutorial");
+  assert.equal(dispatchCalls[1].type, "bfe:open-tab");
+  assert.deepEqual(dispatchCalls[1].detail, { tabKey: "theme" });
+});
+
 test("shell actions expose shell utility wrappers for timers confirm and clipboard", async () => {
   const timerCalls = [];
   const intervalCalls = [];

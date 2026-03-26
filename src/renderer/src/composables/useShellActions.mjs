@@ -27,6 +27,36 @@ function resolveShellWindow(shellWindow) {
   return null;
 }
 
+function resolveCustomEventConstructor(shellWindow) {
+  if (typeof shellWindow?.CustomEvent === "function") {
+    return shellWindow.CustomEvent;
+  }
+
+  if (typeof globalThis?.CustomEvent === "function") {
+    return globalThis.CustomEvent;
+  }
+
+  return null;
+}
+
+function dispatchShellEvent(shellWindow, eventName, detail) {
+  if (typeof shellWindow?.dispatchEvent !== "function") {
+    return false;
+  }
+
+  const EventCtor = resolveCustomEventConstructor(shellWindow);
+  if (!EventCtor) {
+    return false;
+  }
+
+  const event =
+    detail === undefined
+      ? new EventCtor(eventName)
+      : new EventCtor(eventName, { detail });
+
+  return shellWindow.dispatchEvent(event);
+}
+
 export function createShellActions(api, shellWindow) {
   const resolvedWindow = resolveShellWindow(shellWindow);
   const onOpenTutorial = createWindowEventBridge(
@@ -120,6 +150,12 @@ export function createShellActions(api, shellWindow) {
         throw new Error("clipboard is unavailable");
       }
       await clipboard.writeText(text);
+    },
+    openTutorial() {
+      return dispatchShellEvent(resolvedWindow, "bfe:open-tutorial");
+    },
+    openTab(tabKey) {
+      return dispatchShellEvent(resolvedWindow, "bfe:open-tab", { tabKey });
     },
     onOpenTutorial,
     onOpenTab,

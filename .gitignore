@@ -8,3 +8,4 @@ coverage/
 *.local
 .qa/
 e2e-real-workspaces/
+.worktrees/

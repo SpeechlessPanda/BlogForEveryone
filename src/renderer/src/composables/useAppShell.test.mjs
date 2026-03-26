@@ -3,24 +3,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const useAppShellPath = new URL("./useAppShell.mjs", import.meta.url);
+const useShellNavigationPath = new URL(
+  "./useShellNavigation.mjs",
+  import.meta.url,
+);
 
-test("useAppShell keeps Task 5 shell tab keys and shell summary state", async () => {
+test("useAppShell keeps shell summary and presentation state in facade", async () => {
   const source = await readFile(useAppShellPath, "utf8");
-
-  const expectedTabKeys = [
-    "tutorial",
-    "workspace",
-    "theme",
-    "preview",
-    "content",
-    "publish",
-    "import",
-    "rss",
-  ];
-
-  for (const key of expectedTabKeys) {
-    assert.match(source, new RegExp(`key: "${key}"`));
-  }
 
   const expectedShellState = [
     "workspaceSummary",
@@ -120,8 +109,8 @@ test("useAppShell owns popup utility state for the refined shell", async () => {
   assert.match(source, /isShellPopupOpen\.value = false/);
 });
 
-test("useAppShell matches approved IA workflow grouping metadata", async () => {
-  const source = await readFile(useAppShellPath, "utf8");
+test("useShellNavigation keeps approved IA workflow grouping metadata", async () => {
+  const source = await readFile(useShellNavigationPath, "utf8");
 
   const expectedSections = [
     { key: "start", label: "开始" },
@@ -158,8 +147,8 @@ test("useAppShell matches approved IA workflow grouping metadata", async () => {
   }
 });
 
-test("useAppShell metadata drives runtime section derivation behavior", async () => {
-  const source = await readFile(useAppShellPath, "utf8");
+test("useShellNavigation metadata drives runtime section derivation behavior", async () => {
+  const source = await readFile(useShellNavigationPath, "utf8");
 
   const tabsLiteral = source.match(/const tabs = \[([\s\S]*?)\n\];/);
   const sectionsLiteral = source.match(
@@ -192,5 +181,67 @@ test("useAppShell refreshUpdateState handles update API rejection locally", asyn
   assert.match(
     source,
     /async function refreshUpdateState\(\)\s*{\s*try\s*{[\s\S]*shellActions\.getUpdateState\(\)[\s\S]*}\s*catch \(error\)\s*{[\s\S]*openErrorModal\("更新状态刷新失败", error\)/,
+  );
+});
+
+test("useAppShell delegates navigation metadata and active-tab behavior to useShellNavigation composable", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.equal(
+    source.includes('import { useShellNavigation } from "./useShellNavigation.mjs"'),
+    true,
+    "expected useAppShell to import useShellNavigation for H3 extraction",
+  );
+  assert.equal(
+    source.includes("const shellNavigation = useShellNavigation("),
+    true,
+    "expected useAppShell to create shellNavigation via useShellNavigation",
+  );
+  assert.equal(
+    source.includes("const tabs = ["),
+    false,
+    "expected navigation metadata to move from useAppShell into useShellNavigation",
+  );
+  assert.equal(
+    source.includes("const workflowSections = ["),
+    false,
+    "expected workflow section metadata to move from useAppShell into useShellNavigation",
+  );
+  assert.equal(
+    source.includes("const activeTabMeta = computed(() =>"),
+    false,
+    "expected activeTabMeta derivation to be owned by useShellNavigation",
+  );
+  assert.equal(
+    source.includes("const activeSectionMeta = computed(() =>"),
+    false,
+    "expected activeSectionMeta derivation to be owned by useShellNavigation",
+  );
+});
+
+test("useAppShell delegates workspace summary and next-step derivation to useShellWorkspaceSummary composable", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.equal(
+    source.includes(
+      'import { useShellWorkspaceSummary } from "./useShellWorkspaceSummary.mjs"',
+    ),
+    true,
+    "expected useAppShell to import useShellWorkspaceSummary for H3 extraction",
+  );
+  assert.equal(
+    source.includes("const shellWorkspaceSummary = useShellWorkspaceSummary("),
+    true,
+    "expected useAppShell to create shellWorkspaceSummary via useShellWorkspaceSummary",
+  );
+  assert.equal(
+    source.includes("const workspaceSummary = computed(() =>"),
+    false,
+    "expected workspaceSummary derivation to move into useShellWorkspaceSummary",
+  );
+  assert.equal(
+    source.includes("const nextStep = computed(() =>"),
+    false,
+    "expected nextStep derivation to move into useShellWorkspaceSummary",
   );
 });

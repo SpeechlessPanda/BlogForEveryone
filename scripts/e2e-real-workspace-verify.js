@@ -197,6 +197,11 @@ async function main() {
 
     fs.writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
     console.log(JSON.stringify(report, null, 2));
+
+    if (passAll !== rows.length) {
+        console.error(`verify-real-workspace failed: ${rows.length - passAll} workspace checks did not pass.`);
+        process.exitCode = 1;
+    }
 }
 
 main().catch((error) => {

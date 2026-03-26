@@ -70,6 +70,73 @@ function loadVerifyModuleForTests({ spawnImpl, platform = 'win32', comspec = 'C:
     };
 }
 
+function loadVerifyMainForTests({
+    spawnImpl,
+    startLocalPreviewImpl,
+    stopLocalPreviewImpl,
+    resolveHugoExecutableImpl,
+    getHugoExecutionEnvImpl,
+    platform = 'win32',
+    comspec = 'C:/Windows/System32/cmd.exe'
+}) {
+    const filePath = path.join(__dirname, 'e2e-real-workspace-verify.js');
+    const original = fs.readFileSync(filePath, 'utf8');
+    const instrumented = original.replace(
+        /main\(\)\.catch\([\s\S]*?\);\s*$/,
+        'module.exports = { main, run };\n'
+    );
+
+    const originalLoad = Module._load;
+    const originalPlatform = process.platform;
+    const originalComSpec = process.env.ComSpec;
+
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === 'child_process') {
+            return { spawn: spawnImpl };
+        }
+        if (request === '../src/main/services/previewService') {
+            return {
+                startLocalPreview: startLocalPreviewImpl,
+                stopLocalPreview: stopLocalPreviewImpl
+            };
+        }
+        if (request === '../src/main/services/envService') {
+            return {
+                resolveHugoExecutable: resolveHugoExecutableImpl,
+                getHugoExecutionEnv: getHugoExecutionEnvImpl
+            };
+        }
+        return originalLoad.apply(this, arguments);
+    };
+
+    Object.defineProperty(process, 'platform', {
+        value: platform,
+        configurable: true
+    });
+    process.env.ComSpec = comspec;
+
+    const mod = new Module(filePath, module);
+    mod.filename = filePath;
+    mod.paths = Module._nodeModulePaths(path.dirname(filePath));
+    mod._compile(instrumented, filePath);
+
+    return {
+        verifyModule: mod.exports,
+        restore() {
+            Module._load = originalLoad;
+            Object.defineProperty(process, 'platform', {
+                value: originalPlatform,
+                configurable: true
+            });
+            if (originalComSpec === undefined) {
+                delete process.env.ComSpec;
+            } else {
+                process.env.ComSpec = originalComSpec;
+            }
+        }
+    };
+}
+
 function loadVerifyRealWorkspaceModuleForTests({ spawnSyncImpl } = {}) {
     const filePath = path.join(__dirname, 'verify-real-workspace.js');
     const mod = new Module(filePath, module);
@@ -148,4 +215,43 @@ test('verify-real-workspace wrapper runs prepare then verify and fails fast', as
         loaded.restore();
         fs.rmSync(path.dirname(manifestPath), { recursive: true, force: true });
     }
+});
+
+test('verify main exits non-zero when any workspace row fails checks', async (t) => {
+    const workspacesDir = path.resolve(__dirname, '..', 'e2e-real-workspaces');
+    const manifestPath = path.join(workspacesDir, 'manifest.json');
+    const reportPath = path.join(workspacesDir, 'verify-report.json');
+    const projectDir = path.join(workspacesDir, 'failing-theme-project');
+    const originalExitCode = process.exitCode;
+
+    fs.rmSync(workspacesDir, { recursive: true, force: true });
+    fs.mkdirSync(workspacesDir, { recursive: true });
+    fs.mkdirSync(projectDir, { recursive: true });
+    fs.writeFileSync(manifestPath, JSON.stringify({
+        themes: [{ framework: 'hexo', themeId: 'next', projectDir }]
+    }), 'utf8');
+
+    const loaded = loadVerifyMainForTests({
+        spawnImpl: () => createMockChildProcess({ code: 0, stdout: 'publish ok\n', stderr: '' }),
+        startLocalPreviewImpl: async () => ({ ok: false, url: '', logs: ['preview failed'] }),
+        stopLocalPreviewImpl: async () => {},
+        resolveHugoExecutableImpl: () => 'hugo',
+        getHugoExecutionEnvImpl: () => ({ env: process.env })
+    });
+
+    t.after(() => {
+        loaded.restore();
+        process.exitCode = originalExitCode;
+        fs.rmSync(workspacesDir, { recursive: true, force: true });
+    });
+
+    delete process.exitCode;
+    await loaded.verifyModule.main();
+    const observedExitCode = process.exitCode;
+    process.exitCode = originalExitCode;
+
+    const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+    assert.equal(report.total, 1);
+    assert.equal(report.passAll, 0);
+    assert.equal(observedExitCode, 1);
 });

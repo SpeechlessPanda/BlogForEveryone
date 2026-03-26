@@ -101,3 +101,11 @@ test("WorkflowSidebar keeps grouped workflow navigation without persistent utili
     );
   }
 });
+
+test("WorkflowSidebar uses the sidebar login-status entry as the popup trigger surface", async () => {
+  const source = await readFile(sidebarPath, "utf8");
+
+  assert.match(source, /data-sidebar-entry="user"[\s\S]*登录状态/);
+  assert.match(source, /data-sidebar-entry="user"[\s\S]*@click="\$emit\('toggle-shell-popup'\)"/);
+  assert.doesNotMatch(source, /data-sidebar-entry="user"[\s\S]*账户/);
+});

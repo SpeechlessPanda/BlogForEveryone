@@ -180,7 +180,7 @@ async function runPreviewAction(action) {
 }
 
 function goTutorialCenter() {
-  shellActions.openTutorial();
+  shellActions.openTutorial("preview-check");
 }
 
 function jumpToZone(zoneId) {
@@ -254,13 +254,6 @@ watch(
               >
             </div>
           </div>
-          <div class="workflow-hero-note">
-            <div class="page-signal page-signal--accent">
-              <p class="section-eyebrow">建议下一步</p>
-              <strong>{{ previewNextStep }}</strong>
-              <p class="section-helper">当 localhost 可打开时，主题、内容与依赖链路通常已基本打通。</p>
-            </div>
-          </div>
         </div>
 
         <div class="workflow-status-grid">
@@ -301,11 +294,12 @@ watch(
               保存内容或主题后，先在这里确认预览地址，再决定是否重启、只打开地址或停止当前会话。
             </p>
           </div>
-          <aside class="workflow-inline-note priority-panel priority-panel--support">
-            <p class="section-eyebrow">预览结果摘要</p>
-            <strong>{{ previewResultSummary }}</strong>
-            <p class="page-result-note">{{ previewNextStep }}</p>
-          </aside>
+        </div>
+
+        <div class="workflow-inline-panel priority-panel priority-panel--support">
+          <p class="section-eyebrow">预览结果摘要</p>
+          <strong>{{ previewResultSummary }}</strong>
+          <p class="page-result-note">{{ previewNextStep }}</p>
         </div>
 
         <div class="grid-2">

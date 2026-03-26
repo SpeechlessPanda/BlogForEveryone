@@ -60,6 +60,10 @@ test("PreviewView uses preview facade instead of raw window.bfeApi preview calls
       `expected PreviewView.vue to stop calling window.bfeApi.${method}`,
     );
   }
+
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /shellActions\.openTutorial\("preview-check"\)/);
 });
 
 test("PreviewView reads as a checkpoint with state and result above technical logs", async () => {

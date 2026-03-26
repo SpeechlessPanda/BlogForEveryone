@@ -16,8 +16,10 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /ShellModalLayer/);
   assert.match(source, /:data-shell-appearance="shellAppearance"/);
   assert.match(source, /:is-shell-popup-open="isShellPopupOpen"/);
+  assert.match(source, /:shell-popup-anchor-style="shellPopupAnchorStyle"/);
   assert.match(source, /:shell-user-entry-label="shellUserEntryLabel"/);
-  assert.match(source, /@toggle-shell-popup="toggleShellPopup"/);
+  assert.match(source, /:tutorial-target="tutorialTarget"/);
+  assert.match(source, /@open-shell-popup="openShellPopup"/);
   assert.match(source, /@close-shell-popup="closeShellPopup"/);
   assert.match(source, /@toggle-shell-appearance="toggleShellAppearance"/);
 
@@ -78,7 +80,7 @@ test("App marks the active workflow area as a shell-owned workspace region with 
   );
   assert.match(
     appSource,
-    /<div class="content-view-scroll" data-shell-scroll-region="workflow-view">/,
+    /<div :ref="setShellScrollRegion" class="content-view-scroll" data-shell-scroll-region="workflow-view">/,
     "expected App.vue to render active workflow views inside an explicit shell-owned scroll container",
   );
 });
@@ -95,5 +97,20 @@ test("App shell styles keep document scroll outside the workflow view container"
     stylesSource,
     /\.content-view-scroll\s*\{[\s\S]*overflow-y:\s*auto;/,
     "expected styles.css to define the inner workflow-view scroller used by App.vue",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-panel-wrap\s*\{[\s\S]*max-height:\s*calc\(100dvh - var\(--shell-popup-top, 24px\) - 24px\);/,
+    "expected styles.css to cap popup height from the computed shell popup top so footer-triggered popups stay inside the viewport",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-panel-wrap\s*\{[\s\S]*top:\s*var\(--shell-popup-top[\s\S]*left:\s*calc\(var\(--shell-popup-left[\s\S]*var\(--shell-popup-width/,
+    "expected styles.css to position the shell popup from sidebar anchor CSS variables instead of fixed sidebar padding",
+  );
+  assert.equal(
+    stylesSource.includes("padding-left: 234px;"),
+    false,
+    "expected styles.css to stop using hardcoded sidebar padding for popup anchoring",
   );
 });

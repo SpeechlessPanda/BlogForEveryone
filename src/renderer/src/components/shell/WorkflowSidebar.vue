@@ -8,7 +8,7 @@ defineProps({
   shellUserEntryLabel: { type: String, required: true },
 });
 
-defineEmits(["navigate", "toggle-shell-popup"]);
+defineEmits(["navigate", "open-shell-popup"]);
 </script>
 
 <template>
@@ -50,7 +50,7 @@ defineEmits(["navigate", "toggle-shell-popup"]);
         <button
           class="sidebar-entry"
           data-sidebar-entry="appearance"
-          @click="$emit('toggle-shell-popup')"
+          @click="$emit('open-shell-popup', { key: 'appearance', element: $event.currentTarget })"
         >
           <span class="sidebar-entry-label">模式</span>
           <strong>{{ shellAppearance === "dark" ? "暗色" : "亮色" }}</strong>
@@ -59,7 +59,7 @@ defineEmits(["navigate", "toggle-shell-popup"]);
         <button
           class="sidebar-entry"
           data-sidebar-entry="user"
-          @click="$emit('toggle-shell-popup')"
+          @click="$emit('open-shell-popup', { key: 'user', element: $event.currentTarget })"
         >
           <span class="sidebar-entry-label">账户</span>
           <strong>{{ shellUserEntryLabel }}</strong>

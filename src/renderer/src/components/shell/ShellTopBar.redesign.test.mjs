@@ -39,9 +39,14 @@ test("ShellTopBar stays focused on page context and popup mounting", async () =>
 
   assert.match(source, /activeTabMeta\.label/);
   assert.match(source, /activeSectionMeta\.label/);
+  assert.match(source, /shellPopupAnchorStyle/);
   assert.match(source, /<slot name="page-actions" \/>/);
   assert.match(source, /<slot \/>/);
-  assert.match(source, /toggle-shell-popup/);
+  assert.equal(
+    source.includes("toggle-shell-popup"),
+    false,
+    "expected ShellTopBar.vue to stop implying topbar-owned popup navigation",
+  );
 });
 
 test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overlay layer instead of inline topbar flow", async () => {
@@ -56,6 +61,11 @@ test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overl
     source,
     /class="shell-popup-overlay shell-popup-overlay--sidebar"/,
     "expected ShellTopBar.vue to expose a sidebar-aligned fixed overlay wrapper for the account popup",
+  );
+  assert.match(
+    source,
+    /class="shell-popup-panel-wrap"\s*:style="shellPopupAnchorStyle"/,
+    "expected ShellTopBar.vue to position the popup mount from shell-owned sidebar anchor metadata",
   );
   assert.equal(
     source.includes('class="shell-popup-mount"'),

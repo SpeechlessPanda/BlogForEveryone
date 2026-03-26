@@ -66,6 +66,15 @@ test("WorkflowSidebar keeps grouped workflow navigation without persistent utili
   assert.match(source, /v-for="section in groupedWorkflowSections"/);
   assert.match(source, /@click="\$emit\('navigate', tab\.key\)"/);
   assert.match(source, /activeTab === tab\.key/);
+  assert.match(source, /defineEmits\(\["navigate", "open-shell-popup"\]\)/);
+  assert.match(
+    source,
+    /@click="\$emit\('open-shell-popup', \{ key: 'appearance', element: \$event\.currentTarget \}\)"/,
+  );
+  assert.match(
+    source,
+    /@click="\$emit\('open-shell-popup', \{ key: 'user', element: \$event\.currentTarget \}\)"/,
+  );
 
   const removedUtilityBindings = [
     'check-updates',
@@ -76,6 +85,7 @@ test("WorkflowSidebar keeps grouped workflow navigation without persistent utili
     'shellAppearanceToggleLabel',
     'sidebarLoginText',
     'environmentStatusText',
+    'toggle-shell-popup',
   ];
 
   for (const binding of removedUtilityBindings) {

@@ -3,9 +3,10 @@ defineProps({
   activeSectionMeta: { type: Object, required: true },
   activeTabMeta: { type: Object, required: true },
   isShellPopupOpen: { type: Boolean, required: true },
+  shellPopupAnchorStyle: { type: Object, required: true },
 });
 
-defineEmits(["toggle-shell-popup", "close-shell-popup"]);
+defineEmits(["close-shell-popup"]);
 </script>
 
 <template>
@@ -27,7 +28,7 @@ defineEmits(["toggle-shell-popup", "close-shell-popup"]);
       data-topbar-region="popup-mount"
       @click.self="$emit('close-shell-popup')"
     >
-      <div class="shell-popup-panel-wrap">
+      <div class="shell-popup-panel-wrap" :style="shellPopupAnchorStyle">
         <div class="shell-popup-dismiss-row">
           <button class="secondary shell-popup-dismiss" @click="$emit('close-shell-popup')">
             关闭

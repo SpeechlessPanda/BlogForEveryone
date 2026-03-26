@@ -7,7 +7,7 @@ function createRunCommandTools(options = {}) {
 
     function runCommand(command, args = [], commandOptions = {}) {
         return spawnSyncImpl(command, args, {
-            shell: true,
+            shell: false,
             encoding: 'utf-8',
             timeout: 120000,
             windowsHide: true,
@@ -36,17 +36,9 @@ function createRunCommandTools(options = {}) {
             registry: mirrorRegistry
         });
 
-        const setMirror = runCommand('pnpm', ['config', 'set', 'registry', mirrorRegistry], commandOptions);
+        const secondTry = runCommand('pnpm', ['--registry', mirrorRegistry, 'dlx', ...args], commandOptions);
         logs.push({
-            command: `pnpm config set registry ${mirrorRegistry}`,
-            status: setMirror.status,
-            stdout: setMirror.stdout,
-            stderr: setMirror.stderr
-        });
-
-        const secondTry = runCommand('pnpm', ['dlx', ...args], commandOptions);
-        logs.push({
-            command: `pnpm dlx ${args.join(' ')} (retry)`,
+            command: `pnpm --registry ${mirrorRegistry} dlx ${args.join(' ')} (retry)`,
             status: secondTry.status,
             stdout: secondTry.stdout,
             stderr: secondTry.stderr

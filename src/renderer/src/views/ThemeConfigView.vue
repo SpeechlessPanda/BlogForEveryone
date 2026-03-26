@@ -24,7 +24,11 @@ import {
   resolveThemeSelection,
   isThemeSpecificMappingAllowed,
 } from "../utils/themeDetectionHelpers.mjs";
+import { useShellActions } from "../composables/useShellActions.mjs";
 import { useThemeConfigActions } from "../composables/useThemeConfigActions.mjs";
+import ThemeIdentitySection from "../components/theme-config/ThemeIdentitySection.vue";
+import ThemeAssetStudioSection from "../components/theme-config/ThemeAssetStudioSection.vue";
+import ThemeAdvancedConfigSection from "../components/theme-config/ThemeAdvancedConfigSection.vue";
 
 const status = ref("");
 const selectedThemeId = ref("");
@@ -80,10 +84,9 @@ const avatarTransfer = reactive({
   preferredFileName: "",
 });
 
-const faviconUploadPath = ref("");
-const faviconPreferredFileName = ref("");
 const pendingSupportedThemeId = ref("");
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+const shellActions = useShellActions();
 const themeConfigActions = useThemeConfigActions();
 
 const selectedThemeCatalog = computed(() => {
@@ -198,13 +201,15 @@ function confirmAsUnsupportedTheme() {
 }
 
 function goTutorialCenter() {
-  window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+  shellActions.openTutorial();
 }
 
 function goPreviewPage() {
-  window.dispatchEvent(
-    new CustomEvent("bfe:open-tab", { detail: { tabKey: "preview" } }),
-  );
+  shellActions.openTab("preview");
+}
+
+function setPendingSupportedThemeId(value) {
+  pendingSupportedThemeId.value = value;
 }
 
 function getDefaultAssetDir(framework) {
@@ -970,7 +975,7 @@ async function applyLocalBackgroundImage() {
   status.value = `背景图已转存并写入配置：${result.webPath}`;
 }
 
-async function uploadLocalFavicon() {
+async function uploadLocalFavicon(localFilePath, preferredFileName) {
   const ws = selectedWorkspace.value;
   if (!ws) {
     status.value = "请先选择工程。";
@@ -979,11 +984,11 @@ async function uploadLocalFavicon() {
   const result = await themeConfigActions.saveThemeLocalAsset({
     projectDir: ws.projectDir,
     framework: ws.framework,
-    localFilePath: faviconUploadPath.value,
+    localFilePath,
     assetType: "favicon",
     preferredDir:
       backgroundTransfer.preferredDir || getDefaultAssetDir(ws.framework),
-    preferredFileName: faviconPreferredFileName.value || "favicon",
+    preferredFileName: preferredFileName || "favicon",
   });
   basicFields.favicon = result.webPath;
   const config = await themeConfigActions.getThemeConfig({
@@ -1110,18 +1115,16 @@ async function pickBackgroundImageFile() {
   }
 }
 
-async function pickFaviconImageFile() {
+async function pickFaviconImageFile(currentPath) {
   const result = await themeConfigActions.pickFile({
     title: "选择博客图标文件",
-    defaultPath: faviconUploadPath.value || undefined,
+    defaultPath: currentPath || undefined,
     filters: [
       { name: "Icon", extensions: ["ico", "png", "jpg", "jpeg", "svg"] },
       { name: "All Files", extensions: ["*"] },
     ],
   });
-  if (!result.canceled && result.path) {
-    faviconUploadPath.value = result.path;
-  }
+  return !result.canceled && result.path ? result.path : currentPath || "";
 }
 
 async function pickAvatarImageFile() {
@@ -1198,7 +1201,7 @@ watch(
               </button>
             </div>
           </div>
-          <div class="page-hero-aside">
+          <div class="theme-studio-hero-note">
             <div class="page-signal page-signal--accent">
               <p class="section-eyebrow">建议下一步</p>
               <strong>先改品牌与阅读体验，再去预览确认真实页面。</strong>
@@ -1216,7 +1219,7 @@ watch(
           </div>
         </div>
 
-        <div class="page-status-grid">
+        <div class="theme-studio-status-grid">
           <div class="page-signal page-signal--accent">
             <p class="section-eyebrow">当前工作区</p>
             <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
@@ -1243,300 +1246,35 @@ watch(
         </div>
       </section>
 
-      <section
-        class="panel page-section theme-studio-section"
+      <ThemeIdentitySection
         data-theme-zone="identity-rhythm"
-      >
-        <div class="theme-studio-heading">
-          <div class="theme-studio-heading-copy">
-            <p class="section-eyebrow">Step 01 · 品牌识别先行</p>
-            <h2>先确认工作区，再统一品牌入口</h2>
-            <p class="section-helper">
-              先确认博客上下文，再处理标题、副标题与身份线索，避免把后续素材和配置写进错误工程。
-            </p>
-          </div>
-          <aside class="theme-studio-note theme-studio-note--emphasis">
-            <p class="section-eyebrow">品牌主叙事</p>
-            <strong>标题、副标题、邮箱与 GitHub 需要先讲同一种品牌语言。</strong>
-            <p class="section-helper">
-              这样后面的图标、背景和阅读体验，都会围绕同一套首页印象展开。
-            </p>
-          </aside>
-        </div>
+        :workspace-state="workspaceState"
+        :selected-theme-name="selectedThemeName"
+        :theme-confirmation-hint="themeConfirmationHint"
+        :needs-theme-confirmation="needsThemeConfirmation"
+        :pending-supported-theme-id="pendingSupportedThemeId"
+        :set-pending-supported-theme-id="setPendingSupportedThemeId"
+        :selected-theme-catalog="selectedThemeCatalog"
+        :confirm-as-supported-theme="confirmAsSupportedTheme"
+        :confirm-as-unsupported-theme="confirmAsUnsupportedTheme"
+        :basic-fields="basicFields"
+        :supports-stack-components="supportsStackComponents"
+      />
 
-        <div class="theme-studio-column-grid">
-          <article class="priority-panel theme-studio-card">
-            <p class="section-eyebrow">工作台上下文</p>
-            <h3>确认当前博客与主题</h3>
-            <p class="section-helper">
-              这里先确认你正在改哪一个工作区，避免把图片和配置写到错误的博客目录里。
-            </p>
-            <div class="grid-2">
-              <div>
-                <label>选择工程</label>
-                <select v-model="workspaceState.selectedWorkspaceId">
-                  <option value="">请选择</option>
-                  <option
-                    v-for="ws in workspaceState.workspaces"
-                    :key="ws.id"
-                    :value="ws.id"
-                  >
-                    {{ ws.name }}
-                  </option>
-                </select>
-              </div>
-              <div>
-                <label>主题（由工程自动确定）</label>
-                <input :value="selectedThemeName" readonly />
-              </div>
-            </div>
-            <p class="muted theme-studio-inline-note">{{ themeConfirmationHint }}</p>
-            <div
-              v-if="needsThemeConfirmation"
-              class="grid-2 theme-studio-confirm-grid"
-            >
-              <div>
-                <label>确认一个受支持主题</label>
-                <select v-model="pendingSupportedThemeId">
-                  <option value="">请选择</option>
-                  <option
-                    v-for="theme in selectedThemeCatalog"
-                    :key="theme.id"
-                    :value="theme.id"
-                  >
-                    {{ theme.name }} ({{ theme.id }})
-                  </option>
-                </select>
-              </div>
-              <div class="actions theme-studio-actions-end">
-                <button
-                  class="secondary"
-                  type="button"
-                  @click="confirmAsSupportedTheme"
-                >
-                  确认受支持主题
-                </button>
-                <button
-                  class="secondary"
-                  type="button"
-                  @click="confirmAsUnsupportedTheme"
-                >
-                  标记为不受支持/自定义
-                </button>
-              </div>
-            </div>
-          </article>
-
-          <article class="priority-panel theme-studio-card theme-studio-card--emphasis">
-            <p class="section-eyebrow">品牌识别</p>
-            <h3>博客基础信息</h3>
-            <p class="section-helper">
-              先改标题、副标题和主页链接。这一组最能直接改变读者看到的第一印象。
-            </p>
-            <div class="grid-2">
-              <div>
-                <label>博客标题</label><input v-model="basicFields.siteTitle" />
-              </div>
-              <div>
-                <label>博客副标题</label><input v-model="basicFields.subtitle" />
-              </div>
-              <div>
-                <label>邮箱</label
-                ><input
-                  v-model="basicFields.email"
-                  placeholder="name@example.com"
-                />
-              </div>
-              <div>
-                <label>GitHub 主页链接</label
-                ><input
-                  v-model="basicFields.github"
-                  placeholder="https://github.com/yourname"
-                />
-              </div>
-              <template v-if="supportsStackComponents">
-                <div>
-                  <label>首页菜单图标（可空，空则移除）</label>
-                  <input
-                    v-model="basicFields.stackHomeIcon"
-                    placeholder="例如 home"
-                  />
-                </div>
-                <div>
-                  <label>关于菜单图标（可空，空则移除）</label>
-                  <input
-                    v-model="basicFields.stackAboutIcon"
-                    placeholder="例如 user"
-                  />
-                </div>
-                <div>
-                  <label>归档菜单图标（可空，空则移除）</label>
-                  <input
-                    v-model="basicFields.stackArchivesIcon"
-                    placeholder="例如 archives"
-                  />
-                </div>
-                <div>
-                  <label>显示归档小组件</label>
-                  <select v-model="basicFields.stackShowArchivesWidget">
-                    <option :value="true">true</option>
-                    <option :value="false">false</option>
-                  </select>
-                </div>
-                <div>
-                  <label>显示标签云小组件</label>
-                  <select v-model="basicFields.stackShowTagCloudWidget">
-                    <option :value="true">true</option>
-                    <option :value="false">false</option>
-                  </select>
-                  <p class="muted">
-                    启用前请确保文章包含 tags，否则主题可能不显示标签云。
-                  </p>
-                </div>
-              </template>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section
-        class="panel page-section theme-studio-section"
+      <ThemeAssetStudioSection
         data-theme-zone="asset-studio"
-      >
-        <div class="theme-studio-heading">
-          <div class="theme-studio-heading-copy">
-            <p class="section-eyebrow">Step 02 · 视觉素材台</p>
-            <h2>把图标、背景与头像收进同一张素材桌</h2>
-            <p class="section-helper">
-              当前素材状态和上传动作放在同一块区域里，方便先看现状，再决定要替换哪一项。
-            </p>
-          </div>
-          <aside class="theme-studio-note">
-            <p class="section-eyebrow">素材状态一览</p>
-            <strong>先看当前已生效路径，再决定是否替换素材。</strong>
-            <p class="section-helper">{{ backgroundSupportHint }}</p>
-          </aside>
-        </div>
-
-        <div class="theme-studio-status-grid">
-          <article class="theme-studio-status-card">
-            <p class="status-label">当前图标路径</p>
-            <strong>{{ basicFields.favicon || "尚未配置图标" }}</strong>
-            <p class="status-detail">品牌入口通常最先被看见，替换前先确认目标路径。</p>
-          </article>
-          <article class="theme-studio-status-card">
-            <p class="status-label">当前背景图路径</p>
-            <strong>{{ basicFields.backgroundImage || "尚未配置背景图" }}</strong>
-            <p class="status-detail">背景会直接影响首页氛围，适合在标题确定后统一替换。</p>
-          </article>
-          <article v-if="supportsAvatarUpload" class="theme-studio-status-card">
-            <p class="status-label">当前头像路径</p>
-            <strong>{{ basicFields.avatarImage || "尚未配置头像" }}</strong>
-            <p class="status-detail">支持头像的主题会在资料侧栏强化作者身份感。</p>
-          </article>
-        </div>
-
-        <div class="theme-asset-grid">
-          <article class="priority-panel theme-studio-card">
-            <p class="section-eyebrow">博客图标</p>
-            <h3>上传与命名</h3>
-            <div>
-              <label>本地图标路径（自动保存到博客文件夹）</label>
-              <div class="path-input-row">
-                <input
-                  v-model="faviconUploadPath"
-                  placeholder="例如 D:/images/favicon.png"
-                />
-                <button
-                  class="secondary"
-                  type="button"
-                  @click="pickFaviconImageFile"
-                >
-                  选择文件
-                </button>
-              </div>
-            </div>
-            <div>
-              <label>图标文件名（可选）</label>
-              <input
-                v-model="faviconPreferredFileName"
-                placeholder="例如 favicon-brand"
-              />
-            </div>
-            <div class="actions">
-              <button class="secondary" @click="uploadLocalFavicon">
-                转存并应用博客图标
-              </button>
-            </div>
-          </article>
-
-          <article class="priority-panel theme-studio-card">
-            <p class="section-eyebrow">背景画面</p>
-            <h3>背景图上传</h3>
-            <div>
-              <label>本地背景图路径</label>
-              <div class="path-input-row">
-                <input
-                  v-model="backgroundTransfer.localFilePath"
-                  placeholder="例如 D:/images/hero.jpg"
-                />
-                <button
-                  class="secondary"
-                  type="button"
-                  @click="pickBackgroundImageFile"
-                >
-                  选择文件
-                </button>
-              </div>
-            </div>
-            <div>
-              <label>背景图文件名（可选）</label>
-              <input
-                v-model="backgroundTransfer.preferredFileName"
-                placeholder="例如 home-bg.jpg"
-              />
-            </div>
-            <div class="actions">
-              <button class="secondary" @click="applyLocalBackgroundImage">
-                转存并应用背景图（自动写入配置）
-              </button>
-            </div>
-          </article>
-
-          <article v-if="supportsAvatarUpload" class="priority-panel theme-studio-card">
-            <p class="section-eyebrow">头像素材</p>
-            <h3>头像上传</h3>
-            <div>
-              <label>本地头像路径</label>
-              <div class="path-input-row">
-                <input
-                  v-model="avatarTransfer.localFilePath"
-                  placeholder="例如 D:/images/avatar.png"
-                />
-                <button
-                  class="secondary"
-                  type="button"
-                  @click="pickAvatarImageFile"
-                >
-                  选择文件
-                </button>
-              </div>
-            </div>
-            <div>
-              <label>头像文件名（可选）</label>
-              <input
-                v-model="avatarTransfer.preferredFileName"
-                placeholder="例如 profile-avatar"
-              />
-            </div>
-            <div class="actions">
-              <button class="secondary" @click="applyLocalAvatarImage">
-                转存并应用头像（自动写入配置）
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+        :basic-fields="basicFields"
+        :supports-avatar-upload="supportsAvatarUpload"
+        :background-support-hint="backgroundSupportHint"
+        :background-transfer="backgroundTransfer"
+        :avatar-transfer="avatarTransfer"
+        :pick-favicon-image-file="pickFaviconImageFile"
+        :pick-background-image-file="pickBackgroundImageFile"
+        :pick-avatar-image-file="pickAvatarImageFile"
+        :upload-local-favicon="uploadLocalFavicon"
+        :apply-local-background-image="applyLocalBackgroundImage"
+        :apply-local-avatar-image="applyLocalAvatarImage"
+      />
 
       <section
         class="panel page-section theme-studio-section"
@@ -1710,68 +1448,12 @@ watch(
     </div>
 
     <div class="page-layer" data-page-layer="detail">
-      <div class="page-stack theme-studio-detail-stack" data-theme-zone="advanced-config">
-        <section class="priority-panel priority-panel--subtle theme-studio-detail-intro">
-          <p class="section-eyebrow">次级区域</p>
-          <strong>高级与原始配置属于次级区域</strong>
-          <p class="page-result-note">
-            只有当基础品牌、素材与阅读体验已经跑通时，再回来处理下面这两组技术参数。
-          </p>
-        </section>
-
-        <details v-if="selectedThemeSchema" class="advanced-panel theme-studio-detail-panel">
-          <summary>
-            主题专属高级配置（{{ selectedThemeSchema.options.length }} 项）
-          </summary>
-          <div class="advanced-panel-content">
-            <p class="section-helper">
-              只有当你已经跑通基础外观、预览和内容后，再建议回来调这些主题特有参数。
-            </p>
-            <div class="grid-2">
-              <div v-for="opt in selectedThemeSchema.options" :key="opt.key">
-                <label>{{ opt.label }} ({{ opt.key }})</label>
-                <select v-if="opt.type === 'enum'" v-model="optionValues[opt.key]">
-                  <option v-for="v in opt.enumValues" :key="v" :value="v">
-                    {{ v }}
-                  </option>
-                </select>
-                <select
-                  v-else-if="opt.type === 'boolean'"
-                  v-model="optionValues[opt.key]"
-                >
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
-                <input
-                  v-else-if="opt.type === 'array'"
-                  v-model="optionValues[opt.key]"
-                  :placeholder="(opt.default || []).join(',')"
-                />
-                <input
-                  v-else
-                  v-model="optionValues[opt.key]"
-                  :placeholder="String(opt.default || '')"
-                />
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <details class="advanced-panel theme-studio-detail-panel">
-          <summary>原始配置抽屉（全部配置项 {{ allConfigEntries.length }} 项，适合高级用户）</summary>
-          <div class="advanced-panel-content">
-            <p class="section-helper">
-              这里会直接影响最终配置文件。只有当上面的可视化项无法覆盖你的需求时，再修改这一组原始条目。
-            </p>
-            <div class="grid-2">
-              <div v-for="item in allConfigEntries" :key="item.key">
-                <label>{{ item.key }}</label>
-                <input v-model="item.value" />
-              </div>
-            </div>
-          </div>
-        </details>
-      </div>
+      <ThemeAdvancedConfigSection
+        data-theme-zone="advanced-config"
+        :selected-theme-schema="selectedThemeSchema"
+        :option-values="optionValues"
+        :all-config-entries="allConfigEntries"
+      />
     </div>
   </div>
 </template>

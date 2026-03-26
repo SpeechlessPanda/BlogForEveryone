@@ -31,12 +31,15 @@ test("ImportView keeps import entry guidance without duplicated hero summary car
   assert.match(source, /data-workflow-action-level="secondary"/);
   assert.match(source, /data-workflow-action-level="tertiary"/);
   assert.equal(source.includes("page-hero-aside"), false);
+  assert.equal(source.includes("workflow-hero-note"), false);
   assert.equal(source.includes("page-status-grid"), false);
+  assert.match(source, /workflow-status-grid/);
+  assert.match(source, /接回主流程/);
   assert.match(source, /导入结果摘要/);
   assert.match(source, /useShellActions/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tab"/);
-  assert.match(source, /shellActions\.openTutorial\(\)/);
+  assert.match(source, /shellActions\.openTutorial\("import-recovery"\)/);
   assert.match(source, /shellActions\.openTab\("theme"\)/);
   assert.match(source, /shellActions\.openTab\("workspace"\)/);
 });

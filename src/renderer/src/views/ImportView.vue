@@ -55,7 +55,7 @@ async function restoreRssFromProject() {
 }
 
 function goTutorialCenter() {
-  shellActions.openTutorial();
+  shellActions.openTutorial("import-recovery");
 }
 
 function goThemeConfig() {
@@ -116,13 +116,6 @@ function jumpToZone(zoneId) {
               <a href="#" @click.prevent="goTutorialCenter"
                 >打开教程中心（导入与恢复）</a
               >
-            </div>
-          </div>
-          <div class="workflow-hero-note">
-            <div class="page-signal page-signal--accent">
-              <p class="section-eyebrow">建议下一步</p>
-              <strong>先导入，再去主题配置确认主题与品牌。</strong>
-              <p class="section-helper">这能让旧博客最快接回新的主创建流程。</p>
             </div>
           </div>
         </div>

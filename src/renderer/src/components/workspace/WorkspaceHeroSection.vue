@@ -1,4 +1,6 @@
 <script setup>
+import { useShellActions } from "../../composables/useShellActions.mjs";
+
 defineProps({
   selectedWorkspace: {
     type: Object,
@@ -26,9 +28,15 @@ defineProps({
   },
   goTutorialCenter: {
     type: Function,
-    required: true,
+    default: null,
   },
 });
+
+const shellActions = useShellActions();
+
+function openWorkspaceTutorial() {
+  shellActions.openTutorial("workspace-create");
+}
 </script>
 
 <template>
@@ -52,25 +60,9 @@ defineProps({
           </button>
         </div>
         <div class="page-link-row">
-          <a href="#" @click.prevent="goTutorialCenter"
+          <a href="#" @click.prevent="openWorkspaceTutorial"
             >不知道怎么填？打开教程中心（新建博客保姆指南）</a
           >
-        </div>
-      </div>
-      <div class="page-hero-aside">
-        <div class="page-signal page-signal--accent">
-          <p class="section-eyebrow">建议下一步</p>
-          <strong>{{ workspaceNextActionLabel }}</strong>
-          <p class="section-helper">
-            快速创建、继续现有工作、导入已有项目都保留在这一屏，不用切换思路找入口。
-          </p>
-        </div>
-        <div class="page-signal page-signal--quiet">
-          <p class="section-eyebrow">继续工作入口</p>
-          <strong>优先回到最近工作区，再决定是否调整主题与内容。</strong>
-          <p class="section-helper">
-            最近工作区卡片会把继续完善动作放到最前面，删除动作压到最后。
-          </p>
         </div>
       </div>
     </div>
@@ -96,6 +88,13 @@ defineProps({
         <p class="section-eyebrow">建议下一步</p>
         <strong>{{ workspaceNextActionLabel }}</strong>
         <p class="section-helper">优先保证工作区可运行，再继续调整视觉与内容。</p>
+      </div>
+      <div class="page-signal page-signal--quiet">
+        <p class="section-eyebrow">继续工作入口</p>
+        <strong>优先回到最近工作区，再决定是否调整主题与内容。</strong>
+        <p class="section-helper">
+          最近工作区卡片会把继续完善动作放到最前面，删除动作压到最后。
+        </p>
       </div>
       <div class="page-signal page-signal--quiet">
         <p class="section-eyebrow">当前阻塞</p>

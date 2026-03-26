@@ -56,6 +56,12 @@ test("ImportView uses import facade instead of raw window.bfeApi import calls", 
       `expected ImportView.vue to stop calling window.bfeApi.${method}`,
     );
   }
+
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /shellActions\.openTutorial\("import-recovery"\)/);
+  assert.match(source, /shellActions\.openTab\("theme"\)/);
+  assert.match(source, /shellActions\.openTab\("workspace"\)/);
 });
 
 test("ImportView reads as the secondary entry path with guidance back into the main workflow", async () => {

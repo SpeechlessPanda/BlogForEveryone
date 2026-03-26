@@ -176,7 +176,7 @@ test("shell actions expose bfe custom-event listener bridges with release callba
   ]);
 });
 
-test("shell actions expose openTutorial and openTab as centralized navigation emitters", () => {
+test("shell actions expose target-aware openTutorial and openTab emitters", () => {
   const dispatchCalls = [];
   const customEvents = [];
 
@@ -200,15 +200,16 @@ test("shell actions expose openTutorial and openTab as centralized navigation em
 
   const actions = createShellActions({ onUpdateStatus: () => {} }, fakeWindow);
 
-  actions.openTutorial();
+  actions.openTutorial("preview-check");
   actions.openTab("theme");
 
   assert.deepEqual(customEvents, [
-    ["bfe:open-tutorial", undefined],
+    ["bfe:open-tutorial", { target: "preview-check" }],
     ["bfe:open-tab", { tabKey: "theme" }],
   ]);
   assert.equal(dispatchCalls.length, 2);
   assert.equal(dispatchCalls[0].type, "bfe:open-tutorial");
+  assert.deepEqual(dispatchCalls[0].detail, { target: "preview-check" });
   assert.equal(dispatchCalls[1].type, "bfe:open-tab");
   assert.deepEqual(dispatchCalls[1].detail, { tabKey: "theme" });
 });

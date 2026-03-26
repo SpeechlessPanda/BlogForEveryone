@@ -21,7 +21,9 @@ test("useAppShell keeps shell summary and presentation state in facade", async (
     "shellAppearance",
     "shellAppearanceToggleLabel",
     "isShellPopupOpen",
+    "shellPopupAnchorStyle",
     "shellUserEntryLabel",
+    "tutorialTarget",
   ];
 
   for (const stateName of expectedShellState) {
@@ -102,11 +104,44 @@ test("useAppShell owns popup utility state for the refined shell", async () => {
   const source = await readFile(useAppShellPath, "utf8");
 
   assert.match(source, /const isShellPopupOpen = ref\(false\)/);
+  assert.match(source, /const shellPopupAnchor = ref\(/);
+  assert.match(source, /const shellPopupAnchorStyle = computed\(/);
+  assert.match(source, /const tutorialTarget = ref\("tutorial-home"\)/);
   assert.match(source, /const shellUserEntryLabel = computed\(/);
-  assert.match(source, /function toggleShellPopup\(\)/);
+  assert.match(source, /function openShellPopup\(anchor\)/);
   assert.match(source, /function closeShellPopup\(\)/);
-  assert.match(source, /isShellPopupOpen\.value = !isShellPopupOpen\.value/);
+  assert.match(source, /anchor\.element/);
+  assert.match(source, /getBoundingClientRect\(\)/);
+  assert.match(source, /isShellPopupOpen\.value = true/);
   assert.match(source, /isShellPopupOpen\.value = false/);
+});
+
+test("useAppShell clamps sidebar popup placement to desktop viewport bounds", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(source, /innerHeight/);
+  assert.match(source, /Math\.min\(\s*anchorRect\.top,/);
+  assert.match(source, /Math\.max\(/);
+  assert.match(source, /top:\s*popupTop/);
+});
+
+test("useAppShell resets the shared scroll region and closes the popup when tabs change", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(source, /const shellScrollRegion = ref\(null\)/);
+  assert.match(source, /function setShellScrollRegion\(element\)/);
+  assert.match(source, /shellScrollRegion\.value = element/);
+  assert.match(source, /function resetShellScrollRegion\(\)[\s\S]*scrollTo\(\{[\s\S]*top:\s*0[\s\S]*behavior:\s*"auto"/);
+  assert.match(source, /function setActiveTab\(tabKey\)[\s\S]*closeShellPopup\(\)[\s\S]*resetShellScrollRegion\(\)/);
+});
+
+test("useAppShell listens for target-aware tutorial open events", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(
+    source,
+    /releaseOpenTutorialListener = shellActions\.onOpenTutorial\(\(event\) => \{[\s\S]*tutorialTarget\.value = event\?\.detail\?\.target \|\| "tutorial-home"[\s\S]*setActiveTab\("tutorial"\)/,
+  );
 });
 
 test("useShellNavigation keeps approved IA workflow grouping metadata", async () => {

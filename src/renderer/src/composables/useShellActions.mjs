@@ -151,8 +151,8 @@ export function createShellActions(api, shellWindow) {
       }
       await clipboard.writeText(text);
     },
-    openTutorial() {
-      return dispatchShellEvent(resolvedWindow, "bfe:open-tutorial");
+    openTutorial(target = "tutorial-home") {
+      return dispatchShellEvent(resolvedWindow, "bfe:open-tutorial", { target });
     },
     openTab(tabKey) {
       return dispatchShellEvent(resolvedWindow, "bfe:open-tab", { tabKey });

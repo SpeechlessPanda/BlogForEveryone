@@ -44,18 +44,21 @@ const {
   isShellPopupOpen,
   isLoggedIn,
   nextStep,
+  openShellPopup,
   pnpmInstalling,
   pnpmProgress,
   refreshAuthState,
   refreshEnvStatus,
   rssUnreadTotal,
   selectedWorkspace,
+  setShellScrollRegion,
   setActiveTab,
   shellAppearance,
+  shellPopupAnchorStyle,
   shellAppearanceToggleLabel,
   shellUserEntryLabel,
-  toggleShellPopup,
   toggleShellAppearance,
+  tutorialTarget,
   updateState,
   workspaceSummary,
 } = useAppShell();
@@ -71,7 +74,7 @@ const {
       :shell-appearance="shellAppearance"
       :shell-user-entry-label="shellUserEntryLabel"
       @navigate="setActiveTab"
-      @toggle-shell-popup="toggleShellPopup"
+      @open-shell-popup="openShellPopup"
     />
 
     <main class="content" data-shell-region="workspace">
@@ -79,7 +82,7 @@ const {
         :active-section-meta="activeSectionMeta"
         :active-tab-meta="activeTabMeta"
         :is-shell-popup-open="isShellPopupOpen"
-        @toggle-shell-popup="toggleShellPopup"
+        :shell-popup-anchor-style="shellPopupAnchorStyle"
         @close-shell-popup="closeShellPopup"
       >
         <template #page-actions>
@@ -121,8 +124,8 @@ const {
         />
       </ShellTopBar>
 
-      <div class="content-view-scroll" data-shell-scroll-region="workflow-view">
-        <TutorialCenterView v-if="activeTab === 'tutorial'" />
+      <div :ref="setShellScrollRegion" class="content-view-scroll" data-shell-scroll-region="workflow-view">
+        <TutorialCenterView v-if="activeTab === 'tutorial'" :tutorial-target="tutorialTarget" />
         <WorkspaceView v-if="activeTab === 'workspace'" />
         <ThemeConfigView v-if="activeTab === 'theme'" />
         <PreviewView v-if="activeTab === 'preview'" />

@@ -11,6 +11,8 @@ import { useShellWorkspaceSummary } from "./useShellWorkspaceSummary.mjs";
 
 const ACTION_IDLE_RESET_MS = 1400;
 const RSS_SUMMARY_REFRESH_INTERVAL_MS = 30000;
+const SHELL_POPUP_VIEWPORT_PADDING_PX = 24;
+const SHELL_POPUP_DESKTOP_MAX_HEIGHT_PX = 420;
 
 function normalizePreferences(next, current) {
   return {
@@ -59,6 +61,14 @@ export function useAppShell() {
   const pnpmInstalling = ref(false);
   const shellAppearance = ref("light");
   const isShellPopupOpen = ref(false);
+  const shellPopupAnchor = ref({
+    key: "user",
+    top: 24,
+    left: 24,
+    width: 0,
+  });
+  const shellScrollRegion = ref(null);
+  const tutorialTarget = ref("tutorial-home");
   const shellNavigation = useShellNavigation({ initialTab: "tutorial" });
   const {
     activeTab,
@@ -139,12 +149,61 @@ export function useAppShell() {
       ? "切换到暗色编辑台"
       : "切换到亮色编辑台",
   );
+  const shellPopupAnchorStyle = computed(() => ({
+    "--shell-popup-top": `${shellPopupAnchor.value.top}px`,
+    "--shell-popup-left": `${shellPopupAnchor.value.left}px`,
+    "--shell-popup-width": `${shellPopupAnchor.value.width}px`,
+  }));
+
+  function setShellScrollRegion(element) {
+    shellScrollRegion.value = element;
+  }
+
+  function resetShellScrollRegion() {
+    if (typeof shellScrollRegion.value?.scrollTo === "function") {
+      shellScrollRegion.value.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  }
+
+  function syncShellPopupAnchor(anchor) {
+    const anchorElement = anchor && anchor.element;
+    const anchorRect = anchorElement?.getBoundingClientRect();
+    if (!anchorRect) {
+      return;
+    }
+
+    const viewportHeight =
+      globalThis.innerHeight ||
+      globalThis.document?.documentElement?.clientHeight ||
+      0;
+    const popupTop = Math.max(
+      SHELL_POPUP_VIEWPORT_PADDING_PX,
+      Math.min(
+        anchorRect.top,
+        viewportHeight -
+          SHELL_POPUP_DESKTOP_MAX_HEIGHT_PX -
+          SHELL_POPUP_VIEWPORT_PADDING_PX,
+      ),
+    );
+
+    shellPopupAnchor.value = {
+      key: anchor?.key || "user",
+      top: popupTop,
+      left: anchorRect.left,
+      width: anchorRect.width,
+    };
+  }
 
   function setActiveTab(tabKey) {
     const previousTab = activeTab.value;
     shellNavigation.setActiveTab(tabKey);
     if (activeTab.value !== previousTab) {
-      isShellPopupOpen.value = false;
+      closeShellPopup();
+      resetShellScrollRegion();
     }
   }
 
@@ -152,8 +211,9 @@ export function useAppShell() {
     shellAppearance.value = shellAppearance.value === "light" ? "dark" : "light";
   }
 
-  function toggleShellPopup() {
-    isShellPopupOpen.value = !isShellPopupOpen.value;
+  function openShellPopup(anchor) {
+    syncShellPopupAnchor(anchor);
+    isShellPopupOpen.value = true;
   }
 
   function closeShellPopup() {
@@ -422,7 +482,8 @@ export function useAppShell() {
       });
     }
 
-    releaseOpenTutorialListener = shellActions.onOpenTutorial(() => {
+    releaseOpenTutorialListener = shellActions.onOpenTutorial((event) => {
+      tutorialTarget.value = event?.detail?.target || "tutorial-home";
       setActiveTab("tutorial");
     });
     releaseOpenTabListener = shellActions.onOpenTab((event) => {
@@ -490,6 +551,7 @@ export function useAppShell() {
     launchAtStartupEnabled,
     loginStatusText,
     nextStep,
+    openShellPopup,
     openInfoModal,
     pnpmInstalling,
     pnpmProgress,
@@ -497,14 +559,16 @@ export function useAppShell() {
     refreshEnvStatus,
     rssUnreadTotal,
     selectedWorkspace,
+    setShellScrollRegion,
     setActiveTab,
     shellAppearance,
+    shellPopupAnchorStyle,
     shellAppearanceToggleLabel,
     shellUserEntryLabel,
     sidebarLoginText,
     closeShellPopup,
-    toggleShellPopup,
     toggleShellAppearance,
+    tutorialTarget,
     updateState,
     workspaceSummary,
   };

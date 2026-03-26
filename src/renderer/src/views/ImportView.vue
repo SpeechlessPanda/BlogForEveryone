@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from "vue";
 import { refreshWorkspaces } from "../stores/workspaceStore";
+import { useShellActions } from "../composables/useShellActions.mjs";
 import { useImportActions } from "../composables/useImportActions.mjs";
 
 const form = reactive({
@@ -9,6 +10,7 @@ const form = reactive({
 });
 
 const result = ref("");
+const shellActions = useShellActions();
 const { importWorkspace, pickDirectory, importSubscriptions } =
   useImportActions();
 
@@ -53,19 +55,19 @@ async function restoreRssFromProject() {
 }
 
 function goTutorialCenter() {
-  window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+  shellActions.openTutorial();
 }
 
 function goThemeConfig() {
-  window.dispatchEvent(
-    new CustomEvent("bfe:open-tab", { detail: { tabKey: "theme" } }),
-  );
+  shellActions.openTab("theme");
 }
 
 function goWorkspacePage() {
-  window.dispatchEvent(
-    new CustomEvent("bfe:open-tab", { detail: { tabKey: "workspace" } }),
-  );
+  shellActions.openTab("workspace");
+}
+
+function jumpToZone(zoneId) {
+  document.getElementById(zoneId)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 </script>
 
@@ -89,7 +91,7 @@ function goWorkspacePage() {
                 class="primary"
                 type="button"
                 data-workflow-action-level="primary"
-                @click="$el?.querySelector('#import-workbench')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+                @click="jumpToZone('import-workbench')"
               >
                 前往导入设置
               </button>
@@ -97,7 +99,7 @@ function goWorkspacePage() {
                 class="secondary"
                 type="button"
                 data-workflow-action-level="secondary"
-                @click="$el?.querySelector('#import-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+                @click="jumpToZone('import-result')"
               >
                 查看最近结果
               </button>
@@ -116,7 +118,7 @@ function goWorkspacePage() {
               >
             </div>
           </div>
-          <div class="page-hero-aside">
+          <div class="workflow-hero-note">
             <div class="page-signal page-signal--accent">
               <p class="section-eyebrow">建议下一步</p>
               <strong>先导入，再去主题配置确认主题与品牌。</strong>
@@ -125,7 +127,7 @@ function goWorkspacePage() {
           </div>
         </div>
 
-        <div class="page-status-grid">
+        <div class="workflow-status-grid">
           <div class="page-signal page-signal--accent">
             <p class="section-eyebrow">次级入口</p>
             <strong>已有博客接入工作流</strong>

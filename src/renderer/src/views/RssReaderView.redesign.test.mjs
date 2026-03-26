@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const rssReaderViewPath = new URL("./RssReaderView.vue", import.meta.url);
 
-test("RssReaderView joins the editorial workflow family with quiet intake actions and export support", async () => {
+test("RssReaderView keeps quiet intake actions without a duplicated hero summary card", async () => {
   const source = await readFile(rssReaderViewPath, "utf8");
 
   const requiredHooks = [
@@ -30,5 +30,21 @@ test("RssReaderView joins the editorial workflow family with quiet intake action
   assert.match(source, /data-workflow-action-level="primary"/);
   assert.match(source, /data-workflow-action-level="secondary"/);
   assert.match(source, /data-workflow-action-level="tertiary"/);
+  assert.equal(source.includes("page-hero-aside"), false);
   assert.match(source, /订阅结果摘要/);
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /shellActions\.openTutorial\(\)/);
+});
+
+test("RssReaderView keeps in-page navigation in a view-owned enter-at-top helper", async () => {
+  const source = await readFile(rssReaderViewPath, "utf8");
+
+  assert.equal(
+    source.includes("jumpToZone"),
+    true,
+    "expected RssReaderView.vue to define a view-owned jumpToZone helper",
+  );
+  assert.match(source, /scrollIntoView\(\{\s*behavior:\s*["']smooth["'],\s*block:\s*["']start["']\s*\}\)/);
+  assert.doesNotMatch(source, /\$el\?\.querySelector\([^)]*\)\?\.scrollIntoView/);
 });

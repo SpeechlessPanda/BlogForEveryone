@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const importViewPath = new URL("./ImportView.vue", import.meta.url);
 
-test("ImportView joins the editorial workflow family with clear import entry and follow-up guidance", async () => {
+test("ImportView keeps import entry guidance without duplicated hero summary cards", async () => {
   const source = await readFile(importViewPath, "utf8");
 
   const requiredHooks = [
@@ -30,5 +30,25 @@ test("ImportView joins the editorial workflow family with clear import entry and
   assert.match(source, /data-workflow-action-level="primary"/);
   assert.match(source, /data-workflow-action-level="secondary"/);
   assert.match(source, /data-workflow-action-level="tertiary"/);
+  assert.equal(source.includes("page-hero-aside"), false);
+  assert.equal(source.includes("page-status-grid"), false);
   assert.match(source, /导入结果摘要/);
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tab"/);
+  assert.match(source, /shellActions\.openTutorial\(\)/);
+  assert.match(source, /shellActions\.openTab\("theme"\)/);
+  assert.match(source, /shellActions\.openTab\("workspace"\)/);
+});
+
+test("ImportView keeps in-page navigation in a view-owned enter-at-top helper", async () => {
+  const source = await readFile(importViewPath, "utf8");
+
+  assert.equal(
+    source.includes("jumpToZone"),
+    true,
+    "expected ImportView.vue to define a view-owned jumpToZone helper",
+  );
+  assert.match(source, /scrollIntoView\(\{\s*behavior:\s*["']smooth["'],\s*block:\s*["']start["']\s*\}\)/);
+  assert.doesNotMatch(source, /\$el\?\.querySelector\([^)]*\)\?\.scrollIntoView/);
 });

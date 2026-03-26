@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useShellActions } from "../composables/useShellActions.mjs";
 import { useRssActions } from "../composables/useRssActions.mjs";
 
 const form = reactive({
@@ -11,6 +12,7 @@ const form = reactive({
 });
 
 const { run, isBusy } = useAsyncAction();
+const shellActions = useShellActions();
 const {
   listSubscriptions,
   addSubscription,
@@ -156,7 +158,11 @@ async function exportBundle() {
 }
 
 function goTutorialCenter() {
-  window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+  shellActions.openTutorial();
+}
+
+function jumpToZone(zoneId) {
+  document.getElementById(zoneId)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 onMounted(refresh);
@@ -182,7 +188,7 @@ onMounted(refresh);
                 class="primary"
                 type="button"
                 data-workflow-action-level="primary"
-                @click="$el?.querySelector('#rss-add-subscription')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+                @click="jumpToZone('rss-add-subscription')"
               >
                 前往新增订阅
               </button>
@@ -198,7 +204,7 @@ onMounted(refresh);
                 class="secondary"
                 type="button"
                 data-workflow-action-level="tertiary"
-                @click="$el?.querySelector('#rss-export-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+                @click="jumpToZone('rss-export-result')"
               >
                 导出订阅快照
               </button>
@@ -209,7 +215,7 @@ onMounted(refresh);
               >
             </div>
           </div>
-          <div class="page-hero-aside">
+          <div class="workflow-hero-note">
             <div class="page-signal page-signal--quiet">
               <p class="section-eyebrow">当前未读</p>
               <strong>{{ totalUnread }}</strong>

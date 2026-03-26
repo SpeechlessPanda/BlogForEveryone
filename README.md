@@ -123,7 +123,15 @@ pnpm run package:signed
 pnpm run release
 ```
 
-如果 dev 启动失败，优先执行 pnpm run build:renderer 查看前端编译错误。
+如果 `pnpm run dev` 启动失败，按下面顺序排查：
+
+1. 先执行 `pnpm install`，确认本地依赖已完整安装。
+2. 再执行 `pnpm exec concurrently --version` 与 `pnpm exec wait-on --help`，确认本地 dev 依赖可解析。
+3. 执行 `netstat -ano | findstr :5173`，确认是否有残留 Vite / Electron 进程占用了端口。
+4. 如果 5173 被旧进程占用，优先用 `cmd /c taskkill /PID <PID> /T /F` 清理，再重试 `pnpm run dev`。
+5. 若仍失败，再执行 `pnpm run build:renderer` 查看前端编译错误。
+
+详细 checklist 见：[docs/guides/dev-runtime-troubleshooting.md](docs/guides/dev-runtime-troubleshooting.md)
 
 补充说明：仓库当前默认使用 npm 官方源；如果你的 shell 显式设置了代理或自定义 registry，请先确认它不会覆盖 `.npmrc`。
 
@@ -143,6 +151,7 @@ pnpm run release
 3. 新手发布指南：[docs/guides/blog-publish-pages-beginner.md](docs/guides/blog-publish-pages-beginner.md)
 4. OAuth 配置指南：[docs/guides/github-oauth-app-setup.md](docs/guides/github-oauth-app-setup.md)
 5. 发布与自动更新指南：[docs/guides/release-signing-auto-update.md](docs/guides/release-signing-auto-update.md)
+6. 本地开发运行排障：[docs/guides/dev-runtime-troubleshooting.md](docs/guides/dev-runtime-troubleshooting.md)
 
 ## 维护约定
 

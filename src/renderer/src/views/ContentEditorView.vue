@@ -410,7 +410,7 @@ watch(
       />
     </div>
 
-    <div class="page-layer" data-page-layer="detail">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="detail">
       <details class="advanced-panel">
         <summary>自动流程（后置）</summary>
         <div class="advanced-panel-content">

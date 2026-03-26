@@ -4,7 +4,7 @@ const Parser = require('rss-parser');
 const { Notification } = require('electron');
 const { readStore, writeStore } = require('./storeService');
 
-const parser = new Parser();
+let parser = new Parser();
 let syncTimer = null;
 let syncEnabled = true;
 
@@ -255,5 +255,22 @@ module.exports = {
     startAutoSync,
     stopAutoSync,
     setAutoSyncEnabled,
-    getAutoSyncState
+    getAutoSyncState,
+    __test__: {
+        setParserForTests(nextParser) {
+            if (nextParser && typeof nextParser.parseURL === 'function') {
+                parser = nextParser;
+                return;
+            }
+
+            parser = new Parser();
+        },
+        resetAutoSyncStateForTests() {
+            if (syncTimer) {
+                clearInterval(syncTimer);
+                syncTimer = null;
+            }
+            syncEnabled = true;
+        }
+    }
 };

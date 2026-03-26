@@ -3,16 +3,25 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const workspaceViewPath = new URL("./WorkspaceView.vue", import.meta.url);
+const workspaceHeroSectionPath = new URL(
+  "../components/workspace/WorkspaceHeroSection.vue",
+  import.meta.url,
+);
+const workspaceContinueSectionPath = new URL(
+  "../components/workspace/WorkspaceContinueSection.vue",
+  import.meta.url,
+);
 
-test("WorkspaceView distinguishes new-start and continue-work flows inside the editorial workbench", async () => {
+test("WorkspaceView keeps new-start and continue-work flows while moving themes into one shared selection zone", async () => {
   const source = await readFile(workspaceViewPath, "utf8");
+  const heroSectionSource = await readFile(workspaceHeroSectionPath, "utf8");
 
   const requiredHooks = [
     'data-workspace-surface="editorial-workbench"',
     'data-workspace-zone="hero"',
     'data-workspace-zone="new-start"',
     'data-workspace-zone="continue-work"',
-    'data-workspace-zone="theme-curation"',
+    'data-workspace-zone="theme-selection"',
   ];
 
   for (const hook of requiredHooks) {
@@ -23,29 +32,68 @@ test("WorkspaceView distinguishes new-start and continue-work flows inside the e
     );
   }
 
-  assert.match(source, /快速创建新博客/);
-  assert.match(source, /继续现有工作/);
-  assert.match(source, /导入已有项目/);
+  assert.match(heroSectionSource, /快速创建新博客/);
+  assert.match(heroSectionSource, /继续现有工作/);
+  assert.match(heroSectionSource, /导入已有项目/);
 });
 
-test("WorkspaceView presents theme selection as a curated editorial collection with featured framing", async () => {
+test("WorkspaceView keeps theme selection unified and lightbox-capable instead of splitting featured recommendations", async () => {
   const source = await readFile(workspaceViewPath, "utf8");
 
-  assert.match(source, /精选首发主题/);
-  assert.match(source, /推荐继续看/);
-  assert.match(source, /theme-display-tag/);
-  assert.match(source, /positioningCopy/);
-  assert.match(source, /featuredTheme/);
-  assert.match(source, /getThemeDisplayMetadata/);
+  assert.equal(
+    source.includes('data-workspace-zone="theme-selection"'),
+    true,
+    "expected WorkspaceView.vue to expose a single theme-selection zone",
+  );
+  assert.doesNotMatch(source, /精选首发主题|推荐继续看|编辑部精选/);
+  assert.doesNotMatch(
+    source,
+    /featuredTheme|recommendedThemes|getThemeDisplayMetadata|featuredThemeIdByFramework|recommendedThemeIdsByFramework/,
+  );
+  assert.doesNotMatch(source, /<label>\s*主题\s*<\/label>[\s\S]*<select\s+v-model="form\.theme"/);
+  assert.match(
+    source,
+    /<(dialog|Teleport)[\s\S]*(theme-preview|preview-dialog|lightbox)/i,
+  );
 });
 
 test("WorkspaceView foregrounds continue-work actions on recent workspace cards", async () => {
-  const source = await readFile(workspaceViewPath, "utf8");
+  const continueSectionSource = await readFile(workspaceContinueSectionPath, "utf8");
 
-  assert.match(source, /最近工作区/);
-  assert.match(source, /继续完善/);
-  assert.match(source, /继续去主题配置/);
-  assert.match(source, /去内容编辑/);
-  assert.match(source, /去本地预览/);
-  assert.match(source, /workspace-card/);
+  assert.match(continueSectionSource, /最近工作区/);
+  assert.match(continueSectionSource, /继续完善/);
+  assert.match(continueSectionSource, /继续去主题配置/);
+  assert.match(continueSectionSource, /去内容编辑/);
+  assert.match(continueSectionSource, /去本地预览/);
+  assert.match(continueSectionSource, /workspace-card/);
+});
+
+test("WorkspaceView redesign extracts hero and continue-work structures into stable workspace section components", async () => {
+  const source = await readFile(workspaceViewPath, "utf8");
+  const heroSectionSource = await readFile(workspaceHeroSectionPath, "utf8");
+  const continueSectionSource = await readFile(
+    workspaceContinueSectionPath,
+    "utf8",
+  );
+
+  assert.match(source, /<WorkspaceHeroSection[\s\S]*data-workspace-zone="hero"/);
+  assert.match(
+    source,
+    /<WorkspaceContinueSection[\s\S]*data-workspace-zone="continue-work"/,
+  );
+  assert.doesNotMatch(source, /<section class="panel page-hero workspace-hero"/);
+  assert.doesNotMatch(source, /<section[^>]*data-workspace-zone="continue-work"/);
+
+  assert.match(heroSectionSource, /data-workspace-zone="hero"/);
+  assert.match(heroSectionSource, /博客创建工作台/);
+  assert.match(heroSectionSource, /Workflow entry/);
+  assert.match(heroSectionSource, /快速创建新博客/);
+  assert.match(heroSectionSource, /继续现有工作/);
+  assert.match(heroSectionSource, /导入已有项目/);
+
+  assert.match(continueSectionSource, /data-workspace-zone="continue-work"/);
+  assert.match(continueSectionSource, /最近工作区/);
+  assert.match(continueSectionSource, /继续现有工作/);
+  assert.match(continueSectionSource, /继续完善/);
+  assert.match(continueSectionSource, /继续去主题配置/);
 });

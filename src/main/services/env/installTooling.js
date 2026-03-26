@@ -153,6 +153,7 @@ function createInstallToolingService(options = {}) {
 
     function ensureDartSass() {
         const logs = [];
+        const pnpmExecutable = resolveExecutableImpl('pnpm') || 'pnpm';
 
         if (resolveExecutableImpl('sass')) {
             return {
@@ -172,7 +173,7 @@ function createInstallToolingService(options = {}) {
             };
         }
 
-        const installResult = runCommandImpl('pnpm', ['add', '-g', 'sass'], { timeout: 180000 });
+        const installResult = runCommandImpl(pnpmExecutable, ['add', '-g', 'sass'], { timeout: 180000 });
         logs.push({
             command: 'pnpm add -g sass',
             status: installResult.status,
@@ -180,7 +181,7 @@ function createInstallToolingService(options = {}) {
             stderr: installResult.stderr
         });
 
-        if (installResult.status === 0 && resolveExecutableImpl('sass')) {
+        if (installResult.status === 0 && (resolveExecutableImpl('sass') || (processImpl.platform === 'win32' && findSassRunner()))) {
             return {
                 ok: true,
                 alreadyInstalled: false,

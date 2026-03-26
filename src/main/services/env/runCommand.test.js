@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('path');
 
 const { createRunCommandTools } = require('./runCommand');
 
@@ -24,7 +25,7 @@ test('runCommand applies default spawn options', () => {
     assert.equal(calls[0][2].windowsHide, true);
 });
 
-test('runPnpmDlxWithRetry retries with registry fallback after failure', () => {
+test('runPnpmDlxWithRetry uses Windows-safe cmd wrapper and env-based mirror fallback', () => {
     const calls = [];
     const scripted = [
         { status: 1, stdout: '', stderr: 'first failed' },
@@ -36,7 +37,8 @@ test('runPnpmDlxWithRetry retries with registry fallback after failure', () => {
             calls.push(args);
             return scripted.shift() || { status: 0, stdout: '', stderr: '' };
         },
-        mirrorRegistry: 'https://registry.npmmirror.com'
+        mirrorRegistry: 'https://registry.npmmirror.com',
+        platform: 'win32'
     });
 
     const result = tools.runPnpmDlxWithRetry(['foo']);
@@ -44,15 +46,16 @@ test('runPnpmDlxWithRetry retries with registry fallback after failure', () => {
     assert.equal(result.retried, true);
     assert.equal(result.logs.some((item) => item.event === 'mirror-fallback'), true);
     assert.equal(calls.length, 2);
-    assert.deepEqual(calls[0][0], 'pnpm');
-    assert.deepEqual(calls[0][1], ['dlx', 'foo']);
+    assert.equal(path.basename(calls[0][0]).toLowerCase(), 'cmd.exe');
+    assert.deepEqual(calls[0][1], ['/d', '/s', '/c', 'pnpm.cmd', 'dlx', 'foo']);
     assert.equal(calls[0][2].shell, false);
-    assert.deepEqual(calls[1][0], 'pnpm');
-    assert.deepEqual(calls[1][1], ['--registry', 'https://registry.npmmirror.com', 'dlx', 'foo']);
+    assert.equal(path.basename(calls[1][0]).toLowerCase(), 'cmd.exe');
+    assert.deepEqual(calls[1][1], ['/d', '/s', '/c', 'pnpm.cmd', 'dlx', 'foo']);
     assert.equal(calls[1][2].shell, false);
+    assert.equal(calls[1][2].env.npm_config_registry, 'https://registry.npmmirror.com');
 });
 
-test('runPnpmDlxWithRetry does not leave registry mutation after fallback', () => {
+test('runPnpmDlxWithRetry keeps mirror fallback out of pnpm argv and preserves existing env', () => {
     const calls = [];
     const scripted = [
         { status: 1, stdout: '', stderr: 'first failed' },
@@ -64,12 +67,20 @@ test('runPnpmDlxWithRetry does not leave registry mutation after fallback', () =
             calls.push(args);
             return scripted.shift() || { status: 0, stdout: '', stderr: '' };
         },
-        mirrorRegistry: 'https://registry.npmmirror.com'
+        mirrorRegistry: 'https://registry.npmmirror.com',
+        platform: 'win32'
     });
 
-    const result = tools.runPnpmDlxWithRetry(['foo']);
+    const result = tools.runPnpmDlxWithRetry(['foo'], {
+        env: {
+            EXISTING_ENV: 'kept'
+        }
+    });
     assert.equal(result.ok, true);
     assert.equal(result.retried, true);
     assert.equal(calls.some((call) => call[1][0] === 'config'), false);
-    assert.deepEqual(calls[1][1], ['--registry', 'https://registry.npmmirror.com', 'dlx', 'foo']);
+    assert.equal(calls[1][1].slice(3).includes('--registry'), false);
+    assert.deepEqual(calls[1][1].slice(0, 4), ['/d', '/s', '/c', 'pnpm.cmd']);
+    assert.equal(calls[1][2].env.EXISTING_ENV, 'kept');
+    assert.equal(calls[1][2].env.npm_config_registry, 'https://registry.npmmirror.com');
 });

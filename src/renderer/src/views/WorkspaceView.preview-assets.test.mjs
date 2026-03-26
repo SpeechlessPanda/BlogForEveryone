@@ -20,6 +20,7 @@ const manifestPath = new URL(
   "../../../../docs/design-assets/theme-preview-manifest.md",
   import.meta.url,
 );
+const workspaceViewPath = new URL("./WorkspaceView.vue", import.meta.url);
 
 test("theme preview manifest covers all 10 shipped preview assets", async () => {
   const shippedAssets = (await readdir(previewDir))
@@ -45,4 +46,17 @@ test("theme preview manifest covers all 10 shipped preview assets", async () => 
       `expected manifest to include provenance row for ${asset.filename}`,
     );
   }
+});
+
+test("WorkspaceView keeps the shipped 10-preview asset mapping unchanged", async () => {
+  const source = await readFile(workspaceViewPath, "utf8");
+  const previewReferences = [...source.matchAll(/theme-previews\/[\w-]+\.png/g)].map(
+    (match) => match[0],
+  );
+
+  assert.equal(previewReferences.length, expectedAssets.length);
+  assert.deepEqual(
+    [...new Set(previewReferences)].sort(),
+    expectedAssets.map((item) => `theme-previews/${item.filename}`).sort(),
+  );
 });

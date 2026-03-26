@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const workspaceViewPath = new URL("./WorkspaceView.vue", import.meta.url);
+const stylesPath = new URL("../styles.css", import.meta.url);
 const workspaceHeroSectionPath = new URL(
   "../components/workspace/WorkspaceHeroSection.vue",
   import.meta.url,
@@ -90,10 +91,65 @@ test("WorkspaceView redesign extracts hero and continue-work structures into sta
   assert.match(heroSectionSource, /快速创建新博客/);
   assert.match(heroSectionSource, /继续现有工作/);
   assert.match(heroSectionSource, /导入已有项目/);
+  assert.doesNotMatch(heroSectionSource, /page-hero-aside/);
+  assert.match(heroSectionSource, /page-status-grid/);
+  assert.match(heroSectionSource, /继续工作入口/);
 
   assert.match(continueSectionSource, /data-workspace-zone="continue-work"/);
   assert.match(continueSectionSource, /最近工作区/);
   assert.match(continueSectionSource, /继续现有工作/);
   assert.match(continueSectionSource, /继续完善/);
   assert.match(continueSectionSource, /继续去主题配置/);
+});
+
+test("WorkspaceView makes the preview media the primary lightbox target while keeping theme selection separate", async () => {
+  const source = await readFile(workspaceViewPath, "utf8");
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    source,
+    /<button[\s\S]*class="[^"]*workspace-theme-preview-trigger[^"]*"[\s\S]*@click="openThemePreview\(item\)"[\s\S]*<img[\s\S]*class="theme-thumb"/,
+    "expected preview media area to be the main lightbox trigger",
+  );
+  assert.match(
+    source,
+    /<button class="primary" type="button" @click="selectThemeCard\(item\.id\)">/,
+    "expected select button to remain the separate theme-selection action",
+  );
+  assert.doesNotMatch(
+    source,
+    /放大预览/,
+    "expected previewing to move off the separate enlarge button",
+  );
+  assert.match(
+    stylesSource,
+    /\.workspace-theme-preview-trigger:hover[\s\S]*\.theme-thumb[\s\S]*transform:\s*scale\(1\.0[0-9]+\)/,
+    "expected hover styling to slightly enlarge the preview media",
+  );
+});
+
+test("WorkspaceView lightbox exposes explicit close controls for button, outside click, and Esc", async () => {
+  const source = await readFile(workspaceViewPath, "utf8");
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    source,
+    /<dialog[\s\S]*class="theme-preview-lightbox"[\s\S]*@click\.self="closeThemePreview"/,
+    "expected outside-click close handling on the preview dialog",
+  );
+  assert.match(
+    source,
+    /<dialog[\s\S]*@cancel\.prevent="closeThemePreview"/,
+    "expected Esc key handling on the preview dialog",
+  );
+  assert.match(
+    source,
+    /<button class="secondary" type="button" @click="closeThemePreview">[\s\S]*关闭预览[\s\S]*<\/button>/,
+    "expected explicit close button in the lightbox",
+  );
+  assert.match(
+    stylesSource,
+    /\.theme-preview-lightbox[\s\S]*\.theme-preview-dialog img[\s\S]*max-height:/,
+    "expected dedicated app-scaled lightbox styling for preview media",
+  );
 });

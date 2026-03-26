@@ -148,6 +148,12 @@ function closeThemePreview() {
   themePreviewLightbox.src = "";
 }
 
+function handleWindowKeydown(event) {
+  if (event.key === "Escape" && themePreviewLightbox.open) {
+    closeThemePreview();
+  }
+}
+
 function markStep(stepKey) {
   flow.currentStep = stepKey;
   if (stepKey === "validate") {
@@ -295,12 +301,14 @@ async function handleInstallDeps() {
 }
 
 onMounted(async () => {
+  window.addEventListener("keydown", handleWindowKeydown);
   await refreshThemeCatalog();
   applyDefaultThemeForFramework(form.framework);
   await refreshWorkspaces();
 });
 
 onUnmounted(() => {
+  window.removeEventListener("keydown", handleWindowKeydown);
   if (flowPulseTimer) {
     window.clearInterval(flowPulseTimer);
     flowPulseTimer = null;
@@ -427,15 +435,22 @@ function goTutorialCenter() {
             class="tutorial-theme-card workspace-theme-card"
             :class="{ active: item.selected }"
           >
-            <div class="theme-thumb-wrap workspace-theme-thumb-wrap">
+            <button
+              v-if="item.preview"
+              class="theme-thumb-wrap workspace-theme-thumb-wrap workspace-theme-preview-trigger"
+              type="button"
+              :aria-label="`查看 ${item.name} 主题预览大图`"
+              @click="openThemePreview(item)"
+            >
               <img
-                v-if="item.preview"
                 class="theme-thumb"
                 :src="item.preview"
                 :alt="`${item.name} 主题预览`"
                 loading="lazy"
               />
-              <div v-else class="theme-thumb-empty">暂无预览图</div>
+            </button>
+            <div v-else class="theme-thumb-wrap workspace-theme-thumb-wrap">
+              <div class="theme-thumb-empty">暂无预览图</div>
             </div>
             <div class="workspace-theme-copy">
               <div class="workspace-theme-header">
@@ -446,19 +461,11 @@ function goTutorialCenter() {
                 <span class="muted">{{ form.framework }} · {{ item.id }}</span>
               </div>
               <p class="workspace-positioning-copy">
-                {{ item.selected ? "当前已选主题，创建工作区时会使用这套方向。" : "点选这张卡即可把它设为当前创建工作区的主题。" }}
+                {{ item.selected ? "当前已选主题，创建工作区时会使用这套方向。" : "点击下方按钮即可把它设为当前创建工作区的主题，预览图片只负责查看大图。" }}
               </p>
               <div class="actions workspace-card-actions">
                 <button class="primary" type="button" @click="selectThemeCard(item.id)">
                   {{ item.selected ? "当前已选" : `选用 ${item.name}` }}
-                </button>
-                <button
-                  v-if="item.preview"
-                  class="secondary"
-                  type="button"
-                  @click="openThemePreview(item)"
-                >
-                  放大预览
                 </button>
               </div>
             </div>
@@ -469,6 +476,7 @@ function goTutorialCenter() {
           v-if="themePreviewLightbox.open"
           open
           class="theme-preview-lightbox"
+          @cancel.prevent="closeThemePreview"
           @click.self="closeThemePreview"
         >
           <div class="theme-preview-dialog">

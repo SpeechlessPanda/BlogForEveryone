@@ -14,6 +14,7 @@ const workspaceContinueSectionPath = new URL(
 
 test("WorkspaceView uses workspace facade instead of raw window.bfeApi workspace calls", async () => {
   const source = await readFile(workspaceViewPath, "utf8");
+  const heroSectionSource = await readFile(workspaceHeroSectionPath, "utf8");
 
   assert.match(source, /useWorkspaceActions/);
   assert.match(source, /const workspaceActions = useWorkspaceActions\(\)/);
@@ -43,6 +44,9 @@ test("WorkspaceView uses workspace facade instead of raw window.bfeApi workspace
   assert.match(source, /shellActions\.openTab\("theme"\)/);
   assert.match(source, /shellActions\.openTab\("content"\)/);
   assert.match(source, /shellActions\.openTab\("preview"\)/);
+  assert.match(heroSectionSource, /useShellActions/);
+  assert.match(heroSectionSource, /shellActions\.openTutorial\("workspace-create"\)/);
+  assert.doesNotMatch(heroSectionSource, /new CustomEvent\("bfe:open-tutorial"\)/);
 });
 
 test("WorkspaceView exposes the workflow-entry hierarchy cues for blog, stage, next action, and blocker state", async () => {

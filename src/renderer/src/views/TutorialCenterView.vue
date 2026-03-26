@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted } from "vue";
 import { refreshWorkspaces, workspaceState } from "../stores/workspaceStore.js";
+import { useShellActions } from "../composables/useShellActions.mjs";
 
 const frameworkLabels = {
   hexo: "Hexo",
@@ -45,6 +46,7 @@ const selectedWorkspace = computed(() => {
 const recentWorkspaces = computed(() => {
   return workspaceState.workspaces.slice(0, 3);
 });
+const shellActions = useShellActions();
 
 const heroSummary = computed(() => {
   const workspace = selectedWorkspace.value;
@@ -115,7 +117,7 @@ const statusBand = computed(() => {
 });
 
 function openTab(tabKey) {
-  window.dispatchEvent(new CustomEvent("bfe:open-tab", { detail: { tabKey } }));
+  shellActions.openTab(tabKey);
 }
 
 function continueLastWork() {

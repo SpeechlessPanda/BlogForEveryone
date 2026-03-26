@@ -38,7 +38,9 @@ test("TutorialCenterView keeps visible workbench actions and workspace-aware ent
   }
 
   assert.match(source, /workspaceState\.workspaces/);
-  assert.match(source, /bfe:open-tab/);
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tab"/);
+  assert.match(source, /shellActions\.openTab\(/);
   assert.match(source, /tutorial-workbench-hero/);
   assert.match(source, /theme-exploration-rail/);
 });

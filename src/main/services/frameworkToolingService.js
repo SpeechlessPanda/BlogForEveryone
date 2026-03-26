@@ -10,7 +10,7 @@ function runCommandAsync(command, args = [], options = {}) {
         delete spawnOptions.timeoutMs;
 
         const child = spawn(command, args, {
-            shell: true,
+            shell: false,
             windowsHide: true,
             ...spawnOptions
         });
@@ -64,19 +64,13 @@ async function runPnpmWithMirrorRetry(args, options = {}) {
         registry: MIRROR_REGISTRY
     });
 
-    const setMirror = await runCommandAsync('pnpm', ['config', 'set', 'registry', MIRROR_REGISTRY], {
-        timeoutMs: 120000,
-        ...options
-    });
+    const second = await runCommandAsync('pnpm', ['--registry', MIRROR_REGISTRY, ...args], { timeoutMs: 180000, ...options });
     logs.push({
-        command: `pnpm config set registry ${MIRROR_REGISTRY}`,
-        status: setMirror.status,
-        stdout: setMirror.stdout,
-        stderr: setMirror.stderr
+        command: `pnpm --registry ${MIRROR_REGISTRY} ${args.join(' ')} (retry)`,
+        status: second.status,
+        stdout: second.stdout,
+        stderr: second.stderr
     });
-
-    const second = await runCommandAsync('pnpm', args, { timeoutMs: 180000, ...options });
-    logs.push({ command: `pnpm ${args.join(' ')} (retry)`, status: second.status, stdout: second.stdout, stderr: second.stderr });
 
     return { ok: second.status === 0, logs, retried: true };
 }

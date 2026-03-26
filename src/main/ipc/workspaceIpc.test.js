@@ -10,11 +10,13 @@ function loadWorkspaceIpcModule({
     inferredThemeId = 'stack',
     workflowCreateResult,
     workflowImportResult,
-    workflowBackupResult
+    workflowBackupResult,
+    initialState,
+    workspacePolicy
 } = {}) {
     const originalLoad = Module._load;
     const handlers = new Map();
-    const state = { workspaces: [] };
+    const state = initialState || { workspaces: [] };
     const workflowCreateCalls = [];
     const workflowImportCalls = [];
     const workflowBackupCalls = [];
@@ -124,7 +126,7 @@ function loadWorkspaceIpcModule({
                         }
                     },
                     getWorkspacePolicy() {
-                        return {
+                        return workspacePolicy || {
                             assertPathWithinWorkspace(_id, targetPath) {
                                 return targetPath;
                             }
@@ -243,4 +245,102 @@ test('workspace backup delegates orchestration to workflow boundary', async () =
     assert.equal(moduleRef.workflowBackupCalls.length, 1);
     assert.deepEqual(moduleRef.workflowBackupCalls[0], payload);
     assert.deepEqual(result, workflowBackupResult);
+});
+
+test('workspace:list includes localExists flag for each workspace', async (t) => {
+    const existingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-workspace-list-existing-'));
+    const missingDir = path.join(existingDir, 'missing-subdir');
+    t.after(() => {
+        fs.rmSync(existingDir, { recursive: true, force: true });
+    });
+
+    const moduleRef = loadWorkspaceIpcModule({
+        initialState: {
+            workspaces: [
+                { id: 'w1', projectDir: existingDir },
+                { id: 'w2', projectDir: missingDir }
+            ]
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:list');
+    const list = await handler();
+
+    assert.equal(list.length, 2);
+    assert.deepEqual(list.map((item) => item.localExists), [true, false]);
+});
+
+test('workspace:create rejects missing and relative paths before workflow call', async () => {
+    const moduleRef = loadWorkspaceIpcModule({ workflowCreateResult: { ok: true } });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:create');
+    await assert.rejects(handler({}, { name: 'NoPath' }), /缺少工程路径，无法创建工程。/);
+    await assert.rejects(
+        handler({}, { name: 'RelativePath', projectDir: 'relative/path' }),
+        /工程路径必须为绝对路径，无法创建工程。/
+    );
+    assert.equal(moduleRef.workflowCreateCalls.length, 0);
+});
+
+test('workspace:remove validates id, handles not-found and delete-local branches', async (t) => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-workspace-remove-'));
+    t.after(() => {
+        fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    const policyCalls = [];
+    const moduleRef = loadWorkspaceIpcModule({
+        initialState: {
+            workspaces: [{ id: 'w-remove', projectDir }]
+        },
+        workspacePolicy: {
+            assertPathWithinWorkspace(id, targetPath, action) {
+                policyCalls.push({ id, targetPath, action });
+                return targetPath;
+            }
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:remove');
+
+    await assert.rejects(handler({}, {}), /缺少工程 ID/);
+
+    const notFound = await handler({}, { id: 'missing', deleteLocal: true });
+    assert.equal(notFound.removed, false);
+    assert.equal(notFound.reason, 'not-found');
+
+    const removed = await handler({}, { id: 'w-remove', deleteLocal: true });
+    assert.equal(removed.removed, true);
+    assert.equal(removed.deletedLocal, true);
+    assert.equal(policyCalls.length, 1);
+    assert.deepEqual(policyCalls[0], {
+        id: 'w-remove',
+        targetPath: projectDir,
+        action: 'delete'
+    });
+});
+
+test('workspace:import rejects missing path and non-directory path', async (t) => {
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowImportResult: {
+            workspace: { id: 'unused', projectDir: '/tmp', framework: 'hugo', theme: 'stack' },
+            workspaces: []
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:import');
+    await assert.rejects(handler({}, { projectDir: '', name: 'NoPath' }), /缺少工程路径，无法导入工程。/);
+
+    const filePath = path.join(os.tmpdir(), `bfe-import-file-${Date.now()}.txt`);
+    fs.writeFileSync(filePath, 'not-a-directory', 'utf-8');
+    t.after(() => {
+        fs.rmSync(filePath, { force: true });
+    });
+
+    await assert.rejects(handler({}, { projectDir: filePath, name: 'FilePath' }), /工程路径不是目录，无法导入工程。/);
+    assert.equal(moduleRef.workflowImportCalls.length, 0);
 });

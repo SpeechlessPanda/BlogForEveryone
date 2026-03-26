@@ -239,7 +239,7 @@ function jumpToZone(zoneId) {
               >
             </div>
           </div>
-          <div class="page-hero-aside">
+          <div class="workflow-hero-note">
             <div class="page-signal page-signal--accent">
               <p class="section-eyebrow">发布准备度</p>
               <strong>{{ publishReadiness }}</strong>
@@ -248,7 +248,7 @@ function jumpToZone(zoneId) {
           </div>
         </div>
 
-        <div class="page-status-grid">
+        <div class="workflow-status-grid">
           <div class="page-signal page-signal--accent">
             <p class="section-eyebrow">当前工作区</p>
             <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>

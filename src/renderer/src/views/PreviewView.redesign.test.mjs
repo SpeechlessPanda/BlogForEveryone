@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const previewViewPath = new URL("./PreviewView.vue", import.meta.url);
 
-test("PreviewView joins the shared editorial workflow family with top actions and consistent result framing", async () => {
+test("PreviewView joins the shared editorial workflow family without duplicating hero summary cards", async () => {
   const source = await readFile(previewViewPath, "utf8");
 
   const requiredHooks = [
@@ -26,6 +26,11 @@ test("PreviewView joins the shared editorial workflow family with top actions an
   assert.match(source, /data-workflow-action-level="primary"[\s\S]*前往预览控制台/);
   assert.match(source, /data-workflow-action-level="secondary"[\s\S]*查看最近结果/);
   assert.match(source, /data-workflow-action-level="tertiary"[\s\S]*停止预览/);
+  assert.equal(source.includes("page-hero-aside"), false);
+  assert.equal(source.includes("page-status-grid"), false);
   assert.match(source, /预览结果摘要/);
   assert.match(source, /最近结果/);
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /shellActions\.openTutorial\(\)/);
 });

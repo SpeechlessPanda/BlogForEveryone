@@ -8,6 +8,7 @@ import {
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
+import { useShellActions } from "../composables/useShellActions.mjs";
 import { usePreviewActions } from "../composables/usePreviewActions.mjs";
 
 const status = ref("");
@@ -19,6 +20,7 @@ const preview = reactive({
 });
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["preview"]);
+const shellActions = useShellActions();
 const { startLocalPreview, openLocalPreview, stopLocalPreview } =
   usePreviewActions();
 
@@ -178,7 +180,7 @@ async function runPreviewAction(action) {
 }
 
 function goTutorialCenter() {
-  window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+  shellActions.openTutorial();
 }
 
 function jumpToZone(zoneId) {
@@ -252,7 +254,7 @@ watch(
               >
             </div>
           </div>
-          <div class="page-hero-aside">
+          <div class="workflow-hero-note">
             <div class="page-signal page-signal--accent">
               <p class="section-eyebrow">建议下一步</p>
               <strong>{{ previewNextStep }}</strong>
@@ -261,7 +263,7 @@ watch(
           </div>
         </div>
 
-        <div class="page-status-grid">
+        <div class="workflow-status-grid">
           <div class="page-signal page-signal--accent">
             <p class="section-eyebrow">当前博客</p>
             <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>

@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const publishBackupViewPath = new URL("./PublishBackupView.vue", import.meta.url);
 
-test("PublishBackupView joins the shared workflow family with top release actions and backup support", async () => {
+test("PublishBackupView keeps release actions and backup support without duplicated hero summary cards", async () => {
   const source = await readFile(publishBackupViewPath, "utf8");
 
   const requiredHooks = [
@@ -30,6 +30,8 @@ test("PublishBackupView joins the shared workflow family with top release action
   assert.match(source, /data-workflow-action-level="primary"/);
   assert.match(source, /data-workflow-action-level="secondary"/);
   assert.match(source, /data-workflow-action-level="tertiary"/);
+  assert.equal(source.includes("page-hero-aside"), false);
+  assert.equal(source.includes("page-status-grid"), false);
   assert.match(source, /发布结果摘要/);
   assert.match(source, /备份到底层仓库/);
 });

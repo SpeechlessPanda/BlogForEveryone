@@ -3,6 +3,22 @@ import assert from "node:assert/strict";
 
 import { createContentActions } from "./useContentActions.mjs";
 
+test("useContentActions.js is a pure stable re-export of the .mjs entrypoint", async () => {
+  const jsModule = await import("./useContentActions.js");
+  const mjsModule = await import("./useContentActions.mjs");
+
+  assert.equal(
+    jsModule.useContentActions,
+    mjsModule.useContentActions,
+    "expected .js entry to re-export the exact same useContentActions function",
+  );
+  assert.equal(
+    jsModule.createContentActions,
+    mjsModule.createContentActions,
+    "expected .js entry to re-export createContentActions so callers have one stable source of truth",
+  );
+});
+
 test("content actions call workspaceId-based IPC contract", async () => {
   const calls = [];
   const api = {

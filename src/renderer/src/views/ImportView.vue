@@ -537,7 +537,7 @@ onMounted(async () => {
       </section>
     </div>
 
-    <div class="page-layer" data-page-layer="explanation">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="explanation">
       <section class="priority-panel priority-panel--support workflow-result-panel">
         <p class="section-eyebrow">建议下一步</p>
         <strong>导入成功后，立即去主题配置检查主题识别与品牌素材。</strong>

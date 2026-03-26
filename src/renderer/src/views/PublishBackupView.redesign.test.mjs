@@ -105,3 +105,11 @@ test("PublishBackupView keeps next-step copy aligned with derived user-pages nam
   assert.match(source, /if \(publishReadiness\.value !== "已具备统一发布与备份条件。"\) \{[\s\S]*if \(publishForm\.siteType === USER_PAGES\) \{[\s\S]*先确认登录状态、备份目录和 Git 身份，再执行发布。/);
   assert.match(source, /if \(publishReadiness\.value !== "已具备统一发布与备份条件。"\) \{[\s\S]*return "先补齐站点类型、仓库命名、备份目录和 Git 身份，再执行发布。";/);
 });
+
+test("PublishBackupView uses the shared balanced secondary grid for lower publish and backup cards", async () => {
+  const source = await readFile(publishBackupViewPath, "utf8");
+  const styles = await readFile(stylesPath, "utf8");
+
+  assert.equal(source.includes("workflow-balanced-grid"), true);
+  assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*display:\s*grid;/);
+});

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const importViewPath = new URL("./ImportView.vue", import.meta.url);
+const stylesPath = new URL("../styles.css", import.meta.url);
 
 test("ImportView adds a dedicated GitHub-direct recovery path alongside local import", async () => {
   const source = await readFile(importViewPath, "utf8");
@@ -44,6 +45,14 @@ test("ImportView adds a dedicated GitHub-direct recovery path alongside local im
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tab"/);
   assert.match(source, /shellActions\.openTutorial\("import-recovery"\)/);
   assert.match(source, /shellActions\.openTab\("workspace"\)/);
+});
+
+test("ImportView uses the shared balanced secondary grid for lower result and restore cards", async () => {
+  const source = await readFile(importViewPath, "utf8");
+  const styles = await readFile(stylesPath, "utf8");
+
+  assert.equal(source.includes("workflow-balanced-grid"), true);
+  assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*display:\s*grid;/);
 });
 
 test("ImportView keeps in-page navigation in a view-owned enter-at-top helper", async () => {

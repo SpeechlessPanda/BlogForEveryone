@@ -197,7 +197,7 @@ test('workspace import rejects relative user path before workflow orchestration'
         fs.rmSync(projectDir, { recursive: true, force: true });
     });
 
-    const relativeProjectDir = path.relative(process.cwd(), projectDir);
+    const relativeProjectDir = path.join('relative-import-root', path.basename(projectDir));
     assert.equal(path.isAbsolute(relativeProjectDir), false);
 
     const moduleRef = loadWorkspaceIpcModule({

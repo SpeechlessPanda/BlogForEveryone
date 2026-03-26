@@ -201,7 +201,7 @@ function confirmAsUnsupportedTheme() {
 }
 
 function goTutorialCenter() {
-  shellActions.openTutorial();
+  shellActions.openTutorial("theme-config");
 }
 
 function goPreviewPage() {

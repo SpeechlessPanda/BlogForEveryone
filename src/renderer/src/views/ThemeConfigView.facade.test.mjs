@@ -65,7 +65,7 @@ test("ThemeConfigView uses theme facade instead of raw window.bfeApi theme/picke
 
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tab"/);
-  assert.match(source, /shellActions\.openTutorial\(\)/);
+  assert.match(source, /shellActions\.openTutorial\("theme-config"\)/);
   assert.match(source, /shellActions\.openTab\("preview"\)/);
 });
 

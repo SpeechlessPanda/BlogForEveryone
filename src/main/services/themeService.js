@@ -66,90 +66,164 @@ function inferRecognizedThemeIdFromProject(projectDir, framework) {
     return lookup.get(normalized) || 'unknown';
 }
 
-function runCommandAsync(command, args = [], options = {}) {
-    return new Promise((resolve) => {
-        const timeoutMs = Number(options.timeoutMs || 0);
-        const spawnOptions = { ...options };
-        delete spawnOptions.timeoutMs;
-        const child = spawn(command, args, {
-            shell: true,
-            windowsHide: true,
-            ...spawnOptions
-        });
+function createAsyncCommandRunnerTools(options = {}) {
+    const spawnImpl = options.spawnImpl || spawn;
+    const mirrorRegistry = options.mirrorRegistry || MIRROR_REGISTRY;
+    const platform = options.platform || process.platform;
+    const pnpmCommand = platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
-        let stdout = '';
-        let stderr = '';
+    function shouldUseWindowsCmdWrapper(command) {
+        return platform === 'win32' && /\.(cmd|bat)$/i.test(String(command || ''));
+    }
 
-        child.stdout?.on('data', (chunk) => {
-            stdout += chunk.toString();
-        });
+    function runCommandAsync(command, args = [], commandOptions = {}) {
+        return new Promise((resolve) => {
+            const timeoutMs = Number(commandOptions.timeoutMs || 0);
+            const spawnOptions = { ...commandOptions };
+            delete spawnOptions.timeoutMs;
 
-        child.stderr?.on('data', (chunk) => {
-            stderr += chunk.toString();
-        });
+            const actualCommand = shouldUseWindowsCmdWrapper(command)
+                ? (process.env.ComSpec || 'cmd.exe')
+                : command;
+            const actualArgs = shouldUseWindowsCmdWrapper(command)
+                ? ['/d', '/s', '/c', command, ...args]
+                : args;
 
-        let timer = null;
-        if (timeoutMs > 0) {
-            timer = setTimeout(() => {
-                child.kill();
+            const child = spawnImpl(actualCommand, actualArgs, {
+                shell: false,
+                windowsHide: true,
+                ...spawnOptions
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            child.stdout?.on('data', (chunk) => {
+                stdout += chunk.toString();
+            });
+
+            child.stderr?.on('data', (chunk) => {
+                stderr += chunk.toString();
+            });
+
+            let timer = null;
+            if (timeoutMs > 0) {
+                timer = setTimeout(() => {
+                    child.kill();
+                    resolve({
+                        status: 1,
+                        stdout,
+                        stderr: `${stderr}${stderr ? '\n' : ''}Command timed out after ${timeoutMs}ms`
+                    });
+                }, timeoutMs);
+            }
+
+            child.on('error', (error) => {
+                if (timer) {
+                    clearTimeout(timer);
+                }
                 resolve({
                     status: 1,
                     stdout,
-                    stderr: `${stderr}${stderr ? '\n' : ''}Command timed out after ${timeoutMs}ms`
+                    stderr: `${stderr}${stderr ? '\n' : ''}${String(error.message || error)}`
                 });
-            }, timeoutMs);
-        }
+            });
 
-        child.on('error', (error) => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-            resolve({
-                status: 1,
-                stdout,
-                stderr: `${stderr}${stderr ? '\n' : ''}${String(error.message || error)}`
+            child.on('close', (code) => {
+                if (timer) {
+                    clearTimeout(timer);
+                }
+                resolve({ status: code ?? 1, stdout, stderr });
             });
         });
-
-        child.on('close', (code) => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-            resolve({ status: code ?? 1, stdout, stderr });
-        });
-    });
-}
-
-async function runPnpmWithMirrorRetry(args, options = {}) {
-    const logs = [];
-    const first = await runCommandAsync('pnpm', args, { timeoutMs: 180000, ...options });
-    logs.push({ command: `pnpm ${args.join(' ')}`, status: first.status, stdout: first.stdout, stderr: first.stderr });
-    if (first.status === 0) {
-        return { ok: true, retried: false, logs };
     }
 
-    logs.push({
-        event: 'mirror-fallback',
-        message: '主题下载首次失败，已切换 pnpm 镜像源重试。',
-        registry: MIRROR_REGISTRY
-    });
+    async function runPnpmWithMirrorRetry(args, commandOptions = {}) {
+        const logs = [];
+        const first = await runCommandAsync(pnpmCommand, args, { timeoutMs: 180000, ...commandOptions });
+        logs.push({ command: `pnpm ${args.join(' ')}`, status: first.status, stdout: first.stdout, stderr: first.stderr });
+        if (first.status === 0) {
+            return { ok: true, retried: false, logs };
+        }
 
-    const setMirror = await runCommandAsync('pnpm', ['config', 'set', 'registry', MIRROR_REGISTRY], { timeoutMs: 120000, ...options });
-    logs.push({
-        command: `pnpm config set registry ${MIRROR_REGISTRY}`,
-        status: setMirror.status,
-        stdout: setMirror.stdout,
-        stderr: setMirror.stderr
-    });
+        logs.push({
+            event: 'mirror-fallback',
+            message: '主题下载首次失败，已切换 pnpm 镜像源后重试。',
+            registry: mirrorRegistry
+        });
 
-    const second = await runCommandAsync('pnpm', args, { timeoutMs: 180000, ...options });
-    logs.push({ command: `pnpm ${args.join(' ')} (retry)`, status: second.status, stdout: second.stdout, stderr: second.stderr });
+        const second = await runCommandAsync(pnpmCommand, args, {
+            timeoutMs: 180000,
+            ...commandOptions,
+            env: {
+                ...(commandOptions.env || {}),
+                npm_config_registry: mirrorRegistry
+            }
+        });
+        logs.push({
+            command: `pnpm ${args.join(' ')} (retry with registry env ${mirrorRegistry})`,
+            status: second.status,
+            stdout: second.stdout,
+            stderr: second.stderr
+        });
+
+        return {
+            ok: second.status === 0,
+            retried: true,
+            logs
+        };
+    }
+
+    async function runPnpmDlxWithMirrorRetry(args, commandOptions = {}) {
+        const logs = [];
+
+        const first = await runCommandAsync(pnpmCommand, ['dlx', ...args], { timeoutMs: 240000, ...commandOptions });
+        logs.push({ command: `pnpm dlx ${args.join(' ')}`, status: first.status, stdout: first.stdout, stderr: first.stderr });
+
+        if (first.status === 0) {
+            return { ok: true, retried: false, logs };
+        }
+
+        logs.push({
+            event: 'mirror-fallback',
+            message: 'pnpm dlx 首次失败，已切换镜像源后重试。',
+            registry: mirrorRegistry
+        });
+
+        const second = await runCommandAsync(pnpmCommand, ['dlx', ...args], {
+            timeoutMs: 240000,
+            ...commandOptions,
+            env: {
+                ...(commandOptions.env || {}),
+                npm_config_registry: mirrorRegistry
+            }
+        });
+        logs.push({
+            command: `pnpm dlx ${args.join(' ')} (retry with registry env ${mirrorRegistry})`,
+            status: second.status,
+            stdout: second.stdout,
+            stderr: second.stderr
+        });
+
+        return {
+            ok: second.status === 0,
+            retried: true,
+            logs
+        };
+    }
 
     return {
-        ok: second.status === 0,
-        retried: true,
-        logs
+        runCommandAsync,
+        runPnpmWithMirrorRetry,
+        runPnpmDlxWithMirrorRetry
     };
+}
+
+const asyncCommandRunnerTools = createAsyncCommandRunnerTools();
+const runCommandAsync = asyncCommandRunnerTools.runCommandAsync;
+
+async function runPnpmWithMirrorRetry(args, options = {}) {
+    return asyncCommandRunnerTools.runPnpmWithMirrorRetry(args, options);
 }
 
 function setHexoTheme(projectDir, themeName) {
@@ -165,42 +239,7 @@ function setHugoTheme(projectDir, themeName) {
 }
 
 async function runPnpmDlxWithMirrorRetry(args, options = {}) {
-    const logs = [];
-
-    const first = await runCommandAsync('pnpm', ['dlx', ...args], { timeoutMs: 240000, ...options });
-    logs.push({ command: `pnpm dlx ${args.join(' ')}`, status: first.status, stdout: first.stdout, stderr: first.stderr });
-
-    if (first.status === 0) {
-        return { ok: true, retried: false, logs };
-    }
-
-    logs.push({
-        event: 'mirror-fallback',
-        message: 'pnpm dlx 首次失败，已切换镜像源后重试。',
-        registry: MIRROR_REGISTRY
-    });
-
-    const setMirror = await runCommandAsync('pnpm', ['config', 'set', 'registry', MIRROR_REGISTRY], { timeoutMs: 120000, ...options });
-    logs.push({
-        command: `pnpm config set registry ${MIRROR_REGISTRY}`,
-        status: setMirror.status,
-        stdout: setMirror.stdout,
-        stderr: setMirror.stderr
-    });
-
-    const second = await runCommandAsync('pnpm', ['dlx', ...args], { timeoutMs: 240000, ...options });
-    logs.push({
-        command: `pnpm dlx ${args.join(' ')} (retry)`,
-        status: second.status,
-        stdout: second.stdout,
-        stderr: second.stderr
-    });
-
-    return {
-        ok: second.status === 0,
-        retried: true,
-        logs
-    };
+    return asyncCommandRunnerTools.runPnpmDlxWithMirrorRetry(args, options);
 }
 
 async function installHexoTheme(projectDir, themeId) {

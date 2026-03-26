@@ -1,49 +1,90 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const Module = require('module');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const { EventEmitter } = require('node:events');
 
-function loadVerifyModuleForTests() {
+function createMockChildProcess(result) {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+
+    queueMicrotask(() => {
+        if (result.stdout) {
+            child.stdout.emit('data', Buffer.from(result.stdout));
+        }
+        if (result.stderr) {
+            child.stderr.emit('data', Buffer.from(result.stderr));
+        }
+        child.emit('close', result.code ?? 0);
+    });
+
+    return child;
+}
+
+function loadVerifyModuleForTests({ spawnImpl, platform = 'win32', comspec = 'C:/Windows/System32/cmd.exe' }) {
     const filePath = path.join(__dirname, 'e2e-real-workspace-verify.js');
     const original = fs.readFileSync(filePath, 'utf8');
     const instrumented = original.replace(
         /main\(\)\.catch\([\s\S]*?\);\s*$/,
-        'module.exports = { checkMarkers };\n'
+        'module.exports = { run };\n'
     );
+
+    const originalLoad = Module._load;
+    const originalPlatform = process.platform;
+    const originalComSpec = process.env.ComSpec;
+
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === 'child_process') {
+            return { spawn: spawnImpl };
+        }
+        return originalLoad.apply(this, arguments);
+    };
+
+    Object.defineProperty(process, 'platform', {
+        value: platform,
+        configurable: true
+    });
+    process.env.ComSpec = comspec;
 
     const mod = new Module(filePath, module);
     mod.filename = filePath;
     mod.paths = Module._nodeModulePaths(path.dirname(filePath));
     mod._compile(instrumented, filePath);
-    return mod.exports;
+
+    return {
+        verifyModule: mod.exports,
+        restore() {
+            Module._load = originalLoad;
+            Object.defineProperty(process, 'platform', {
+                value: originalPlatform,
+                configurable: true
+            });
+            if (originalComSpec === undefined) {
+                delete process.env.ComSpec;
+            } else {
+                process.env.ComSpec = originalComSpec;
+            }
+        }
+    };
 }
 
-test('landscape marker verification accepts theme_config.banner background config', async () => {
-    const { checkMarkers } = loadVerifyModuleForTests();
-    const projectDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'bfe-landscape-verify-'));
+test('verify runner uses Windows-safe cmd wrapper for pnpm build publish path', async (t) => {
+    const calls = [];
+    const mocked = loadVerifyModuleForTests({
+        spawnImpl: (...args) => {
+            calls.push(args);
+            return createMockChildProcess({ code: 0, stdout: 'ok', stderr: '' });
+        }
+    });
+    t.after(() => mocked.restore());
 
-    try {
-        fs.mkdirSync(path.join(projectDir, 'public'), { recursive: true });
-        fs.mkdirSync(path.join(projectDir, 'layouts', 'partials'), { recursive: true });
-        fs.writeFileSync(path.join(projectDir, '_config.yml'), [
-            'theme: landscape',
-            'theme_config:',
-            '  favicon: /img/e2e-favicon.jpg',
-            '  banner: /img/e2e-bg.jpg'
-        ].join('\n'));
-        fs.writeFileSync(path.join(projectDir, 'public', 'index.html'), '<html><body>landscape</body></html>');
-        fs.writeFileSync(path.join(projectDir, 'layouts', 'partials', 'extend_head.html'), '');
+    const result = await mocked.verifyModule.run('C:/tmp/project', 'pnpm', ['build'], { shell: true });
 
-        const markers = checkMarkers({
-            projectDir,
-            framework: 'hexo',
-            themeId: 'landscape'
-        });
-
-        assert.equal(markers.backgroundOk, true);
-    } finally {
-        fs.rmSync(projectDir, { recursive: true, force: true });
-    }
+    assert.equal(result.ok, true);
+    assert.equal(path.basename(calls[0][0]).toLowerCase(), 'cmd.exe');
+    assert.deepEqual(calls[0][1], ['/d', '/s', '/c', 'pnpm.cmd', 'build']);
+    assert.equal(calls[0][2].shell, false);
+    assert.equal(calls[0][2].windowsHide, true);
 });

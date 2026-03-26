@@ -20,9 +20,15 @@ function readText(filePath) {
 
 function run(cwd, command, args, options = {}) {
     return new Promise((resolve) => {
-        const child = spawn(command, args, {
+        const useWindowsPnpmWrapper = process.platform === 'win32'
+            && Boolean(options.shell)
+            && String(command || '').toLowerCase() === 'pnpm';
+        const actualCommand = useWindowsPnpmWrapper ? (process.env.ComSpec || 'cmd.exe') : command;
+        const actualArgs = useWindowsPnpmWrapper ? ['/d', '/s', '/c', 'pnpm.cmd', ...args] : args;
+
+        const child = spawn(actualCommand, actualArgs, {
             cwd,
-            shell: Boolean(options.shell),
+            shell: useWindowsPnpmWrapper ? false : Boolean(options.shell),
             env: options.env || process.env,
             windowsHide: true
         });

@@ -17,6 +17,28 @@ const themeAdvancedConfigSectionPath = new URL(
   import.meta.url,
 );
 
+test("ThemeConfigView removes hero-side note cards and moves studio summary below the hero body", async () => {
+  const source = await readFile(themeConfigViewPath, "utf8");
+
+  assert.equal(source.includes("theme-studio-hero-note"), false);
+  assert.equal(source.includes("theme-studio-status-grid"), false);
+  assert.equal(source.includes("theme-studio-status-card"), false);
+
+  assert.equal(
+    source.includes('data-theme-zone="studio-summary"'),
+    true,
+    "expected ThemeConfigView.vue to expose a lower studio-summary zone after removing the top-right note/status cards",
+  );
+
+  assert.match(source, /当前工作区/);
+  assert.match(source, /当前主题/);
+  assert.match(source, /兼容提示/);
+  assert.match(
+    source,
+    /data-page-layer="explanation"[\s\S]*data-theme-zone="studio-summary"/,
+  );
+});
+
 test("ThemeConfigView establishes a clearer editorial studio rhythm for brand-first work", async () => {
   const source = await readFile(themeConfigViewPath, "utf8");
   const identitySectionSource = await readFile(themeIdentitySectionPath, "utf8");
@@ -54,7 +76,7 @@ test("ThemeConfigView removes duplicated hero summary cards and adds enlargeable
   const assetSectionSource = await readFile(themeAssetStudioSectionPath, "utf8");
   const advancedSectionSource = await readFile(themeAdvancedConfigSectionPath, "utf8");
 
-  assert.match(source, /品牌主叙事/);
+  assert.doesNotMatch(source, /品牌主叙事/);
   assert.match(assetSectionSource, /素材状态一览/);
   assert.equal(
     source.includes('class="theme-studio-hero-note"'),

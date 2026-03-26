@@ -34,7 +34,8 @@ test("RssReaderView keeps quiet intake actions without a duplicated hero summary
   assert.match(source, /订阅结果摘要/);
   assert.match(source, /useShellActions/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
-  assert.match(source, /shellActions\.openTutorial\(\)/);
+  assert.doesNotMatch(source, /shellActions\.openTutorial\(\)/);
+  assert.match(source, /shellActions\.openTutorial\("rss-reading"\)/);
   assert.match(source, /rss-subscription-toolbar/);
   assert.match(source, /rss-subscription-row/);
   assert.doesNotMatch(

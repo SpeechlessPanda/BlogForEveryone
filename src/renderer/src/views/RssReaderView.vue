@@ -158,7 +158,7 @@ async function exportBundle() {
 }
 
 function goTutorialCenter() {
-  shellActions.openTutorial();
+  shellActions.openTutorial("rss-reading");
 }
 
 function jumpToZone(zoneId) {

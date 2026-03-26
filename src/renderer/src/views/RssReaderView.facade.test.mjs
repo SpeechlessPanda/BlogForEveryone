@@ -71,4 +71,8 @@ test("RssReaderView uses rss facade instead of raw window.bfeApi rss calls", asy
       `expected RssReaderView.vue to stop calling window.bfeApi.${method}`,
     );
   }
+
+  assert.match(source, /useShellActions/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /shellActions\.openTutorial\("rss-reading"\)/);
 });

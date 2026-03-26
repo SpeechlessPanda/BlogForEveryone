@@ -39,22 +39,36 @@ function resolveAppIcon() {
     return { image: undefined, iconPath: undefined };
 }
 
-function createMainWindow() {
-    const resolvedIcon = resolveAppIcon();
-    const win = new BrowserWindow({
+function buildMainWindowOptions(resolvedIcon) {
+    return {
         width: 1280,
         height: 860,
         minWidth: 1080,
         minHeight: 720,
         autoHideMenuBar: true,
-        icon: resolvedIcon.image,
+        icon: resolvedIcon?.image,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false
         }
-    });
+    };
+}
+
+function loadMainWindowContent(win, { isDev: shouldUseDevServer }) {
+    if (shouldUseDevServer) {
+        win.loadURL('http://localhost:5173');
+        win.webContents.openDevTools({ mode: 'detach' });
+        return;
+    }
+
+    win.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+}
+
+function createMainWindow() {
+    const resolvedIcon = resolveAppIcon();
+    const win = new BrowserWindow(buildMainWindowOptions(resolvedIcon));
 
     if (process.platform === 'win32' && resolvedIcon.image) {
         win.setIcon(resolvedIcon.image);
@@ -68,13 +82,7 @@ function createMainWindow() {
         return { action: 'deny' };
     });
 
-    if (isDev) {
-        win.loadURL('http://localhost:5173');
-        win.webContents.openDevTools({ mode: 'detach' });
-        return win;
-    }
-
-    win.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+    loadMainWindowContent(win, { isDev });
     return win;
 }
 
@@ -101,3 +109,8 @@ app.on('window-all-closed', () => {
         app.quit();
     }
 });
+
+module.exports = {
+    buildMainWindowOptions,
+    loadMainWindowContent
+};

@@ -7,6 +7,7 @@ const { evaluateExternalUrl, EXTERNAL_URL_RULES } = require('../policies/externa
 const ANSI_COLOR_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
 const previewProcesses = new Map();
+let createServer = () => net.createServer();
 let processTreeKiller = (pid) => new Promise((resolve) => {
     const killer = spawn('cmd', buildWindowsKillArgs(pid), {
         windowsHide: true,
@@ -23,7 +24,7 @@ function getDefaultPort(framework) {
 
 function isPortBusy(port, host) {
     return new Promise((resolve) => {
-        const tester = net.createServer();
+        const tester = createServer();
         tester.once('error', (error) => {
             if (error && error.code === 'EADDRINUSE') {
                 resolve(true);
@@ -364,6 +365,13 @@ module.exports = {
     openLocalPreview,
     stopLocalPreview,
     __test__: {
+        isPortBusy,
+        findAvailablePort,
+        waitForPortRelease,
+        waitForServerReady,
+        waitForProcessExit,
+        terminateProcessTree,
+        isPortInUseError,
         buildWindowsKillArgs,
         setPreviewProcess(payload) {
             const framework = payload?.framework;
@@ -391,6 +399,14 @@ module.exports = {
                 proc.once('close', () => resolve());
                 proc.unref();
             });
+        },
+        setCreateServerForTests(factory) {
+            if (typeof factory === 'function') {
+                createServer = factory;
+                return;
+            }
+
+            createServer = () => net.createServer();
         }
     }
 };

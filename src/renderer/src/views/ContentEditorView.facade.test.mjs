@@ -39,7 +39,7 @@ test("ContentEditorView uses content facade instead of raw window.bfeApi content
   }
 
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
-  assert.match(source, /shellActions\.openTutorial\(\)/);
+  assert.match(source, /shellActions\.openTutorial\("content-editing"\)/);
 });
 
 test("ContentEditorView delegates hero and existing-content sections behind content section components", async () => {

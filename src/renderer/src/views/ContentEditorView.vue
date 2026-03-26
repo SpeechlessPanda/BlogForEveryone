@@ -71,7 +71,7 @@ const contentNextStep = computed(() => {
 });
 
 function goTutorialCenter() {
-  shellActions.openTutorial();
+  shellActions.openTutorial("content-editing");
 }
 
 function jumpToZone(zoneId) {

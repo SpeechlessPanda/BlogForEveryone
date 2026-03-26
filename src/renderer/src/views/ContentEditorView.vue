@@ -6,7 +6,10 @@ import {
   refreshWorkspaces,
 } from "../stores/workspaceStore";
 import AsyncActionButton from "../components/AsyncActionButton.vue";
+import ContentWorkflowHero from "../components/content/ContentWorkflowHero.vue";
+import ExistingContentSection from "../components/content/ExistingContentSection.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
+import { useShellActions } from "../composables/useShellActions.mjs";
 import { useContentActions } from "../composables/useContentActions";
 
 const ACTION_IDLE_RESET_MS = 1400;
@@ -33,6 +36,7 @@ const existingEditor = reactive({
   body: "",
 });
 const { run, isBusy } = useAsyncAction();
+const shellActions = useShellActions();
 const contentActions = useContentActions();
 
 const actionState = reactive({
@@ -67,7 +71,7 @@ const contentNextStep = computed(() => {
 });
 
 function goTutorialCenter() {
-  window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+  shellActions.openTutorial();
 }
 
 function jumpToZone(zoneId) {
@@ -301,79 +305,14 @@ watch(
     data-workflow-surface="editorial-workflow"
   >
     <div class="page-layer" data-page-layer="primary">
-      <section class="panel page-hero" data-workflow-zone="hero">
-        <div class="page-hero-grid">
-          <div>
-            <p class="page-kicker">Writing hub</p>
-            <h2 class="page-title">写作中枢</h2>
-            <p class="page-lead">
-              内容编辑页优先服务写作本身：先创建或进入内容工作，再理解当前结果，最后才看自动发布等次级自动化。发布相关能力必须辅助写作，而不是压过写作。
-            </p>
-            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
-              <button
-                class="primary"
-                type="button"
-                data-workflow-action-level="primary"
-                @click="jumpToZone('content-create-zone')"
-              >
-                前往新建内容
-              </button>
-              <button
-                class="secondary"
-                type="button"
-                data-workflow-action-level="secondary"
-                @click="jumpToZone('content-existing-zone')"
-              >
-                继续编辑已有内容
-              </button>
-              <button
-                class="secondary"
-                type="button"
-                data-workflow-action-level="tertiary"
-                @click="goTutorialCenter"
-              >
-                查看写作教程
-              </button>
-            </div>
-            <div class="page-link-row">
-              <a href="#" @click.prevent="goTutorialCenter"
-                >打开教程中心：内容编辑与自动发布完整步骤</a
-              >
-            </div>
-          </div>
-          <div class="page-hero-aside">
-            <div class="page-signal page-signal--accent">
-              <p class="section-eyebrow">建议下一步</p>
-              <strong>{{ contentNextStep }}</strong>
-              <p class="section-helper">先把内容写出来，再决定是否要把发布动作自动化。</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="page-status-grid">
-          <div class="page-signal page-signal--accent">
-            <p class="section-eyebrow">当前工作区</p>
-            <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
-            <p class="section-helper">
-              {{
-                selectedWorkspace
-                  ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
-                  : "先选择工作区，写出的文章和页面才会进入正确的博客目录。"
-              }}
-            </p>
-          </div>
-          <div class="page-signal">
-            <p class="section-eyebrow">当前内容状态</p>
-            <strong>{{ existingList.length ? `已有 ${existingList.length} 项内容` : "还没有已载入内容" }}</strong>
-            <p class="section-helper">已存在内容也能在这里直接继续编辑。</p>
-          </div>
-          <div class="page-signal page-signal--quiet">
-            <p class="section-eyebrow">建议下一步</p>
-            <strong>{{ contentNextStep }}</strong>
-            <p class="section-helper">写完后优先去预览检查真实页面，再决定是否发布。</p>
-          </div>
-        </div>
-      </section>
+      <ContentWorkflowHero
+        data-workflow-zone="hero"
+        :content-next-step="contentNextStep"
+        :selected-workspace="selectedWorkspace"
+        :existing-count="existingList.length"
+        :jump-to-zone="jumpToZone"
+        :go-tutorial-center="goTutorialCenter"
+      />
 
       <section
         id="content-create-zone"
@@ -459,79 +398,17 @@ watch(
         </div>
       </section>
 
-      <section
-        id="content-existing-zone"
-        class="panel workflow-section-panel"
+      <ExistingContentSection
         data-workflow-zone="existing-content"
-      >
-        <div class="workflow-section-heading">
-          <div class="workflow-section-heading-copy">
-            <p class="section-eyebrow">Step 02 · 继续写作</p>
-            <h2>已有内容二次编辑</h2>
-            <p class="section-helper">
-              读取当前工程已有文章或页面，继续改标题、正文，再决定是否改用外部编辑器深化写作。
-            </p>
-          </div>
-          <aside class="workflow-inline-note priority-panel priority-panel--subtle">
-            <p class="section-eyebrow">当前写作状态</p>
-            <strong>{{ existingList.length ? `已有 ${existingList.length} 项内容` : "还没有已载入内容" }}</strong>
-            <p class="page-result-note">已存在内容也能在这里直接继续编辑。</p>
-          </aside>
-        </div>
-        <div class="grid-2">
-          <div>
-            <label>选择已有内容</label>
-            <select v-model="selectedExistingPath">
-              <option value="">请选择</option>
-              <option
-                v-for="item in existingList"
-                :key="item.filePath"
-                :value="item.filePath"
-              >
-                {{ item.type }} | {{ item.title }} | {{ item.relativePath }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label>标题</label>
-            <input v-model="existingEditor.title" placeholder="文章标题" />
-          </div>
-        </div>
-        <div class="stack-top">
-          <label>正文（Markdown）</label>
-          <textarea
-            v-model="existingEditor.body"
-            rows="14"
-            placeholder="在这里编辑正文内容"
-          ></textarea>
-        </div>
-        <div class="actions">
-          <AsyncActionButton
-            kind="secondary"
-            label="刷新内容列表"
-            busy-label="刷新中..."
-            :busy="isBusy('load-existing')"
-            data-workflow-action-level="secondary"
-            @click="refreshExistingContents"
-          />
-          <AsyncActionButton
-            kind="primary"
-            label="保存标题与正文"
-            busy-label="保存中..."
-            :busy="isBusy('save-existing')"
-            data-workflow-action-level="primary"
-            @click="saveExistingContentChanges"
-          />
-          <AsyncActionButton
-            kind="secondary"
-            label="用外部编辑器打开"
-            busy-label="打开中..."
-            :busy="isBusy('open-existing')"
-            data-workflow-action-level="secondary"
-            @click="openSelectedExistingInEditor"
-          />
-        </div>
-      </section>
+        :existing-list="existingList"
+        :selected-existing-path="selectedExistingPath"
+        :existing-editor="existingEditor"
+        :is-busy="isBusy"
+        :refresh-existing-contents="refreshExistingContents"
+        :save-existing-content-changes="saveExistingContentChanges"
+        :open-selected-existing-in-editor="openSelectedExistingInEditor"
+        @update:selected-existing-path="selectedExistingPath = $event"
+      />
     </div>
 
     <div class="page-layer" data-page-layer="explanation">

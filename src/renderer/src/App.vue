@@ -79,7 +79,6 @@ const {
         :active-section-meta="activeSectionMeta"
         :active-tab-meta="activeTabMeta"
         :is-shell-popup-open="isShellPopupOpen"
-        :shell-user-entry-label="shellUserEntryLabel"
         @toggle-shell-popup="toggleShellPopup"
         @close-shell-popup="closeShellPopup"
       >

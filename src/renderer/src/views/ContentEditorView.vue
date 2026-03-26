@@ -327,11 +327,12 @@ watch(
               新建博客、关于、友链或公告时，优先完成写作入口，再决定是否刷新自动发布状态。
             </p>
           </div>
-          <aside class="workflow-inline-note priority-panel priority-panel--support">
-            <p class="section-eyebrow">写作结果摘要</p>
-            <strong>{{ contentRecentResult }}</strong>
-            <p class="page-result-note">{{ contentNextStep }}</p>
-          </aside>
+        </div>
+
+        <div class="workflow-inline-panel priority-panel priority-panel--support">
+          <p class="section-eyebrow">写作结果摘要</p>
+          <strong>{{ contentRecentResult }}</strong>
+          <p class="page-result-note">{{ contentNextStep }}</p>
         </div>
 
         <div class="grid-2 stack-top">

@@ -176,52 +176,49 @@ onMounted(refresh);
   >
     <div class="page-layer" data-page-layer="primary">
       <section class="panel page-hero" data-workflow-zone="hero">
-        <div class="page-hero-grid">
-          <div>
-            <p class="page-kicker">Extension zone</p>
-            <h2 class="page-title">RSS 订阅与阅读</h2>
-            <p class="page-lead">
-              这是更安静的扩展区：它能提供灵感和订阅管理，但不会和博客创建、预览、发布争抢优先级。主流程跑通后，再慢慢补齐这里即可。
-            </p>
-            <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
-              <button
-                class="primary"
-                type="button"
-                data-workflow-action-level="primary"
-                @click="jumpToZone('rss-add-subscription')"
-              >
-                前往新增订阅
-              </button>
-              <button
-                class="secondary"
-                type="button"
-                data-workflow-action-level="secondary"
-                @click="syncNow"
-              >
-                立即同步订阅
-              </button>
-              <button
-                class="secondary"
-                type="button"
-                data-workflow-action-level="tertiary"
-                @click="jumpToZone('rss-export-result')"
-              >
-                导出订阅快照
-              </button>
-            </div>
-            <div class="page-link-row">
-              <a href="#" @click.prevent="goTutorialCenter"
-                >打开教程中心（RSS 配置指南）</a
-              >
-            </div>
+        <div>
+          <p class="page-kicker">Extension zone</p>
+          <h2 class="page-title">RSS 订阅与阅读</h2>
+          <p class="page-lead">
+            这是更安静的扩展区：它能提供灵感和订阅管理，但不会和博客创建、预览、发布争抢优先级。主流程跑通后，再慢慢补齐这里即可。
+          </p>
+          <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+            <button
+              class="primary"
+              type="button"
+              data-workflow-action-level="primary"
+              @click="jumpToZone('rss-add-subscription')"
+            >
+              前往新增订阅
+            </button>
+            <button
+              class="secondary"
+              type="button"
+              data-workflow-action-level="secondary"
+              @click="syncNow"
+            >
+              立即同步订阅
+            </button>
+            <button
+              class="secondary"
+              type="button"
+              data-workflow-action-level="tertiary"
+              @click="jumpToZone('rss-export-result')"
+            >
+              导出订阅快照
+            </button>
           </div>
-          <div class="workflow-hero-note">
-            <div class="page-signal page-signal--quiet">
-              <p class="section-eyebrow">当前未读</p>
-              <strong>{{ totalUnread }}</strong>
-              <p class="section-helper">新增订阅会自动首次同步，后台每小时继续轮询更新。</p>
-            </div>
+          <div class="page-link-row">
+            <a href="#" @click.prevent="goTutorialCenter"
+              >打开教程中心（RSS 配置指南）</a
+            >
           </div>
+        </div>
+
+        <div class="page-signal page-signal--quiet rss-hero-summary">
+          <p class="section-eyebrow">当前未读</p>
+          <strong>{{ totalUnread }}</strong>
+          <p class="section-helper">新增订阅会自动首次同步，后台每小时继续轮询更新。</p>
         </div>
       </section>
 
@@ -287,9 +284,9 @@ onMounted(refresh);
 
     <div class="page-layer" data-page-layer="detail">
       <section class="panel workflow-section-panel" data-workflow-zone="subscription-list">
-        <div class="page-hero-grid">
+        <div class="rss-subscription-toolbar">
           <h2>订阅列表</h2>
-          <div class="actions actions-tight">
+          <div class="actions actions-tight rss-subscription-toolbar-actions">
             <AsyncActionButton
               kind="secondary"
               label="刷新订阅列表"
@@ -301,13 +298,13 @@ onMounted(refresh);
         </div>
         <div class="list" v-if="list.length">
           <div class="list-item" v-for="item in list" :key="item.id">
-            <div class="page-hero-grid">
+            <div class="rss-subscription-row">
               <div>
                 <strong>{{ item.title }}</strong>
                 <div class="muted">{{ item.url }}</div>
                 <div class="muted">未读：{{ item.unreadCount || 0 }}</div>
               </div>
-              <div class="actions actions-tight">
+              <div class="actions actions-tight rss-subscription-row-actions">
                 <button class="danger" @click="remove(item.id)">取消订阅</button>
               </div>
             </div>

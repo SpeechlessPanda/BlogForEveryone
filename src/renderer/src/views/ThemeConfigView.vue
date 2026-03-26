@@ -1185,41 +1185,23 @@ watch(
   >
     <div class="page-layer" data-page-layer="primary">
       <section class="panel page-hero">
-        <div class="page-hero-grid">
-          <div>
-            <p class="page-kicker">Brand workspace</p>
-            <h2 class="page-title">品牌与外观工作台</h2>
-            <p class="page-lead">
-              主题配置页优先处理品牌、素材与阅读体验，高感知项始终排在前面；高级与原始配置留到后面，避免技术参数压过品牌工作流。
-            </p>
-            <div class="page-link-row">
-              <a href="#" @click.prevent="goTutorialCenter"
-                >打开教程中心：主题个性化完整指南</a
-              >
-              <button class="secondary" type="button" @click="goPreviewPage">
-                前往本地预览页面
-              </button>
-            </div>
-          </div>
-          <div class="theme-studio-hero-note">
-            <div class="page-signal page-signal--accent">
-              <p class="section-eyebrow">建议下一步</p>
-              <strong>先改品牌与阅读体验，再去预览确认真实页面。</strong>
-              <p class="section-helper">
-                高级与原始配置属于次级区域，等基础外观跑通后再处理。
-              </p>
-            </div>
-            <div class="page-signal page-signal--quiet">
-              <p class="section-eyebrow">品牌主叙事</p>
-              <strong>先让标题、素材与阅读气质讲同一种品牌语言。</strong>
-              <p class="section-helper">
-                先统一首页印象，再处理主题专属参数，能让编辑节奏更稳定。
-              </p>
-            </div>
+        <div>
+          <p class="page-kicker">Brand workspace</p>
+          <h2 class="page-title">品牌与外观工作台</h2>
+          <p class="page-lead">
+            主题配置页优先处理品牌、素材与阅读体验，高感知项始终排在前面；高级与原始配置留到后面，避免技术参数压过品牌工作流。
+          </p>
+          <div class="page-link-row">
+            <a href="#" @click.prevent="goTutorialCenter"
+              >打开教程中心：主题个性化完整指南</a
+            >
+            <button class="secondary" type="button" @click="goPreviewPage">
+              前往本地预览页面
+            </button>
           </div>
         </div>
 
-        <div class="theme-studio-status-grid">
+        <div class="theme-studio-status-grid theme-studio-status-grid--overview">
           <div class="page-signal page-signal--accent">
             <p class="section-eyebrow">当前工作区</p>
             <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
@@ -1242,6 +1224,20 @@ watch(
             <p class="section-eyebrow">兼容提示</p>
             <strong>图片与头像会自动转存</strong>
             <p class="section-helper">{{ backgroundSupportHint }}</p>
+          </div>
+          <div class="page-signal page-signal--accent">
+            <p class="section-eyebrow">建议下一步</p>
+            <strong>先改品牌与阅读体验，再去预览确认真实页面。</strong>
+            <p class="section-helper">
+              高级与原始配置属于次级区域，等基础外观跑通后再处理。
+            </p>
+          </div>
+          <div class="page-signal page-signal--quiet">
+            <p class="section-eyebrow">品牌主叙事</p>
+            <strong>先让标题、素材与阅读气质讲同一种品牌语言。</strong>
+            <p class="section-helper">
+              先统一首页印象，再处理主题专属参数，能让编辑节奏更稳定。
+            </p>
           </div>
         </div>
       </section>
@@ -1288,13 +1284,14 @@ watch(
               阅读体验排在品牌和素材之后，确保页面调性先稳定，再处理正文的可读性细节。
             </p>
           </div>
-          <aside class="theme-studio-note theme-studio-note--quiet">
-            <p class="section-eyebrow">阅读节奏微调</p>
-            <strong>建议先用默认值，只有感觉阅读吃力时再微调字体与字号。</strong>
-            <p class="section-helper">
-              这一区负责“读起来舒服”，不负责替代前面的品牌决策。
-            </p>
-          </aside>
+        </div>
+
+        <div class="theme-studio-note theme-studio-note--quiet">
+          <p class="section-eyebrow">阅读节奏微调</p>
+          <strong>建议先用默认值，只有感觉阅读吃力时再微调字体与字号。</strong>
+          <p class="section-helper">
+            这一区负责“读起来舒服”，不负责替代前面的品牌决策。
+          </p>
         </div>
 
         <div class="theme-studio-reading-grid">
@@ -1342,13 +1339,14 @@ watch(
               下面这些属于“博客已经能跑之后再加”的能力。你可以先跳过，后面再回来补。
             </p>
           </div>
-          <aside class="theme-studio-note theme-studio-note--quiet">
-            <p class="section-eyebrow">后置控制</p>
-            <strong>评论、统计和 RSS 很重要，但不该压过品牌与素材编辑节奏。</strong>
-            <p class="section-helper">
-              这一区保持安静、次级，只在前面几步已经稳定后再启用。
-            </p>
-          </aside>
+        </div>
+
+        <div class="theme-studio-note theme-studio-note--quiet">
+          <p class="section-eyebrow">后置控制</p>
+          <strong>评论、统计和 RSS 很重要，但不该压过品牌与素材编辑节奏。</strong>
+          <p class="section-helper">
+            这一区保持安静、次级，只在前面几步已经稳定后再启用。
+          </p>
         </div>
 
         <div class="theme-studio-quiet-grid">

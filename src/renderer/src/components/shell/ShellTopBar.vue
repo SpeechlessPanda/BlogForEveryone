@@ -3,7 +3,6 @@ defineProps({
   activeSectionMeta: { type: Object, required: true },
   activeTabMeta: { type: Object, required: true },
   isShellPopupOpen: { type: Boolean, required: true },
-  shellUserEntryLabel: { type: String, required: true },
 });
 
 defineEmits(["toggle-shell-popup", "close-shell-popup"]);
@@ -19,22 +18,12 @@ defineEmits(["toggle-shell-popup", "close-shell-popup"]);
     <div class="shell-topbar-actions" data-topbar-region="page-actions">
       <slot name="page-actions" />
     </div>
-
-    <div class="shell-topbar-user">
-      <button
-        class="secondary shell-user-anchor"
-        data-topbar-anchor="user-entry"
-        @click="$emit('toggle-shell-popup')"
-      >
-        {{ shellUserEntryLabel }}
-      </button>
-    </div>
   </header>
 
   <Teleport to="body">
     <div
       v-show="isShellPopupOpen"
-      class="shell-popup-overlay"
+      class="shell-popup-overlay shell-popup-overlay--sidebar"
       data-topbar-region="popup-mount"
       @click.self="$emit('close-shell-popup')"
     >

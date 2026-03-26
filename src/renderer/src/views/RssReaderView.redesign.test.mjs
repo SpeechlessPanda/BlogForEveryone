@@ -35,6 +35,13 @@ test("RssReaderView keeps quiet intake actions without a duplicated hero summary
   assert.match(source, /useShellActions/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
   assert.match(source, /shellActions\.openTutorial\(\)/);
+  assert.match(source, /rss-subscription-toolbar/);
+  assert.match(source, /rss-subscription-row/);
+  assert.doesNotMatch(
+    source,
+    /data-workflow-zone="subscription-list"[\s\S]*class="page-hero-grid"/,
+    "expected the subscription list area to stop reusing the generic page hero grid for toolbar and rows",
+  );
 });
 
 test("RssReaderView keeps in-page navigation in a view-owned enter-at-top helper", async () => {

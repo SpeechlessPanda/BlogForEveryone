@@ -40,8 +40,18 @@ test("ContentEditorView keeps the writing hub flow while removing duplicated her
   assert.match(heroSectionSource, /data-workflow-action-level="primary"/);
   assert.match(heroSectionSource, /data-workflow-action-level="secondary"/);
   assert.match(heroSectionSource, /data-workflow-action-level="tertiary"/);
+  assert.equal(
+    heroSectionSource.includes('class="workflow-hero-note"'),
+    false,
+    "expected ContentWorkflowHero to stop rendering a right-side hero note card",
+  );
   assert.equal(source.includes("page-hero-aside"), false);
   assert.equal(source.includes("page-status-grid"), false);
+  assert.equal(
+    source.includes('class="workflow-inline-note'),
+    false,
+    "expected ContentEditorView to move the write-result note below the heading instead of keeping it on the right",
+  );
   assert.match(source, /写作结果摘要/);
   assert.match(source, /自动流程（后置）/);
   assert.match(source, /data-page-layer="detail"[\s\S]*自动流程（后置）/);

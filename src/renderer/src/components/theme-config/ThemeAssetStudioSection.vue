@@ -60,11 +60,12 @@ async function handleUploadLocalFavicon() {
           当前素材状态和上传动作放在同一块区域里，方便先看现状，再决定要替换哪一项。
         </p>
       </div>
-      <aside class="theme-studio-note">
-        <p class="section-eyebrow">素材状态一览</p>
-        <strong>先看当前已生效路径，再决定是否替换素材。</strong>
-        <p class="section-helper">{{ backgroundSupportHint }}</p>
-      </aside>
+    </div>
+
+    <div class="theme-studio-note">
+      <p class="section-eyebrow">素材状态一览</p>
+      <strong>先看当前已生效路径，再决定是否替换素材。</strong>
+      <p class="section-helper">{{ backgroundSupportHint }}</p>
     </div>
 
     <div

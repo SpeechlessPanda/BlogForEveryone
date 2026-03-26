@@ -4,14 +4,13 @@ import { readFile } from "node:fs/promises";
 
 const topBarPath = new URL("./ShellTopBar.vue", import.meta.url);
 
-test("ShellTopBar exposes the approved top-bar shell regions and popup anchor", async () => {
+test("ShellTopBar exposes the approved top-bar shell regions without a duplicate top-right account trigger", async () => {
   const source = await readFile(topBarPath, "utf8");
 
   const requiredHooks = [
     'data-shell-surface="topbar"',
     'data-topbar-region="page-title"',
     'data-topbar-region="page-actions"',
-    'data-topbar-anchor="user-entry"',
     'data-topbar-region="popup-mount"',
   ];
 
@@ -22,6 +21,17 @@ test("ShellTopBar exposes the approved top-bar shell regions and popup anchor", 
       `expected ShellTopBar.vue to include top-bar hook: ${hook}`,
     );
   }
+
+  assert.equal(
+    source.includes('data-topbar-anchor="user-entry"'),
+    false,
+    "expected ShellTopBar.vue to stop rendering a duplicate top-right account trigger",
+  );
+  assert.equal(
+    source.includes("shell-user-anchor"),
+    false,
+    "expected ShellTopBar.vue to stop rendering the top-right username button",
+  );
 });
 
 test("ShellTopBar stays focused on page context and popup mounting", async () => {
@@ -34,7 +44,7 @@ test("ShellTopBar stays focused on page context and popup mounting", async () =>
   assert.match(source, /toggle-shell-popup/);
 });
 
-test("ShellTopBar teleports the account popup into a fixed overlay layer instead of inline topbar flow", async () => {
+test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overlay layer instead of inline topbar flow", async () => {
   const source = await readFile(topBarPath, "utf8");
 
   assert.match(
@@ -44,8 +54,8 @@ test("ShellTopBar teleports the account popup into a fixed overlay layer instead
   );
   assert.match(
     source,
-    /class="shell-popup-overlay"/,
-    "expected ShellTopBar.vue to expose a fixed overlay wrapper for the account popup",
+    /class="shell-popup-overlay shell-popup-overlay--sidebar"/,
+    "expected ShellTopBar.vue to expose a sidebar-aligned fixed overlay wrapper for the account popup",
   );
   assert.equal(
     source.includes('class="shell-popup-mount"'),

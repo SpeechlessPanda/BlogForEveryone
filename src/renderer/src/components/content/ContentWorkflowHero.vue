@@ -25,51 +25,42 @@ defineProps({
 
 <template>
   <section class="panel page-hero" data-workflow-zone="hero">
-    <div class="page-hero-grid">
-      <div>
-        <p class="page-kicker">Writing hub</p>
-        <h2 class="page-title">写作中枢</h2>
-        <p class="page-lead">
-          内容编辑页优先服务写作本身：先创建或进入内容工作，再理解当前结果，最后才看自动发布等次级自动化。发布相关能力必须辅助写作，而不是压过写作。
-        </p>
-        <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
-          <button
-            class="primary"
-            type="button"
-            data-workflow-action-level="primary"
-            @click="jumpToZone('content-create-zone')"
-          >
-            前往新建内容
-          </button>
-          <button
-            class="secondary"
-            type="button"
-            data-workflow-action-level="secondary"
-            @click="jumpToZone('content-existing-zone')"
-          >
-            继续编辑已有内容
-          </button>
-          <button
-            class="secondary"
-            type="button"
-            data-workflow-action-level="tertiary"
-            @click="goTutorialCenter"
-          >
-            查看写作教程
-          </button>
-        </div>
-        <div class="page-link-row">
-          <a href="#" @click.prevent="goTutorialCenter"
-            >打开教程中心：内容编辑与自动发布完整步骤</a
-          >
-        </div>
+    <div>
+      <p class="page-kicker">Writing hub</p>
+      <h2 class="page-title">写作中枢</h2>
+      <p class="page-lead">
+        内容编辑页优先服务写作本身：先创建或进入内容工作，再理解当前结果，最后才看自动发布等次级自动化。发布相关能力必须辅助写作，而不是压过写作。
+      </p>
+      <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
+        <button
+          class="primary"
+          type="button"
+          data-workflow-action-level="primary"
+          @click="jumpToZone('content-create-zone')"
+        >
+          前往新建内容
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          data-workflow-action-level="secondary"
+          @click="jumpToZone('content-existing-zone')"
+        >
+          继续编辑已有内容
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          data-workflow-action-level="tertiary"
+          @click="goTutorialCenter"
+        >
+          查看写作教程
+        </button>
       </div>
-      <div class="workflow-hero-note">
-        <div class="page-signal page-signal--accent">
-          <p class="section-eyebrow">建议下一步</p>
-          <strong>{{ contentNextStep }}</strong>
-          <p class="section-helper">先把内容写出来，再决定是否要把发布动作自动化。</p>
-        </div>
+      <div class="page-link-row">
+        <a href="#" @click.prevent="goTutorialCenter"
+          >打开教程中心：内容编辑与自动发布完整步骤</a
+        >
       </div>
     </div>
 

@@ -578,6 +578,48 @@ body::before {
   margin-top: 10px;
 }
 
+.workflow-status-grid,
+.rss-subscription-toolbar,
+.rss-subscription-row {
+  display: grid;
+  gap: 12px;
+}
+
+.workflow-status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+.workflow-status-grid .page-signal,
+.theme-studio-status-grid .page-signal,
+.rss-hero-summary,
+.workflow-inline-panel {
+  height: 100%;
+}
+
+.workflow-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.workflow-inline-panel {
+  margin-top: 12px;
+}
+
+.rss-subscription-toolbar,
+.rss-subscription-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.rss-subscription-toolbar-actions,
+.rss-subscription-row-actions {
+  justify-content: flex-end;
+}
+
 .tutorial-panel h3 {
   margin-top: 16px;
   margin-bottom: 8px;
@@ -1895,9 +1937,8 @@ a:hover {
 
 .theme-studio-heading {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
-  align-items: end;
+  align-items: start;
 }
 
 .theme-studio-heading-copy {
@@ -1914,7 +1955,6 @@ a:hover {
 }
 
 .theme-studio-note {
-  max-width: 340px;
   padding: 14px 16px;
   display: grid;
   gap: 6px;
@@ -1992,6 +2032,11 @@ a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+  align-items: stretch;
+}
+
+.theme-studio-status-grid--overview {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .theme-studio-status-card {
@@ -2006,7 +2051,7 @@ a:hover {
 
 .theme-studio-reading-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -2121,7 +2166,11 @@ a:hover {
   .theme-studio-column-grid,
   .theme-asset-grid,
   .theme-studio-quiet-grid,
-  .theme-studio-reading-grid {
+  .theme-studio-reading-grid,
+  .theme-studio-status-grid,
+  .workflow-status-grid,
+  .rss-subscription-toolbar,
+  .rss-subscription-row {
     grid-template-columns: 1fr;
   }
 
@@ -2362,7 +2411,7 @@ a:hover {
 
 .layout--editorial .shell-topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
   gap: 14px;
   align-items: start;
   padding: 0 0 18px;
@@ -2382,7 +2431,7 @@ a:hover {
 }
 
 .layout--editorial .shell-topbar-actions {
-  justify-self: start;
+  justify-self: end;
   min-width: 0;
 }
 
@@ -2395,11 +2444,15 @@ a:hover {
   position: fixed;
   inset: 0;
   display: grid;
-  align-items: start;
-  justify-items: end;
-  padding: 72px 24px 24px;
+  align-items: end;
+  justify-items: start;
+  padding: 24px;
   background: rgba(17, 17, 17, 0.08);
   z-index: 40;
+}
+
+.layout--editorial .shell-popup-overlay--sidebar {
+  padding-left: 234px;
 }
 
 .layout--editorial .shell-popup-panel-wrap {
@@ -2408,6 +2461,7 @@ a:hover {
   border: 1px solid var(--shell-line-strong);
   background: var(--shell-panel);
   padding: 14px;
+  margin-bottom: 12px;
 }
 
 .layout--editorial .shell-user-anchor,
@@ -2445,10 +2499,13 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .layout--editorial .shell-summary-chip {
-  min-width: 140px;
+  min-width: 180px;
+  flex: 1 1 180px;
+  max-width: 240px;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--shell-line);
@@ -2552,6 +2609,10 @@ a:hover {
   .layout--editorial .shell-popup-overlay {
     justify-items: stretch;
     padding: 16px;
+  }
+
+  .layout--editorial .shell-popup-overlay--sidebar {
+    padding-left: 16px;
   }
 
   .layout--editorial .shell-popup-panel-wrap {

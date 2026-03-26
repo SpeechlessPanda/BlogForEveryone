@@ -14,9 +14,10 @@ test("editorial workbench journey keeps workspace context across core entry poin
     const { page } = app;
     const shellRoot = page.locator(".layout.layout--editorial");
     const sidebar = page.locator('[data-shell-surface="sidebar"]');
-    const shellUserEntry = page.locator('[data-topbar-anchor="user-entry"]');
+    const shellUserEntry = sidebar.locator('[data-sidebar-entry="user"]');
     const shellPopupMount = page.locator('[data-topbar-region="popup-mount"]');
     const shellUserPopup = page.locator('[data-shell-surface="user-popup"]');
+    const shellSidebarPopupOverlay = page.locator('.shell-popup-overlay.shell-popup-overlay--sidebar');
     const workspaceSummary = page.locator('[data-summary-item="workspace"]');
     const tutorialSurface = page.locator('[data-tutorial-surface="editorial-workbench"]');
     const tutorialHeroSurface = page.locator('[data-tutorial-zone="hero"]');
@@ -33,6 +34,7 @@ test("editorial workbench journey keeps workspace context across core entry poin
         await shellUserEntry.click();
       }
 
+      await expect(shellSidebarPopupOverlay).toBeVisible();
       await expect(shellPopupMount).toBeVisible();
       await expect(shellUserPopup).toBeVisible();
     };

@@ -27,13 +27,14 @@ defineProps({
           先确认博客上下文，再处理标题、副标题与身份线索，避免把后续素材和配置写进错误工程。
         </p>
       </div>
-      <aside class="theme-studio-note theme-studio-note--emphasis">
-        <p class="section-eyebrow">品牌主叙事</p>
-        <strong>标题、副标题、邮箱与 GitHub 需要先讲同一种品牌语言。</strong>
-        <p class="section-helper">
-          这样后面的图标、背景和阅读体验，都会围绕同一套首页印象展开。
-        </p>
-      </aside>
+    </div>
+
+    <div class="theme-studio-note theme-studio-note--emphasis">
+      <p class="section-eyebrow">品牌主叙事</p>
+      <strong>标题、副标题、邮箱与 GitHub 需要先讲同一种品牌语言。</strong>
+      <p class="section-helper">
+        这样后面的图标、背景和阅读体验，都会围绕同一套首页印象展开。
+      </p>
     </div>
 
     <div class="theme-studio-column-grid">

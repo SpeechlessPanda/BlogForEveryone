@@ -55,6 +55,21 @@ test("ThemeConfigView removes duplicated hero summary cards and adds enlargeable
 
   assert.match(source, /品牌主叙事/);
   assert.match(assetSectionSource, /素材状态一览/);
+  assert.equal(
+    source.includes('class="theme-studio-hero-note"'),
+    false,
+    "expected ThemeConfigView hero to stop rendering stacked right-side note cards",
+  );
+  assert.doesNotMatch(
+    identitySectionSource,
+    /theme-studio-heading[\s\S]*<aside class="theme-studio-note/,
+    "expected ThemeIdentitySection heading note to move below the heading row",
+  );
+  assert.doesNotMatch(
+    assetSectionSource,
+    /theme-studio-heading[\s\S]*<aside class="theme-studio-note/,
+    "expected ThemeAssetStudioSection heading note to move below the heading row",
+  );
 
   for (const currentSource of [
     source,

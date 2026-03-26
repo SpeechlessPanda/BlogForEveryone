@@ -15,7 +15,6 @@ defineEmits(["navigate", "toggle-shell-popup"]);
   <aside class="sidebar" data-shell-surface="sidebar">
     <div class="sidebar-inner">
       <div class="sidebar-brand" data-sidebar-region="brand">
-        <div class="sidebar-logo">B</div>
         <div class="sidebar-brand-copy">
           <strong>{{ appState.appName }}</strong>
           <p class="version">v{{ appState.version }}</p>

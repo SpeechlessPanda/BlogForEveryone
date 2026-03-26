@@ -26,6 +26,12 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body,
+#app {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: "Outfit", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -38,6 +44,7 @@ body {
     linear-gradient(168deg, var(--bg) 0%, var(--bg-soft) 100%);
   min-height: 100dvh;
   position: relative;
+  overflow: hidden;
 }
 
 body::before {
@@ -54,6 +61,8 @@ body::before {
   display: grid;
   grid-template-columns: 272px 1fr;
   min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }
@@ -349,6 +358,16 @@ body::before {
   max-width: 1380px;
   width: 100%;
   margin: 0 auto;
+  min-width: 0;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.content-view-scroll {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .panel {
@@ -2210,8 +2229,10 @@ a:hover {
   margin: 0;
   padding: 18px 22px 30px;
   display: grid;
+   grid-template-rows: auto minmax(0, 1fr);
   gap: 18px;
-  align-content: start;
+  align-content: stretch;
+  overflow: hidden;
 }
 
 .layout--editorial .sidebar {
@@ -2234,21 +2255,9 @@ a:hover {
 
 .layout--editorial .sidebar-brand {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
-}
-
-.layout--editorial .sidebar-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid var(--shell-line);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  background: var(--shell-panel-alt);
-  color: var(--shell-ink);
 }
 
 .layout--editorial .sidebar-brand-copy {
@@ -2382,6 +2391,25 @@ a:hover {
   justify-self: end;
 }
 
+.layout--editorial .shell-popup-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  align-items: start;
+  justify-items: end;
+  padding: 72px 24px 24px;
+  background: rgba(17, 17, 17, 0.08);
+  z-index: 40;
+}
+
+.layout--editorial .shell-popup-panel-wrap {
+  width: min(420px, calc(100vw - 48px));
+  border-radius: 16px;
+  border: 1px solid var(--shell-line-strong);
+  background: var(--shell-panel);
+  padding: 14px;
+}
+
 .layout--editorial .shell-user-anchor,
 .layout--editorial .shell-popup-dismiss,
 .layout--editorial button.secondary {
@@ -2427,18 +2455,6 @@ a:hover {
   background: var(--shell-panel-alt);
   display: grid;
   gap: 4px;
-}
-
-.layout--editorial .shell-popup-mount {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: min(420px, 72vw);
-  border-radius: 16px;
-  border: 1px solid var(--shell-line-strong);
-  background: var(--shell-panel);
-  padding: 14px;
-  z-index: 10;
 }
 
 .layout--editorial .shell-popup-dismiss-row {
@@ -2533,9 +2549,12 @@ a:hover {
     justify-self: start;
   }
 
-  .layout--editorial .shell-popup-mount {
-    position: static;
+  .layout--editorial .shell-popup-overlay {
+    justify-items: stretch;
+    padding: 16px;
+  }
+
+  .layout--editorial .shell-popup-panel-wrap {
     width: 100%;
-    margin-top: 10px;
   }
 }

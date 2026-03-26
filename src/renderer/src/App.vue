@@ -74,7 +74,7 @@ const {
       @toggle-shell-popup="toggleShellPopup"
     />
 
-    <main class="content">
+    <main class="content" data-shell-region="workspace">
       <ShellTopBar
         :active-section-meta="activeSectionMeta"
         :active-tab-meta="activeTabMeta"
@@ -122,14 +122,16 @@ const {
         />
       </ShellTopBar>
 
-      <TutorialCenterView v-if="activeTab === 'tutorial'" />
-      <WorkspaceView v-if="activeTab === 'workspace'" />
-      <ThemeConfigView v-if="activeTab === 'theme'" />
-      <PreviewView v-if="activeTab === 'preview'" />
-      <ContentEditorView v-if="activeTab === 'content'" />
-      <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
-      <ImportView v-if="activeTab === 'import'" />
-      <RssReaderView v-if="activeTab === 'rss'" />
+      <div class="content-view-scroll" data-shell-scroll-region="workflow-view">
+        <TutorialCenterView v-if="activeTab === 'tutorial'" />
+        <WorkspaceView v-if="activeTab === 'workspace'" />
+        <ThemeConfigView v-if="activeTab === 'theme'" />
+        <PreviewView v-if="activeTab === 'preview'" />
+        <ContentEditorView v-if="activeTab === 'content'" />
+        <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
+        <ImportView v-if="activeTab === 'import'" />
+        <RssReaderView v-if="activeTab === 'rss'" />
+      </div>
     </main>
 
     <ShellModalLayer

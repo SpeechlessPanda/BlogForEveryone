@@ -22,6 +22,27 @@ test("WorkflowSidebar is reduced to minimal nav plus appearance and user entry p
       `expected WorkflowSidebar.vue to include redesign hook: ${hook}`,
     );
   }
+
+  const preservedBrandBindings = [
+    'class="sidebar-brand-copy"',
+    "appState.appName",
+    'class="version"',
+  ];
+
+  for (const binding of preservedBrandBindings) {
+    assert.equal(
+      source.includes(binding),
+      true,
+      `expected WorkflowSidebar.vue to keep brand/info binding: ${binding}`,
+    );
+  }
+
+  assert.equal(
+    source.includes('<div class="sidebar-logo">B</div>'),
+    false,
+    "expected WorkflowSidebar.vue to remove the legacy top-left B mark while preserving the brand/info region",
+  );
+
   const removedHeavyShellHooks = [
     'data-sidebar-block="current-stage"',
     'data-sidebar-block="utilities"',

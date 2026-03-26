@@ -33,3 +33,23 @@ test("ShellTopBar stays focused on page context and popup mounting", async () =>
   assert.match(source, /<slot \/>/);
   assert.match(source, /toggle-shell-popup/);
 });
+
+test("ShellTopBar teleports the account popup into a fixed overlay layer instead of inline topbar flow", async () => {
+  const source = await readFile(topBarPath, "utf8");
+
+  assert.match(
+    source,
+    /<Teleport to="body">/,
+    "expected ShellTopBar.vue to teleport the account popup so it is detached from the scrolling topbar flow",
+  );
+  assert.match(
+    source,
+    /class="shell-popup-overlay"/,
+    "expected ShellTopBar.vue to expose a fixed overlay wrapper for the account popup",
+  );
+  assert.equal(
+    source.includes('class="shell-popup-mount"'),
+    false,
+    "expected ShellTopBar.vue to stop rendering the popup as inline shell content that scrolls with the page",
+  );
+});

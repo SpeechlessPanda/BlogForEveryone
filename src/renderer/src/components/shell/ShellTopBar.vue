@@ -28,12 +28,17 @@ defineEmits(["toggle-shell-popup", "close-shell-popup"]);
       >
         {{ shellUserEntryLabel }}
       </button>
+    </div>
+  </header>
 
-      <div
-        v-show="isShellPopupOpen"
-        class="shell-popup-mount"
-        data-topbar-region="popup-mount"
-      >
+  <Teleport to="body">
+    <div
+      v-show="isShellPopupOpen"
+      class="shell-popup-overlay"
+      data-topbar-region="popup-mount"
+      @click.self="$emit('close-shell-popup')"
+    >
+      <div class="shell-popup-panel-wrap">
         <div class="shell-popup-dismiss-row">
           <button class="secondary shell-popup-dismiss" @click="$emit('close-shell-popup')">
             关闭
@@ -42,5 +47,5 @@ defineEmits(["toggle-shell-popup", "close-shell-popup"]);
         <slot />
       </div>
     </div>
-  </header>
+  </Teleport>
 </template>

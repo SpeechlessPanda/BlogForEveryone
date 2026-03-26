@@ -19,7 +19,8 @@ function detectFramework(projectDir) {
 function runSpawnCommand(command, args, options = {}) {
     return new Promise((resolve) => {
         const child = spawn(command, args, {
-            shell: true,
+            shell: false,
+            windowsHide: true,
             ...options
         });
 

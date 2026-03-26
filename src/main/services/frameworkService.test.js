@@ -4,13 +4,35 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const Module = require('module');
+const { EventEmitter } = require('events');
 
-function loadFrameworkServiceWithMocks(envServiceMock) {
+function createMockChildProcess(result) {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+
+    process.nextTick(() => {
+        if (result?.stdout) {
+            child.stdout.emit('data', Buffer.from(result.stdout));
+        }
+        if (result?.stderr) {
+            child.stderr.emit('data', Buffer.from(result.stderr));
+        }
+        child.emit('close', result?.status ?? 0);
+    });
+
+    return child;
+}
+
+function loadFrameworkServiceWithMocks(envServiceMock, childProcessMock = null) {
     const originalLoad = Module._load;
     const servicePath = path.join(__dirname, 'frameworkService.js');
     const mocks = {
         './envService': envServiceMock
     };
+    if (childProcessMock) {
+        mocks.child_process = childProcessMock;
+    }
 
     Module._load = function patchedLoad(request, parent, isMain) {
         if (Object.prototype.hasOwnProperty.call(mocks, request)) {
@@ -60,6 +82,85 @@ test('initProject recovers hexo partial init when retry hits non-empty directory
     assert.equal(result.retried, true);
     assert.match(result.stderr, /target not empty/i);
     assert.ok(result.logs.some((entry) => entry.event === 'hexo-init-recovery' && entry.ok === true));
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('initProject executes hugo init without shell mode', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'framework-service-hugo-'));
+    const projectDir = path.join(tmpDir, 'hugo-site');
+    const spawnCalls = [];
+
+    const spawn = (command, args, options) => {
+        spawnCalls.push({ command, args, options });
+        return createMockChildProcess({ status: 0, stdout: 'hugo ok', stderr: '' });
+    };
+
+    const { initProject } = loadFrameworkServiceWithMocks(
+        {
+            ensureFrameworkEnvironment: () => ({ ok: true, logs: [] }),
+            runPnpmDlxWithRetry: () => ({
+                retried: false,
+                result: { status: 0, stdout: '', stderr: '' },
+                logs: []
+            }),
+            installDependenciesWithRetry: () => ({ ok: true, logs: [] }),
+            resolveExecutable: () => 'hugo'
+        },
+        { spawn }
+    );
+
+    const result = await initProject({ framework: 'hugo', projectDir });
+
+    assert.equal(result.status, 0);
+    assert.equal(spawnCalls.length, 1);
+    assert.equal(spawnCalls[0].options.shell, false);
+    assert.equal(spawnCalls[0].options.windowsHide, true);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('initProject handles hugo spawn error event', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'framework-service-hugo-error-'));
+    const projectDir = path.join(tmpDir, 'hugo-site');
+    const spawnCalls = [];
+
+    const spawn = (command, args, options) => {
+        spawnCalls.push({ command, args, options });
+        const child = new EventEmitter();
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+
+        process.nextTick(() => {
+            child.emit('error', new Error('spawn hugo ENOENT'));
+        });
+
+        return child;
+    };
+
+    const { initProject } = loadFrameworkServiceWithMocks(
+        {
+            ensureFrameworkEnvironment: () => ({ ok: true, logs: [{ step: 'ensure-hugo', ok: true }] }),
+            runPnpmDlxWithRetry: () => ({
+                retried: false,
+                result: { status: 0, stdout: '', stderr: '' },
+                logs: []
+            }),
+            installDependenciesWithRetry: () => ({ ok: true, logs: [] }),
+            resolveExecutable: () => 'hugo'
+        },
+        { spawn }
+    );
+
+    const result = await initProject({ framework: 'hugo', projectDir });
+
+    assert.equal(spawnCalls.length, 1);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /spawn hugo ENOENT/);
+    assert.equal(result.retried, false);
+    assert.equal(result.logs.length, 2);
+    assert.equal(result.logs[1].status, 1);
+    assert.match(result.logs[1].stderr, /spawn hugo ENOENT/);
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
 });

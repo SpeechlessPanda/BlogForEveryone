@@ -60,8 +60,11 @@ test("PublishBackupView uses publish/backup facade instead of raw window.bfeApi 
     );
   }
 
+  assert.match(source, /useShellActions/);
   assert.match(source, /auth\?\.account\?\.login/);
   assert.doesNotMatch(source, /auth\?\.user\?\.login/);
+  assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
+  assert.match(source, /shellActions\.openTutorial\("publish-release"\)/);
 });
 
 test("PublishBackupView reads as a release control center with readiness and result above logs", async () => {

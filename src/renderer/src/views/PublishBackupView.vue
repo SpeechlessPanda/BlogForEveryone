@@ -8,6 +8,7 @@ import {
 import AsyncActionButton from "../components/AsyncActionButton.vue";
 import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
+import { useShellActions } from "../composables/useShellActions.mjs";
 import { usePublishBackupActions } from "../composables/usePublishBackupActions.mjs";
 
 const publishForm = reactive({
@@ -28,6 +29,7 @@ const pagesUrl = ref("");
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["publish"]);
 const selectedWorkspace = computed(() => getSelectedWorkspace());
+const shellActions = useShellActions();
 const {
   publishToGitHub,
   backupWorkspace,
@@ -165,7 +167,7 @@ async function pickBackupDirectory() {
   }
 }
 
-  onMounted(async () => {
+onMounted(async () => {
   await refreshWorkspaces();
   try {
     const auth = await getGithubAuthState();
@@ -181,7 +183,7 @@ async function pickBackupDirectory() {
 });
 
 function goTutorialCenter() {
-  window.dispatchEvent(new CustomEvent("bfe:open-tutorial"));
+  shellActions.openTutorial("publish-release");
 }
 
 function jumpToZone(zoneId) {
@@ -239,13 +241,6 @@ function jumpToZone(zoneId) {
               >
             </div>
           </div>
-          <div class="workflow-hero-note">
-            <div class="page-signal page-signal--accent">
-              <p class="section-eyebrow">发布准备度</p>
-              <strong>{{ publishReadiness }}</strong>
-              <p class="section-helper">本页默认推荐 GitHub Actions；只有明确需要时再切到命令发布。</p>
-            </div>
-          </div>
         </div>
 
         <div class="workflow-status-grid">
@@ -286,11 +281,12 @@ function jumpToZone(zoneId) {
               先让访问地址变成可交付结果，再决定是否补一份离线恢复用的备份仓库。
             </p>
           </div>
-          <aside class="workflow-inline-note priority-panel priority-panel--support">
-            <p class="section-eyebrow">发布结果摘要</p>
-            <strong>{{ publishResultSummary }}</strong>
-            <p class="page-result-note">{{ publishNextStep }}</p>
-          </aside>
+        </div>
+
+        <div class="workflow-inline-panel priority-panel priority-panel--support">
+          <p class="section-eyebrow">发布结果摘要</p>
+          <strong>{{ publishResultSummary }}</strong>
+          <p class="page-result-note">{{ publishNextStep }}</p>
         </div>
 
         <div class="context-card">
@@ -410,11 +406,12 @@ function jumpToZone(zoneId) {
               将本地博客工程打包到快照目录，可选推送到另一个 GitHub 仓库，用于换设备恢复。
             </p>
           </div>
-          <aside class="workflow-inline-note priority-panel priority-panel--subtle">
-            <p class="section-eyebrow">备份适用场景</p>
-            <strong>发布跑通后，再补一份恢复用底仓快照。</strong>
-            <p class="page-result-note">这样不会让备份动作盖过本页最重要的对外发布。</p>
-          </aside>
+        </div>
+
+        <div class="workflow-inline-panel priority-panel priority-panel--subtle">
+          <p class="section-eyebrow">备份适用场景</p>
+          <strong>发布跑通后，再补一份恢复用底仓快照。</strong>
+          <p class="page-result-note">这样不会让备份动作盖过本页最重要的对外发布。</p>
         </div>
 
         <div class="grid-2">

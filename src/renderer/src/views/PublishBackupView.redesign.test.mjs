@@ -31,7 +31,12 @@ test("PublishBackupView keeps release actions and backup support without duplica
   assert.match(source, /data-workflow-action-level="secondary"/);
   assert.match(source, /data-workflow-action-level="tertiary"/);
   assert.equal(source.includes("page-hero-aside"), false);
+  assert.equal(source.includes("workflow-hero-note"), false);
+  assert.equal(source.includes("workflow-inline-note"), false);
   assert.equal(source.includes("page-status-grid"), false);
+  assert.match(source, /workflow-status-grid/);
+  assert.match(source, /workflow-inline-panel/);
   assert.match(source, /发布结果摘要/);
   assert.match(source, /备份到底层仓库/);
+  assert.match(source, /发布前检查清单/);
 });

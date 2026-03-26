@@ -4,7 +4,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { createWorkspacePathPolicy } = require('./workspacePathPolicy');
+const {
+    createWorkspacePathPolicy,
+    normalizePath,
+    isSubPath
+} = require('./workspacePathPolicy');
 
 function makeWorkspace(id, projectDir, framework = 'hexo') {
     return { id, projectDir, framework };
@@ -100,4 +104,55 @@ test('does not allow arbitrary workspace-root files as content paths', () => {
     assert.equal(policy.isContentPathAllowed('ws-a', nonContentFile), false);
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('treats Windows path casing as equivalent when checking subpaths', () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', {
+        value: 'win32'
+    });
+
+    try {
+        assert.equal(
+            isSubPath('C:/Blog/Workspace', 'c:/blog/workspace/source/_posts/hello.md'),
+            true
+        );
+        assert.equal(
+            isSubPath('C:/Blog/Workspace', 'c:/blog/other/source/_posts/hello.md'),
+            false
+        );
+    } finally {
+        Object.defineProperty(process, 'platform', {
+            value: originalPlatform
+        });
+    }
+});
+
+test('normalizePath resolves junction-backed real paths before comparison', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-policy-realpath-'));
+    const targetRoot = path.join(tmpDir, 'target');
+    const linkRoot = path.join(tmpDir, 'linked-workspace');
+    const nestedDir = path.join(targetRoot, 'source', '_posts');
+    const nestedFile = path.join(nestedDir, 'hello.md');
+
+    fs.mkdirSync(nestedDir, { recursive: true });
+    fs.writeFileSync(nestedFile, '# hello', 'utf-8');
+    fs.symlinkSync(targetRoot, linkRoot, 'junction');
+
+    assert.equal(normalizePath(linkRoot), normalizePath(targetRoot));
+    assert.equal(isSubPath(linkRoot, nestedFile), true);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('workspaceIpc and contentService reuse shared workspace path policy helpers instead of local duplicates', () => {
+    const workspaceIpcSource = fs.readFileSync(path.join(__dirname, '../ipc/workspaceIpc.js'), 'utf-8');
+    const contentServiceSource = fs.readFileSync(path.join(__dirname, '../services/contentService.js'), 'utf-8');
+
+    assert.match(workspaceIpcSource, /workspacePathPolicy/);
+    assert.match(contentServiceSource, /workspacePathPolicy/);
+    assert.doesNotMatch(workspaceIpcSource, /function normalizePathForCompare/);
+    assert.doesNotMatch(contentServiceSource, /function normalizeForCompare/);
+    assert.doesNotMatch(contentServiceSource, /function isSubPath/);
+    assert.doesNotMatch(contentServiceSource, /function assertAllowedRoots/);
 });

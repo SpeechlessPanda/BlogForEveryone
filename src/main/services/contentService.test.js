@@ -6,11 +6,21 @@ const path = require('path');
 const Module = require('module');
 
 const {
+    listExistingContents,
     readExistingContent,
     saveExistingContent,
     openExistingContent,
     __test__
 } = require('./contentService');
+
+test('contentService relies on shared workspace path policy instead of local path guard helpers', () => {
+    const source = fs.readFileSync(path.join(__dirname, 'contentService.js'), 'utf-8');
+
+    assert.match(source, /workspacePathPolicy/);
+    assert.doesNotMatch(source, /function normalizeForCompare/);
+    assert.doesNotMatch(source, /function isSubPath/);
+    assert.doesNotMatch(source, /function assertAllowedRoots/);
+});
 
 function setupHexoWorkspace() {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-'));
@@ -122,6 +132,7 @@ test('saveExistingContent rejects when allowedRoots is empty', () => {
 function loadContentServiceWithPublishResult(publishResult) {
     const originalLoad = Module._load;
     const contentServicePath = path.join(__dirname, 'contentService.js');
+    const workflowServicePath = path.join(__dirname, 'contentPublishWorkflowService.js');
     const mocks = {
         './publishService': {
             publishToGitHub: () => publishResult
@@ -136,9 +147,61 @@ function loadContentServiceWithPublishResult(publishResult) {
     };
 
     delete require.cache[contentServicePath];
+    delete require.cache[workflowServicePath];
     const loaded = require('./contentService');
     Module._load = originalLoad;
     return loaded;
+}
+
+function loadContentServiceWithWorkflowDelegationSpies() {
+    const originalLoad = Module._load;
+    const workflowCalls = [];
+    const statusCalls = [];
+    const publishCalls = [];
+    const contentServicePath = path.join(__dirname, 'contentService.js');
+    const workflowServicePath = path.join(__dirname, 'contentPublishWorkflowService.js');
+
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === './publishService') {
+            return {
+                publishToGitHub(payload) {
+                    publishCalls.push(payload);
+                    return { ok: true, mode: 'actions', message: 'publish ok', logs: [] };
+                }
+            };
+        }
+
+        if (request === './contentPublishWorkflowService') {
+            return {
+                watchSaveAndAutoPublish(payload) {
+                    workflowCalls.push(payload);
+                    return { jobId: 'workflow-job-id', status: 'watching' };
+                },
+                getPublishJobStatus(jobId) {
+                    statusCalls.push(jobId);
+                    return {
+                        status: 'delegated',
+                        message: 'delegated status from workflow service',
+                        jobId
+                    };
+                }
+            };
+        }
+
+        return originalLoad.call(this, request, parent, isMain);
+    };
+
+    delete require.cache[contentServicePath];
+    delete require.cache[workflowServicePath];
+    const service = require('./contentService');
+    Module._load = originalLoad;
+
+    return {
+        service,
+        workflowCalls,
+        statusCalls,
+        publishCalls
+    };
 }
 
 function loadContentServiceWithShellSpy() {
@@ -221,6 +284,102 @@ test('watchSaveAndAutoPublish does not mark job done when publish returns failed
     global.setInterval = originalSetInterval;
     global.clearInterval = originalClearInterval;
     fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
+});
+
+test('listExistingContents keeps stable relativePath ordering when updatedAt ties', () => {
+    const fixture = setupHexoWorkspace();
+    const alphaFile = path.join(fixture.workspaceRoot, 'source', '_posts', 'alpha.md');
+    const zebraFile = path.join(fixture.workspaceRoot, 'source', '_posts', 'zebra.md');
+    const tiedMtime = new Date('2026-03-25T00:00:00.000Z');
+    const originalReaddirSync = fs.readdirSync;
+
+    fs.writeFileSync(alphaFile, '---\ntitle: Alpha\n---\n\nAlpha body', 'utf-8');
+    fs.writeFileSync(zebraFile, '---\ntitle: Zebra\n---\n\nZebra body', 'utf-8');
+    fs.utimesSync(fixture.allowedFile, tiedMtime, tiedMtime);
+    fs.utimesSync(alphaFile, tiedMtime, tiedMtime);
+    fs.utimesSync(zebraFile, tiedMtime, tiedMtime);
+
+    fs.readdirSync = function patchedReaddirSync(targetPath, options) {
+        const entries = originalReaddirSync.call(this, targetPath, options);
+        if (String(targetPath) === path.join(fixture.workspaceRoot, 'source', '_posts') && options?.withFileTypes) {
+            return [...entries].reverse();
+        }
+        return entries;
+    };
+
+    try {
+        const records = listExistingContents({ projectDir: fixture.workspaceRoot, framework: 'hexo' })
+            .filter((item) => item.relativePath.startsWith('source/_posts/'));
+
+        assert.deepEqual(
+            records.map((item) => item.relativePath),
+            [
+                'source/_posts/allowed.md',
+                'source/_posts/alpha.md',
+                'source/_posts/zebra.md'
+            ]
+        );
+    } finally {
+        fs.readdirSync = originalReaddirSync;
+        fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('watchSaveAndAutoPublish delegates publish lifecycle orchestration to contentPublishWorkflowService', () => {
+    const fixture = setupHexoWorkspace();
+    const { service, workflowCalls } = loadContentServiceWithWorkflowDelegationSpies();
+    const payload = {
+        filePath: fixture.allowedFile,
+        projectDir: fixture.workspaceRoot,
+        framework: 'hexo',
+        repoUrl: 'https://github.com/example/example.github.io.git',
+        allowedRoots: fixture.allowedRoots,
+        timeoutMs: 30000
+    };
+    try {
+        const watchResult = service.watchSaveAndAutoPublish(payload);
+
+        assert.deepEqual(workflowCalls, [payload]);
+        assert.deepEqual(watchResult, {
+            jobId: 'workflow-job-id',
+            status: 'watching'
+        });
+    } finally {
+        fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('watchSaveAndAutoPublish execution path does not call publishToGitHub directly inside contentService', async () => {
+    const fixture = setupHexoWorkspace();
+    const { service, publishCalls } = loadContentServiceWithWorkflowDelegationSpies();
+
+    try {
+        service.watchSaveAndAutoPublish({
+            filePath: fixture.allowedFile,
+            projectDir: fixture.workspaceRoot,
+            framework: 'hexo',
+            repoUrl: 'https://github.com/example/example.github.io.git',
+            allowedRoots: fixture.allowedRoots,
+            timeoutMs: 30000
+        });
+
+        assert.equal(publishCalls.length, 0);
+    } finally {
+        fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('getPublishJobStatus delegates to contentPublishWorkflowService instead of local publishJobs map', () => {
+    const { service, statusCalls } = loadContentServiceWithWorkflowDelegationSpies();
+
+    const result = service.getPublishJobStatus('job-from-caller');
+
+    assert.deepEqual(statusCalls, ['job-from-caller']);
+    assert.deepEqual(result, {
+        status: 'delegated',
+        message: 'delegated status from workflow service',
+        jobId: 'job-from-caller'
+    });
 });
 
 test('Hexo about page uses canonical path and remains listable', () => {

@@ -2,49 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const { shell } = require('electron');
 const YAML = require('yaml');
-const { publishToGitHub } = require('./publishService');
-
-const publishJobs = new Map();
+const contentPublishWorkflowService = require('./contentPublishWorkflowService');
+const workspacePathPolicy = require('../policies/workspacePathPolicy');
 let openPathImpl = (filePath) => shell.openPath(filePath);
-
-function normalizeForCompare(inputPath) {
-    const resolved = path.resolve(String(inputPath || ''));
-    if (fs.existsSync(resolved)) {
-        try {
-            const real = fs.realpathSync.native(resolved);
-            return process.platform === 'win32' ? real.toLowerCase() : real;
-        } catch {
-            const real = fs.realpathSync(resolved);
-            return process.platform === 'win32' ? real.toLowerCase() : real;
-        }
-    }
-    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
-}
-
-function isSubPath(parentPath, childPath) {
-    const parent = normalizeForCompare(parentPath);
-    const child = normalizeForCompare(childPath);
-    if (!parent || !child) {
-        return false;
-    }
-
-    if (parent === child) {
-        return true;
-    }
-
-    const relative = path.relative(parent, child);
-    return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
-function assertAllowedRoots(filePath, allowedRoots, actionLabel) {
-    if (!Array.isArray(allowedRoots) || !allowedRoots.length) {
-        throw new Error(`缺少受管内容路径白名单，拒绝${actionLabel}操作。`);
-    }
-
-    if (!allowedRoots.some((root) => isSubPath(root, filePath))) {
-        throw new Error(`内容路径越界，拒绝${actionLabel}操作。`);
-    }
-}
 
 function slugify(text) {
     return String(text || '')
@@ -209,7 +169,14 @@ function listExistingContents(payload) {
         };
     });
 
-    return records.sort((a, b) => b.updatedAt - a.updatedAt);
+    return records.sort((a, b) => {
+        const updatedAtDiff = b.updatedAt - a.updatedAt;
+        if (updatedAtDiff !== 0) {
+            return updatedAtDiff;
+        }
+
+        return a.relativePath.localeCompare(b.relativePath, 'en');
+    });
 }
 
 function readExistingContent(payload) {
@@ -218,7 +185,7 @@ function readExistingContent(payload) {
         throw new Error('内容文件不存在。');
     }
 
-    assertAllowedRoots(filePath, allowedRoots, 'read');
+    workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'read');
 
     const raw = fs.readFileSync(filePath, 'utf-8');
     const parsed = splitFrontMatter(raw);
@@ -237,7 +204,7 @@ function saveExistingContent(payload) {
         throw new Error('内容文件不存在，无法保存。');
     }
 
-    assertAllowedRoots(filePath, allowedRoots, 'write');
+    workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'write');
 
     const raw = fs.readFileSync(filePath, 'utf-8');
     const parsed = splitFrontMatter(raw);
@@ -265,7 +232,7 @@ function openExistingContent(payload) {
         throw new Error('内容文件不存在，无法打开。');
     }
 
-    assertAllowedRoots(filePath, allowedRoots, 'open');
+    workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'open');
 
     if (typeof openPathImpl !== 'function') {
         throw new Error('当前环境不支持打开文件。');
@@ -310,7 +277,7 @@ function createAndOpenContent(payload) {
     const filePath = resolveContentPath({ projectDir, framework, type, title, slug });
     const content = type === 'post' ? postTemplate(title) : pageTemplate(title);
 
-    assertAllowedRoots(filePath, allowedRoots, 'write');
+    workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'write');
 
     if (typeof openPathImpl !== 'function') {
         throw new Error('当前环境不支持打开文件。');
@@ -323,73 +290,13 @@ function createAndOpenContent(payload) {
 }
 
 function watchSaveAndAutoPublish(payload) {
-    const { filePath, projectDir, framework, repoUrl, timeoutMs = 10 * 60 * 1000, allowedRoots } = payload;
-    if (!filePath || !repoUrl) {
-        throw new Error('自动发布需要 filePath 与 repoUrl');
-    }
-
-    assertAllowedRoots(filePath, allowedRoots, 'watch');
-
-    const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const initialMtime = fs.existsSync(filePath) ? fs.statSync(filePath).mtimeMs : 0;
-    const startedAt = Date.now();
-
-    publishJobs.set(jobId, {
-        status: 'watching',
-        message: '等待文件保存中...',
-        filePath,
-        startedAt,
-        publishResult: null
-    });
-
-    const timer = setInterval(() => {
-        const job = publishJobs.get(jobId);
-        if (!job) {
-            clearInterval(timer);
-            return;
-        }
-
-        if (Date.now() - startedAt > timeoutMs) {
-            job.status = 'timeout';
-            job.message = '等待保存超时，请重新触发自动发布。';
-            clearInterval(timer);
-            return;
-        }
-
-        if (!fs.existsSync(filePath)) {
-            return;
-        }
-
-        const currentMtime = fs.statSync(filePath).mtimeMs;
-        if (currentMtime <= initialMtime) {
-            return;
-        }
-
-        clearInterval(timer);
-        job.status = 'publishing';
-        job.message = '检测到保存，开始自动发布...';
-
-        try {
-            const publishResult = publishToGitHub({ projectDir, framework, repoUrl });
-            job.publishResult = publishResult;
-            if (publishResult?.ok) {
-                job.status = 'done';
-                job.message = '自动发布完成。';
-            } else {
-                job.status = 'error';
-                job.message = publishResult?.message || '自动发布失败。';
-            }
-        } catch (error) {
-            job.status = 'error';
-            job.message = error.message;
-        }
-    }, 3000);
-
-    return { jobId, status: 'watching' };
+    const { filePath, allowedRoots } = payload || {};
+    workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'watch');
+    return contentPublishWorkflowService.watchSaveAndAutoPublish(payload);
 }
 
 function getPublishJobStatus(jobId) {
-    return publishJobs.get(jobId) || null;
+    return contentPublishWorkflowService.getPublishJobStatus(jobId);
 }
 
 module.exports = {

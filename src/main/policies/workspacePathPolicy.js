@@ -33,6 +33,18 @@ function isSubPath(parentPath, childPath) {
     return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
+function assertPathWithinRoots(candidatePath, allowedRoots, action = '访问内容') {
+    if (!Array.isArray(allowedRoots) || !allowedRoots.length) {
+        throw new Error(`缺少受管内容路径白名单，拒绝${action}操作。`);
+    }
+
+    if (!allowedRoots.some((root) => isSubPath(root, candidatePath))) {
+        throw new Error(`内容路径越界，拒绝${action}操作。`);
+    }
+
+    return normalizePath(candidatePath);
+}
+
 function getFrameworkContentRoots(workspace) {
     const projectDir = normalizePath(workspace.projectDir);
     if (workspace.framework === 'hexo') {
@@ -131,6 +143,7 @@ function createWorkspacePathPolicy(options = {}) {
     return {
         normalizePath,
         isSubPath,
+        assertPathWithinRoots,
         listManagedWorkspaces,
         getManagedWorkspace,
         isPathWithinWorkspace,
@@ -144,5 +157,7 @@ function createWorkspacePathPolicy(options = {}) {
 module.exports = {
     createWorkspacePathPolicy,
     normalizePath,
-    isSubPath
+    normalizeForCompare,
+    isSubPath,
+    assertPathWithinRoots
 };

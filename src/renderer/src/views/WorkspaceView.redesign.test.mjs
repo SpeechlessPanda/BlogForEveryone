@@ -144,8 +144,13 @@ test("WorkspaceView lightbox exposes explicit close controls for button, outside
   );
   assert.match(
     source,
-    /<button class="secondary" type="button" @click="closeThemePreview">[\s\S]*关闭预览[\s\S]*<\/button>/,
-    "expected explicit close button in the lightbox",
+    /<div class="theme-preview-dialog-header">[\s\S]*<h3>{{ themePreviewLightbox\.title }}<\/h3>[\s\S]*<button[\s\S]*class="secondary theme-preview-close"[\s\S]*type="button"[\s\S]*@click="closeThemePreview"[\s\S]*关闭预览[\s\S]*<\/button>/,
+    "expected explicit close button to live in the preview header",
+  );
+  assert.doesNotMatch(
+    source,
+    /<img :src="themePreviewLightbox\.src" :alt="themePreviewLightbox\.title" \/>[\s\S]*关闭预览/,
+    "expected the close button to stay above the preview image instead of below it",
   );
   assert.match(
     stylesSource,

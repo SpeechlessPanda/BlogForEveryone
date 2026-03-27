@@ -480,14 +480,20 @@ function goTutorialCenter() {
           @click.self="closeThemePreview"
         >
           <div class="theme-preview-dialog">
-            <p class="section-eyebrow">Theme preview</p>
-            <h3>{{ themePreviewLightbox.title }}</h3>
-            <img :src="themePreviewLightbox.src" :alt="themePreviewLightbox.title" />
-            <div class="actions">
-              <button class="secondary" type="button" @click="closeThemePreview">
+            <div class="theme-preview-dialog-header">
+              <div class="theme-preview-dialog-copy">
+                <p class="section-eyebrow">Theme preview</p>
+                <h3>{{ themePreviewLightbox.title }}</h3>
+              </div>
+              <button
+                class="secondary theme-preview-close"
+                type="button"
+                @click="closeThemePreview"
+              >
                 关闭预览
               </button>
             </div>
+            <img :src="themePreviewLightbox.src" :alt="themePreviewLightbox.title" />
           </div>
         </dialog>
       </section>

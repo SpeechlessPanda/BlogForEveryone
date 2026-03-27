@@ -283,13 +283,7 @@ function jumpToZone(zoneId) {
           </div>
         </div>
 
-        <div class="workflow-inline-panel priority-panel priority-panel--support">
-          <p class="section-eyebrow">发布结果摘要</p>
-          <strong>{{ publishResultSummary }}</strong>
-          <p class="page-result-note">{{ publishNextStep }}</p>
-        </div>
-
-        <div class="context-card">
+        <div class="workflow-compact-block workflow-compact-block--support">
           <p class="section-eyebrow">发布前检查清单</p>
           <strong>先确认这 4 件事</strong>
           <ul class="checklist">
@@ -380,14 +374,21 @@ function jumpToZone(zoneId) {
     <div class="page-layer" data-page-layer="explanation">
       <section
         id="publish-result"
-        class="priority-panel priority-panel--support workflow-result-panel"
+        class="workflow-compact-block workflow-result-block"
         data-workflow-zone="recent-result"
       >
-        <p class="section-eyebrow">最近结果</p>
-        <strong>{{ publishResultSummary }}</strong>
-        <p class="page-result-note">
-          {{ pagesUrl ? "访问地址已经可见，可继续打开验证。" : "还没有成功发布结果时，先检查准备度与表单输入。" }}
-        </p>
+        <div>
+          <p class="section-eyebrow">最近结果</p>
+          <strong>{{ publishResultSummary }}</strong>
+          <p class="page-result-note">
+            {{ pagesUrl ? "访问地址已经可见，可继续打开验证。" : "还没有成功发布结果时，先检查准备度与表单输入。" }}
+          </p>
+        </div>
+        <div>
+          <p class="section-eyebrow">当前状态</p>
+          <strong>{{ publishReadiness }}</strong>
+          <p class="page-result-note">{{ publishNextStep }}</p>
+        </div>
         <div class="actions" v-if="pagesUrl">
           <button class="secondary" @click="openPagesUrl">打开博客地址</button>
         </div>
@@ -408,7 +409,7 @@ function jumpToZone(zoneId) {
           </div>
         </div>
 
-        <div class="workflow-inline-panel priority-panel priority-panel--subtle">
+        <div class="workflow-compact-block workflow-compact-block--support workflow-compact-block--subtle">
           <p class="section-eyebrow">备份适用场景</p>
           <strong>发布跑通后，再补一份恢复用底仓快照。</strong>
           <p class="page-result-note">这样不会让备份动作盖过本页最重要的对外发布。</p>

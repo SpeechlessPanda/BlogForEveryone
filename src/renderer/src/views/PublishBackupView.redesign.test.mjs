@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const publishBackupViewPath = new URL("./PublishBackupView.vue", import.meta.url);
 
-test("PublishBackupView keeps release actions and backup support without duplicated hero summary cards", async () => {
+test("PublishBackupView keeps publish and backup workbenches while demoting support blocks", async () => {
   const source = await readFile(publishBackupViewPath, "utf8");
 
   const requiredHooks = [
@@ -35,8 +35,11 @@ test("PublishBackupView keeps release actions and backup support without duplica
   assert.equal(source.includes("workflow-inline-note"), false);
   assert.equal(source.includes("page-status-grid"), false);
   assert.match(source, /workflow-status-grid/);
-  assert.match(source, /workflow-inline-panel/);
-  assert.match(source, /发布结果摘要/);
+  assert.doesNotMatch(source, /workflow-inline-panel/);
+  assert.doesNotMatch(source, /context-card/);
+  assert.match(source, /workflow-compact-block workflow-result-block/);
+  assert.match(source, /workflow-compact-block workflow-compact-block--support/);
   assert.match(source, /备份到底层仓库/);
   assert.match(source, /发布前检查清单/);
+  assert.match(source, /最近结果/);
 });

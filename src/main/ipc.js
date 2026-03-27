@@ -83,6 +83,7 @@ function registerIpcHandlers() {
 
     registerThemeIpcHandlers({
         ipcMain,
+        getWorkspacePolicy,
         getThemeCatalog,
         readThemeConfig,
         saveThemeConfig,

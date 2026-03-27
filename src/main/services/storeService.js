@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const electron = require('electron');
+const { hydrateWorkspaceRemoteMetadata } = require('../../shared/remoteWorkspaceContract');
 
 const app = electron?.app;
 const safeStorage = electron?.safeStorage;
@@ -34,19 +35,31 @@ function ensureStore() {
 function readStore() {
     ensureStore();
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(raw);
+    return normalizeStoreState(JSON.parse(raw));
 }
 
 function writeStore(nextStore) {
     ensureStore();
-    fs.writeFileSync(DB_FILE, JSON.stringify(nextStore, null, 2), 'utf-8');
+    const normalized = normalizeStoreState(nextStore);
+    fs.writeFileSync(DB_FILE, JSON.stringify(normalized, null, 2), 'utf-8');
 }
 
 function updateStore(mutator) {
     const state = readStore();
     const next = mutator(state) || state;
-    writeStore(next);
-    return next;
+    const normalized = normalizeStoreState(next);
+    writeStore(normalized);
+    return normalized;
+}
+
+function normalizeStoreState(state) {
+    const source = state && typeof state === 'object' ? state : {};
+    const workspaces = Array.isArray(source.workspaces) ? source.workspaces : [];
+
+    return {
+        ...source,
+        workspaces: workspaces.map((workspace) => hydrateWorkspaceRemoteMetadata(workspace))
+    };
 }
 
 function hasLegacyPlaintextTokenFields(authRecord) {
@@ -195,6 +208,7 @@ module.exports = {
     readStore,
     writeStore,
     updateStore,
+    normalizeStoreState,
     createGithubAuthStorage,
     saveGithubAuthSession: githubAuthStorage.saveGithubAuthSession,
     readGithubAuthRecord: githubAuthStorage.readGithubAuthRecord,

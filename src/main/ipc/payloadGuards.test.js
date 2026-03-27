@@ -78,13 +78,21 @@ test('env handlers do not crash when payload is missing', async () => {
     assert.equal(installDependenciesCallCount, 0);
 });
 
-test('theme:getConfig and theme:saveConfig do not crash when payload is missing', async () => {
+test('theme:getConfig and theme:saveConfig reject missing managed workspace context', async () => {
     const harness = createIpcMainHarness();
     const readCalls = [];
     const saveCalls = [];
 
     registerThemeIpcHandlers({
         ipcMain: harness.ipcMain,
+        getWorkspacePolicy: () => ({
+            getManagedWorkspace() {
+                throw new Error('缺少受管工作区 ID。');
+            },
+            listManagedWorkspaces() {
+                return [];
+            }
+        }),
         getThemeCatalog: async () => [],
         readThemeConfig: async (projectDir, framework) => {
             readCalls.push({ projectDir, framework });
@@ -102,11 +110,9 @@ test('theme:getConfig and theme:saveConfig do not crash when payload is missing'
     const getConfigHandler = harness.handlers.get('theme:getConfig');
     const saveConfigHandler = harness.handlers.get('theme:saveConfig');
 
-    const getResult = await getConfigHandler({}, undefined);
-    const saveResult = await saveConfigHandler({}, undefined);
+    await assert.rejects(() => getConfigHandler({}, undefined), /受管工作区/);
+    await assert.rejects(() => saveConfigHandler({}, undefined), /受管工作区/);
 
-    assert.deepEqual(getResult, { ok: true });
-    assert.deepEqual(saveResult, { success: true });
-    assert.deepEqual(readCalls, [{ projectDir: undefined, framework: undefined }]);
-    assert.deepEqual(saveCalls, [{ projectDir: undefined, framework: undefined, nextConfig: undefined }]);
+    assert.deepEqual(readCalls, []);
+    assert.deepEqual(saveCalls, []);
 });

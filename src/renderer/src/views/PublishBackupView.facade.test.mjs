@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const publishBackupViewPath = new URL("./PublishBackupView.vue", import.meta.url);
 
-test("PublishBackupView uses publish/backup facade instead of raw window.bfeApi publish calls", async () => {
+test("PublishBackupView uses the unified publish facade instead of split publish and backup calls", async () => {
   const source = await readFile(publishBackupViewPath, "utf8");
 
   assert.match(
@@ -13,12 +13,11 @@ test("PublishBackupView uses publish/backup facade instead of raw window.bfeApi 
   );
   assert.match(
     source,
-    /const\s*\{[\s\S]*publishToGitHub\s*,[\s\S]*backupWorkspace\s*,[\s\S]*pickDirectory\s*,[\s\S]*getGithubAuthState\s*,?[\s\S]*\}\s*=\s*usePublishBackupActions\(\)/,
+    /const\s*\{[\s\S]*publishToGitHub\s*,[\s\S]*pickDirectory\s*,[\s\S]*getGithubAuthState\s*,?[\s\S]*\}\s*=\s*usePublishBackupActions\(\)/,
   );
 
   const requiredFacadeCalls = [
     "publishToGitHub(",
-    "backupWorkspace(",
     "pickDirectory(",
     "getGithubAuthState(",
   ];
@@ -33,21 +32,19 @@ test("PublishBackupView uses publish/backup facade instead of raw window.bfeApi 
 
   assert.match(
     source,
-    /publishToGitHub\(\s*\{[\s\S]*projectDir:\s*ws\.projectDir,[\s\S]*framework:\s*ws\.framework,[\s\S]*repoUrl:\s*publishForm\.repoUrl,[\s\S]*publishMode:\s*publishForm\.publishMode,[\s\S]*gitUserName:\s*publishForm\.gitUserName,[\s\S]*gitUserEmail:\s*publishForm\.gitUserEmail,[\s\S]*\}\s*\)/,
+    /publishToGitHub\(\s*\{[\s\S]*projectDir:\s*ws\.projectDir,[\s\S]*framework:\s*ws\.framework,[\s\S]*siteType:\s*publishForm\.siteType,[\s\S]*login:\s*publishForm\.login,[\s\S]*deployRepoName:\s*resolvedDeployRepoName\.value,[\s\S]*backupRepoName:\s*publishForm\.backupRepoName,[\s\S]*repoUrl:\s*deployRepoUrl\.value,[\s\S]*backupRepoUrl:\s*backupRepoUrl\.value,[\s\S]*createDeployRepo:\s*publishForm\.createDeployRepo,[\s\S]*createBackupRepo:\s*publishForm\.createBackupRepo,[\s\S]*backupDir:\s*publishForm\.backupDir,[\s\S]*publishMode:\s*publishForm\.publishMode,[\s\S]*gitUserName:\s*publishForm\.gitUserName,[\s\S]*gitUserEmail:\s*publishForm\.gitUserEmail,[\s\S]*\}\s*\)/,
   );
   assert.match(
     source,
-    /backupWorkspace\(\s*\{[\s\S]*projectDir:\s*ws\.projectDir,[\s\S]*backupDir:\s*backupForm\.backupDir,[\s\S]*repoUrl:\s*backupForm\.backupRepoUrl,[\s\S]*visibility:\s*backupForm\.visibility,[\s\S]*\}\s*\)/,
-  );
-  assert.match(
-    source,
-    /pickDirectory\(\s*\{[\s\S]*title:\s*["']选择备份目录["'],[\s\S]*defaultPath:\s*backupForm\.backupDir\s*\|\|\s*undefined,[\s\S]*\}\s*\)/,
+    /pickDirectory\(\s*\{[\s\S]*title:\s*["']选择本地备份目录["'],[\s\S]*defaultPath:\s*publishForm\.backupDir\s*\|\|\s*undefined,[\s\S]*\}\s*\)/,
   );
   assert.match(source, /const\s+auth\s*=\s*await\s+getGithubAuthState\(\)/);
+  assert.match(source, /buildChildOutcomeCards/);
+  assert.match(source, /collectOperationMessages/);
+  assert.doesNotMatch(source, /JSON\.stringify\(result\.logs \|\| result, null, 2\)/);
 
   const forbiddenCalls = [
     "publishToGitHub",
-    "backupWorkspace",
     "pickDirectory",
     "getGithubAuthState",
   ];
@@ -78,5 +75,6 @@ test("PublishBackupView reads as a release control center with readiness and res
   );
   assert.match(source, /发布准备度/);
   assert.match(source, /最近结果/);
+  assert.match(source, /结构化链路结果/);
   assert.match(source, /data-page-layer="detail"[\s\S]*查看发布日志与链路事件/);
 });

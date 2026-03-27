@@ -3,16 +3,12 @@ import assert from "node:assert/strict";
 
 import { createPublishBackupActions } from "./usePublishBackupActions.mjs";
 
-test("publish/backup actions preserve publish and backup payloads", async () => {
+test("publish actions preserve the unified publish-plus-backup payload", async () => {
   const calls = [];
   const api = {
     publishToGitHub: async (payload) => {
       calls.push(["publishToGitHub", payload]);
       return { ok: true, pagesUrl: "https://demo.github.io" };
-    },
-    backupWorkspace: async (payload) => {
-      calls.push(["backupWorkspace", payload]);
-      return { ok: true };
     },
     pickDirectory: async (payload) => {
       calls.push(["pickDirectory", payload]);
@@ -29,54 +25,53 @@ test("publish/backup actions preserve publish and backup payloads", async () => 
   await actions.publishToGitHub({
     projectDir: "D:/blogs/demo",
     framework: "hexo",
-    repoUrl: "https://github.com/demo/demo.github.io.git",
+    siteType: "project-pages",
+    login: "demo",
+    deployRepoName: "demo-site",
+    backupRepoName: "BFE",
+    repoUrl: "https://github.com/demo/demo-site.git",
+    backupRepoUrl: "https://github.com/demo/BFE.git",
+    createDeployRepo: true,
+    createBackupRepo: false,
+    backupDir: "D:/backup",
     publishMode: "actions",
     gitUserName: "demo",
     gitUserEmail: "demo@example.com",
   });
-  await actions.backupWorkspace({
-    projectDir: "D:/blogs/demo",
-    backupDir: "D:/backup",
-    repoUrl: "https://github.com/demo/blog-backup.git",
-    visibility: "private",
-  });
-  await actions.pickDirectory({ title: "选择备份目录", defaultPath: "D:/backup" });
+  await actions.pickDirectory({ title: "选择本地备份目录", defaultPath: "D:/backup" });
   await actions.getGithubAuthState();
 
   assert.deepEqual(calls, [
     ["publishToGitHub", {
       projectDir: "D:/blogs/demo",
       framework: "hexo",
-      repoUrl: "https://github.com/demo/demo.github.io.git",
+      siteType: "project-pages",
+      login: "demo",
+      deployRepoName: "demo-site",
+      backupRepoName: "BFE",
+      repoUrl: "https://github.com/demo/demo-site.git",
+      backupRepoUrl: "https://github.com/demo/BFE.git",
+      createDeployRepo: true,
+      createBackupRepo: false,
+      backupDir: "D:/backup",
       publishMode: "actions",
       gitUserName: "demo",
       gitUserEmail: "demo@example.com",
     }],
-    ["backupWorkspace", {
-      projectDir: "D:/blogs/demo",
-      backupDir: "D:/backup",
-      repoUrl: "https://github.com/demo/blog-backup.git",
-      visibility: "private",
-    }],
-    ["pickDirectory", { title: "选择备份目录", defaultPath: "D:/backup" }],
+    ["pickDirectory", { title: "选择本地备份目录", defaultPath: "D:/backup" }],
     ["getGithubAuthState"],
   ]);
 });
 
-test("publish/backup actions reject missing projectDir for workspace work", async () => {
+test("publish actions reject missing projectDir for workspace work", async () => {
   const actions = createPublishBackupActions({
     publishToGitHub: async () => ({}),
-    backupWorkspace: async () => ({}),
     pickDirectory: async () => ({}),
     getGithubAuthState: async () => ({}),
   });
 
   await assert.rejects(
-    () => actions.publishToGitHub({ framework: "hexo", repoUrl: "https://github.com/demo/demo.github.io.git" }),
-    /projectDir/,
-  );
-  await assert.rejects(
-    () => actions.backupWorkspace({ backupDir: "D:/backup" }),
+    () => actions.publishToGitHub({ framework: "hexo", repoUrl: "https://github.com/demo/demo-site.git" }),
     /projectDir/,
   );
 });

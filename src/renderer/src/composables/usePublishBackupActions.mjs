@@ -11,19 +11,18 @@ export function createPublishBackupActions(api) {
       return api.publishToGitHub({
         projectDir: payload.projectDir,
         framework: payload.framework,
+        siteType: payload.siteType,
+        login: payload.login,
+        deployRepoName: payload.deployRepoName,
+        backupRepoName: payload.backupRepoName,
         repoUrl: payload.repoUrl,
+        backupRepoUrl: payload.backupRepoUrl,
+        createDeployRepo: payload.createDeployRepo,
+        createBackupRepo: payload.createBackupRepo,
+        backupDir: payload.backupDir,
         publishMode: payload.publishMode,
         gitUserName: payload.gitUserName,
         gitUserEmail: payload.gitUserEmail,
-      });
-    },
-    async backupWorkspace(payload) {
-      assertProjectDir(payload?.projectDir);
-      return api.backupWorkspace({
-        projectDir: payload.projectDir,
-        backupDir: payload.backupDir,
-        repoUrl: payload.repoUrl,
-        visibility: payload.visibility,
       });
     },
     async pickDirectory(payload) {

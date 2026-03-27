@@ -11,7 +11,8 @@ export const workspaceState = reactive({
 });
 
 export async function refreshWorkspaces() {
-    workspaceState.workspaces = await workspaceActions.listWorkspaces();
+    const list = await workspaceActions.listWorkspaces();
+    workspaceState.workspaces = Array.isArray(list) ? list : [];
     const activeWorkspaceIds = new Set(workspaceState.workspaces.map((item) => item.id));
     for (const workspaceId of Object.keys(workspaceState.workspaceThemeConfirmations)) {
         if (!activeWorkspaceIds.has(workspaceId)) {

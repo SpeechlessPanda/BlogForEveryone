@@ -39,14 +39,14 @@ const tutorialDirectory = [
   {
     target: "publish-release",
     eyebrow: "上线",
-    title: "发布、账号与访问地址",
-    summary: "仓库地址、Git 身份、OAuth 登录和 Pages 地址都在这里串起来。",
+    title: "首次发布与 GitHub Pages",
+    summary: "把站点类型、仓库命名、登录、Actions 和最终地址拆成单用途教程来学。",
   },
   {
     target: "import-recovery",
     eyebrow: "恢复",
-    title: "导入已有项目",
-    summary: "把旧工程接回主流程，而不是重新从零开始。",
+    title: "导入与恢复",
+    summary: "把本地导入、GitHub 直连导入、BFE 恢复和 baseURL 修复拆开讲清楚。",
   },
   {
     target: "rss-reading",
@@ -115,6 +115,7 @@ const tutorialSections = [
     ],
     notes: [
       "写作页最重要的是把内容真正写出来；自动流程属于后置项，应该在手动预览和发布都跑通后再开。",
+      "如果你准备第一次把内容上线，先去“首次发布与 GitHub Pages”里的 first publish prerequisites，再回来开自动流程。",
     ],
     tabKey: "content",
     actionTitle: "内容编辑页",
@@ -144,45 +145,165 @@ const tutorialSections = [
   },
   {
     id: "tutorial-publish-release",
-    title: "发布、账号与访问地址",
+    title: "首次发布与 GitHub Pages",
     intro:
-      "发布与备份页要把仓库地址、Git 身份、账号登录和最终访问地址串成一条线。这里的说明直接来自发布、Git 身份、邮箱/SSH 与 OAuth 指南。",
+      "本节是首次发布的索引页。先按你卡住的位置挑出单用途卡片，再回到发布与备份页完成当前动作，不要在这里继续把站点类型、仓库命名、登录、发布与地址混成一节。",
     howTo: [
-      "在发布与备份页选择当前工程，填写完整 GitHub 仓库 HTTPS 地址，再点发布。",
-      "首次发布如果缺 Git 身份，就在页面里填写 Git 用户名和邮箱；推荐使用绑定 GitHub 的邮箱或 `users.noreply.github.com` 邮箱。",
-      "Hexo 和 Hugo 都优先使用 GitHub Actions；只有 Hexo 才考虑命令发布作为备选。",
-      "如果需要账号登录，先在登录区域填 GitHub OAuth App 的 Client ID，点击设备登录，并在浏览器完成授权。",
+      "先挑出和你当前问题完全对应的单用途卡片，不要试图在父节里一次吃完全部发布知识。",
+      "看完单卡后回到发布与备份页完成当前动作，再回来决定是否需要下一张卡。",
+      "如果你还没判断自己卡在站点类型、前置条件还是最终地址，先从 user site vs project site 或 first publish prerequisites 开始。",
     ],
     checkpoints: [
-      "用户站地址通常是 `https://用户名.github.io/`，项目页通常是 `https://用户名.github.io/仓库名/`。",
-      "发布后去 GitHub Settings → Pages，把 Source 确认为 GitHub Actions，并检查 Actions 部署记录。",
-      "页面可能需要 1-10 分钟和一次强制刷新；如果还是 404，先检查仓库地址类型、Actions 结果和缓存。",
+      "你应该已经知道下一步要看哪一张单用途卡，而不是继续停在父节里找混合答案。",
+      "完成当前单卡对应动作后，回到发布与备份页核对结果，再决定是否跳到 publish with GitHub Actions 或 understand the final blog address。",
+      "如果问题明显是登录阻塞，就只回到 sign in to GitHub；不要把登录排错和发布结果混成一个结论。",
     ],
     notes: [
-      "HTTPS 仓库地址不需要 SSH key；只有 SSH 地址才需要 SSH 配置。",
-      "OAuth Device Flow 常见报错包括 `incorrect_client_credentials`、`device_flow_disabled`、`Bad verification code`、`authorization_pending` 和 `slow_down`。",
-      "推荐 OAuth App 参数：应用名 `BlogForEveryone`、主页 `https://github.com/你的用户名`、回调 `http://localhost`，并开启 Device Flow。",
+      "本节先做首次发布路线图，不直接重复站点类型、仓库命名、Git 身份、Pages 地址或 OAuth 细节。",
+      "固定备份仓库名必须使用 BFE；这条底线继续以下面的 warning 和 backup repository purpose and naming 卡片为准。",
+      "需要完整的动作细节时，直接进入下面的单用途教程，再回到发布与备份页执行。",
+    ],
+    lessons: [
+      {
+        title: "user site vs project site",
+        summary: "先决定你要根站点还是仓库子路径站点，这一步会影响后面的命名、访问地址和 baseURL。",
+        bullets: [
+          "用户站点只放在 `用户名.github.io`，访问地址是根路径。",
+          "项目站点放在普通仓库里，访问地址会带上仓库名子路径。",
+          "一旦站点类型选错，后面的仓库名、Pages 配置和最终地址都会跟着错。",
+        ],
+      },
+      {
+        title: "deploy repository naming rules",
+        summary: "发布仓库只负责线上访问，不负责恢复历史。命名规则先确认，再点统一发布。",
+        bullets: [
+          "用户站点的发布仓库名必须等于 `用户名.github.io`。",
+          "项目站点可以用 `my-blog` 这类仓库名，但最终地址会变成 `/my-blog/`。",
+          "不要把发布仓库名写成备份仓库名；两条链路应该分开。",
+        ],
+      },
+      {
+        title: "backup repository purpose and naming",
+        summary: "备份仓库负责恢复，不负责线上访问。它是统一发布链路里的底仓。",
+        bullets: [
+          "固定备份仓库名必须使用 BFE。",
+          "BFE 负责保存恢复用快照，和发布仓库各司其职。",
+          "如果你换电脑或要做 GitHub 直连导入，先想到 BFE，而不是发布仓库。",
+        ],
+      },
+      {
+        title: "first publish prerequisites",
+        summary: "第一次发布前，把工程上下文、Git 身份、备份目录和站点命名补齐，避免跑到一半才中断。",
+        bullets: [
+          "先确认当前工程已经能本地预览，再来做第一次线上发布。",
+          "Git 提交身份必须完整，邮箱优先使用 GitHub 绑定邮箱或 `users.noreply.github.com`。",
+          "发布与备份要一起跑通，所以本地备份目录也要先选好。",
+        ],
+      },
+      {
+        title: "sign in to GitHub",
+        summary: "需要登录时，只处理 GitHub 设备码登录这一个动作，不要把登录排错和发布排错混在一起。",
+        bullets: [
+          "先填写 GitHub OAuth App 的 Client ID，再点设备码登录。",
+          "浏览器授权完成后，再回到软件刷新登录状态。",
+          "如果 Git 邮箱不想暴露真实地址，可使用 `users.noreply.github.com` 邮箱完成提交身份。",
+        ],
+      },
+      {
+        title: "publish with GitHub Actions",
+        summary: "Hexo 和 Hugo 的首次上线都优先走 GitHub Actions，让 Pages、构建和发布路径保持一致。",
+        bullets: [
+          "统一发布完成后，去仓库的 Actions 查看构建是否成功。",
+          "GitHub Settings → Pages 的 Source 应保持为 GitHub Actions。",
+          "Hexo 的命令发布只作为备选，不是默认教学路径。",
+        ],
+      },
+      {
+        title: "understand the final blog address",
+        summary: "上线完成后，先判断最终地址是否符合站点类型，再决定是不是配置问题。",
+        bullets: [
+          "用户站点通常是 `https://用户名.github.io/`。",
+          "项目站点通常是 `https://用户名.github.io/仓库名/`。",
+          "如果地址没错但页面还没出来，给 Pages 1-10 分钟并强制刷新一次。",
+        ],
+      },
+    ],
+    warnings: [
+      {
+        title: "先记住两条底线",
+        bodyHtml:
+          '固定备份仓库名必须使用 <code>BFE</code>。不要把发布仓库和恢复底仓写成同一个仓库。',
+      },
+      {
+        title: "登录卡住先拆开排查",
+        body:
+          "先回到 sign in to GitHub 核对 Client ID、Device Flow 和浏览器授权，再回来继续发布，不要把登录问题和发布结果混成一个结论。",
+      },
     ],
     tabKey: "publish",
     actionTitle: "发布与备份页",
-    actionHelper: "回到发布控制中心，继续填写仓库地址、Git 身份并完成线上发布。",
+    actionHelper: "回到发布控制中心，继续填写站点命名、Git 身份并完成首次上线。",
   },
   {
     id: "tutorial-import-recovery",
-    title: "导入已有项目",
+    title: "导入与恢复",
     intro:
-      "导入页是次级入口。它的目标不是停在结果页，而是把旧工程重新接回主题、预览和发布的主流程。",
+      "本节是导入与恢复的分流入口。先判断你现在是本地导入、GitHub 恢复，还是路径修复，再去对应单卡，不要在这里把导入、恢复、发布修复混成同一节。",
     howTo: [
-      "在导入页填写显示名称并选择旧博客工程目录。",
-      "导入成功后，先确认主题是否已识别；如果提示未知主题，先去主题配置页完成确认。",
-      "只有工程里已经有订阅快照时，才需要执行 RSS 恢复。",
+      "先判断你现在是本地导入、GitHub 恢复，还是路径修复，再打开对应的单用途卡片。",
+      "看完对应单卡后回到导入页或原来的工作流页面继续操作，不要在父节里继续追步骤细节。",
+      "如果你是从 GitHub 找回旧博客，优先看 import from GitHub into a local path 和 recover from backup/import differences。",
     ],
     checkpoints: [
-      "导入后优先去主题配置，再去本地预览，最后确认发布。",
-      "如果只是恢复旧工程，不要重复创建新的工作区，以免把上下文拆散。",
+      "你应该已经知道自己接下来要回导入页、主题配置页、本地预览页还是发布与备份页，而不是继续停在总览里。",
+      "只有当路径异常或资源错位时，再跳到 base URL / subpath mismatch repair；不要把它和恢复动作混在一起。",
+      "完成对应单卡后，再回到原来的工作流页面继续验证。",
     ],
     notes: [
-      "导入成功只是回到主流程的开始，后续仍然要完成品牌、预览和发布检查。",
+      "本节先帮你判断该看哪张恢复卡片，不直接重复本地导入、GitHub 恢复、恢复差异或 baseURL 修复细节。",
+      "GitHub 直连导入时，以备份仓库 BFE 作为权威导入源；具体动作继续以下面的 warning 和对应单卡为准。",
+      "看完对应单卡后回到导入页或原来的工作流页面继续操作，把恢复结果接回主流程。",
+    ],
+    lessons: [
+      {
+        title: "import from GitHub into a local path",
+        summary: "GitHub 直连导入的重点不是随便拉一个仓库，而是把恢复底仓还原到你指定的本地路径。",
+        bullets: [
+          "先选一个新的本地恢复目录，避免覆盖还没确认的旧工程。",
+          "GitHub 直连导入时，以备份仓库 BFE 作为权威导入源。",
+          "导入完成后马上检查主题识别、内容目录和 `.bfe` 快照是否都在。",
+        ],
+      },
+      {
+        title: "recover from backup/import differences",
+        summary: "发布仓库负责线上可访问页面，BFE 负责恢复快照；两者看起来像“同一个博客”，用途却不同。",
+        bullets: [
+          "线上访问异常时先看发布仓库和 GitHub Pages。",
+          "需要找回内容、配置和恢复快照时先看 BFE。",
+          "如果导入结果和线上页面不一致，优先以恢复目标为准去核对 BFE，而不是盲改发布仓库。",
+        ],
+      },
+      {
+        title: "base URL / subpath mismatch repair",
+        summary: "导入后最常见的“能打开但路径不对”问题，通常来自用户站点 / 项目站点和 baseURL / 子路径不一致。",
+        bullets: [
+          "用户站点应该输出根路径，不该继续保留旧的仓库子路径。",
+          "项目站点必须保留仓库子路径，否则静态资源和页面跳转会 404。",
+          "修完后先本地预览，再重新通过 GitHub Actions 发布确认。",
+        ],
+      },
+    ],
+    warnings: [
+      {
+        title: "恢复时先认清权威源",
+        bodyHtml:
+          'GitHub 直连导入时，以备份仓库 <code>BFE</code> 作为权威导入源。发布仓库负责访问地址，不负责完整恢复历史。',
+      },
+      {
+        title: "不要跳过路径检查",
+        body:
+          "如果导入后首页能开但资源、文章或主题样式错位，先修 baseURL / 子路径，再继续编辑内容或再次发布。",
+      },
     ],
     tabKey: "import",
     actionTitle: "导入页",
@@ -342,6 +463,34 @@ watch(
               打开对应页面
             </button>
           </div>
+        </article>
+      </div>
+
+      <div v-if="section.lessons?.length" class="tutorial-cluster-grid">
+        <article
+          v-for="lesson in section.lessons"
+          :key="`${section.id}-${lesson.title}`"
+          class="info-card tutorial-lesson-card"
+        >
+          <p class="section-eyebrow">Single-purpose tutorial</p>
+          <h3>{{ lesson.title }}</h3>
+          <p class="section-helper">{{ lesson.summary }}</p>
+          <ul class="checklist">
+            <li v-for="item in lesson.bullets" :key="item">{{ item }}</li>
+          </ul>
+        </article>
+      </div>
+
+      <div v-if="section.warnings?.length" class="tutorial-callout-grid">
+        <article
+          v-for="warning in section.warnings"
+          :key="`${section.id}-${warning.title}`"
+          class="tutorial-callout tutorial-callout--warning"
+        >
+          <p class="section-eyebrow">Warning / caution</p>
+          <strong>{{ warning.title }}</strong>
+          <p v-if="warning.body" class="section-helper">{{ warning.body }}</p>
+          <p v-if="warning.bodyHtml" class="section-helper" v-html="warning.bodyHtml"></p>
         </article>
       </div>
     </section>

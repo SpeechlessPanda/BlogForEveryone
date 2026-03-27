@@ -1,7 +1,20 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { createGithubAuthStorage } = require('./storeService');
+const { createGithubAuthStorage, normalizeStoreState } = require('./storeService');
+const {
+    FIXED_BACKUP_REPO_NAME,
+    REMOTE_SITE_TYPES,
+    REMOTE_IMPORT_SOURCES,
+    REMOTE_REPO_VISIBILITY,
+    REMOTE_REPO_SOURCE_TYPES,
+    hydrateWorkspaceRemoteMetadata
+} = require('../../shared/remoteWorkspaceContract');
+const {
+    RESULT_CATEGORIES,
+    RESULT_CODES,
+    COMBINED_OPERATION_STATUS
+} = require('../../shared/operationResultContract');
 
 function createInMemoryStore(initialState = {}) {
     const state = initialState;
@@ -19,6 +32,236 @@ function createInMemoryStore(initialState = {}) {
         }
     };
 }
+
+test('shared remote workspace contract fixes backup repo naming to BFE', () => {
+    assert.equal(FIXED_BACKUP_REPO_NAME, 'BFE');
+    const normalized = hydrateWorkspaceRemoteMetadata({
+        backupRepo: {
+            owner: 'alice',
+            name: 'custom-backup-repo',
+            url: 'https://github.com/alice/custom-backup-repo',
+            visibility: REMOTE_REPO_VISIBILITY.private,
+            sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+        }
+    });
+
+    assert.equal(normalized.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(normalized.backupRepo.url, 'https://github.com/alice/BFE');
+    assert.equal(normalized.backupRepo.owner, 'alice');
+    assert.equal(normalized.backupRepo.visibility, REMOTE_REPO_VISIBILITY.private);
+    assert.equal(normalized.backupRepo.sourceType, REMOTE_REPO_SOURCE_TYPES.existing);
+});
+
+test('shared remote workspace contract preserves unknown backup URL forms while fixing backup name', () => {
+    const normalized = hydrateWorkspaceRemoteMetadata({
+        backupRepo: {
+            owner: 'alice',
+            name: 'custom-backup-repo',
+            url: 'https://git.example.com/alice/custom-backup-repo',
+            visibility: REMOTE_REPO_VISIBILITY.private,
+            sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+        }
+    });
+
+    assert.equal(normalized.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(normalized.backupRepo.url, 'https://git.example.com/alice/custom-backup-repo');
+});
+
+test('shared remote workspace contract canonicalizes common GitHub SSH backup URL forms', () => {
+    const normalized = hydrateWorkspaceRemoteMetadata({
+        backupRepo: {
+            owner: 'alice',
+            name: 'wrong-name',
+            url: 'git@github.com:alice/not-bfe.git'
+        }
+    });
+
+    assert.equal(normalized.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(normalized.backupRepo.url, 'git@github.com:alice/BFE.git');
+});
+
+test('shared operation result contract exposes fixed constants for code/category/combined status', () => {
+    assert.equal(RESULT_CODES.ok, 'ok');
+    assert.equal(RESULT_CODES.validationFailed, 'validation_failed');
+    assert.equal(RESULT_CATEGORIES.validation, 'validation');
+    assert.equal(RESULT_CATEGORIES.runtime, 'runtime');
+    assert.deepEqual(COMBINED_OPERATION_STATUS, {
+        success: 'success',
+        partialSuccess: 'partial_success',
+        failed: 'failed'
+    });
+});
+
+test('workspace persistence stores and hydrates remote metadata fields', () => {
+    const normalizedStore = normalizeStoreState({
+        workspaces: [
+            {
+            id: 'ws-1',
+            name: 'My Blog',
+            projectDir: 'C:/blogs/my-blog',
+            framework: 'hugo',
+            theme: 'stack',
+            siteType: REMOTE_SITE_TYPES.userPages,
+            deployRepo: {
+                owner: 'alice',
+                name: 'alice.github.io',
+                url: 'https://github.com/alice/alice.github.io',
+                visibility: REMOTE_REPO_VISIBILITY.public,
+                sourceType: REMOTE_REPO_SOURCE_TYPES.autoCreated
+            },
+            backupRepo: {
+                owner: 'alice',
+                name: 'ignored-by-contract',
+                url: 'https://github.com/alice/ignored-by-contract',
+                visibility: REMOTE_REPO_VISIBILITY.private,
+                sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+            },
+            importSource: REMOTE_IMPORT_SOURCES.githubRemote,
+            localProjectPath: 'D:/imports/my-blog'
+            }
+        ]
+    });
+
+    const stored = normalizedStore.workspaces[0];
+    assert.equal(stored.siteType, REMOTE_SITE_TYPES.userPages);
+    assert.deepEqual(stored.deployRepo, {
+        owner: 'alice',
+        name: 'alice.github.io',
+        url: 'https://github.com/alice/alice.github.io',
+        visibility: REMOTE_REPO_VISIBILITY.public,
+        sourceType: REMOTE_REPO_SOURCE_TYPES.autoCreated
+    });
+    assert.deepEqual(stored.backupRepo, {
+        owner: 'alice',
+        name: FIXED_BACKUP_REPO_NAME,
+        url: 'https://github.com/alice/BFE',
+        visibility: REMOTE_REPO_VISIBILITY.private,
+        sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+    });
+    assert.equal(stored.importSource, REMOTE_IMPORT_SOURCES.githubRemote);
+    assert.equal(stored.localProjectPath, 'D:/imports/my-blog');
+});
+
+test('workspace persistence backfills missing remote metadata into contract defaults', () => {
+    const normalizedStore = normalizeStoreState({
+        workspaces: [
+            {
+                id: 'legacy-1',
+                name: 'Legacy Blog',
+                projectDir: 'C:/legacy/site',
+                framework: 'hexo',
+                theme: 'landscape'
+            }
+        ]
+    });
+
+    const stored = normalizedStore.workspaces[0];
+    assert.equal(stored.siteType, null);
+    assert.deepEqual(stored.deployRepo, {
+        owner: '',
+        name: '',
+        url: '',
+        visibility: REMOTE_REPO_VISIBILITY.public,
+        sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
+    });
+    assert.deepEqual(stored.backupRepo, {
+        owner: '',
+        name: FIXED_BACKUP_REPO_NAME,
+        url: '',
+        visibility: REMOTE_REPO_VISIBILITY.public,
+        sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
+    });
+    assert.equal(stored.importSource, REMOTE_IMPORT_SOURCES.localDirectory);
+    assert.equal(stored.localProjectPath, 'C:/legacy/site');
+});
+
+test('workspace persistence normalizes invalid remote metadata values into contract defaults', () => {
+    const normalizedStore = normalizeStoreState({
+        workspaces: [
+            {
+                id: 'legacy-2',
+                name: 'Legacy Invalid Blog',
+                projectDir: 'C:/legacy/invalid',
+                framework: 'hugo',
+                theme: 'stack',
+                siteType: 'broken-site-type',
+                deployRepo: {
+                    owner: 'alice',
+                    name: 'repo-a',
+                    url: 'https://github.com/alice/repo-a',
+                    visibility: 'invalid-visibility',
+                    sourceType: 'invalid-source-type'
+                },
+                backupRepo: {
+                    owner: 'alice',
+                    name: 'bad-backup-name',
+                    url: 'https://github.com/alice/not-bfe.git',
+                    visibility: 'invalid-visibility',
+                    sourceType: 'invalid-source-type'
+                },
+                importSource: 'invalid-import-source',
+                localProjectPath: null
+            }
+        ]
+    });
+
+    const stored = normalizedStore.workspaces[0];
+    assert.equal(stored.siteType, null);
+    assert.deepEqual(stored.deployRepo, {
+        owner: 'alice',
+        name: 'repo-a',
+        url: 'https://github.com/alice/repo-a',
+        visibility: REMOTE_REPO_VISIBILITY.public,
+        sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
+    });
+    assert.deepEqual(stored.backupRepo, {
+        owner: 'alice',
+        name: FIXED_BACKUP_REPO_NAME,
+        url: 'https://github.com/alice/BFE.git',
+        visibility: REMOTE_REPO_VISIBILITY.public,
+        sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
+    });
+    assert.equal(stored.importSource, REMOTE_IMPORT_SOURCES.localDirectory);
+    assert.equal(stored.localProjectPath, 'C:/legacy/invalid');
+});
+
+test('workspace persistence preserves unknown nested repo fields while normalizing known fields', () => {
+    const normalizedStore = normalizeStoreState({
+        workspaces: [
+            {
+                id: 'ws-preserve-unknown',
+                name: 'Preserve Unknown',
+                projectDir: 'C:/preserve/unknown',
+                deployRepo: {
+                    owner: 'alice',
+                    name: 'deploy-target',
+                    url: 'https://github.com/alice/deploy-target',
+                    visibility: REMOTE_REPO_VISIBILITY.private,
+                    sourceType: REMOTE_REPO_SOURCE_TYPES.existing,
+                    branch: 'gh-pages',
+                    mirrorStrategy: 'full'
+                },
+                backupRepo: {
+                    owner: 'alice',
+                    name: 'custom-backup-repo',
+                    url: 'https://git.example.com/alice/custom-backup-repo',
+                    visibility: REMOTE_REPO_VISIBILITY.private,
+                    sourceType: REMOTE_REPO_SOURCE_TYPES.existing,
+                    branch: 'main',
+                    mirrorStrategy: 'incremental'
+                }
+            }
+        ]
+    });
+
+    const stored = normalizedStore.workspaces[0];
+    assert.equal(stored.deployRepo.branch, 'gh-pages');
+    assert.equal(stored.deployRepo.mirrorStrategy, 'full');
+    assert.equal(stored.backupRepo.branch, 'main');
+    assert.equal(stored.backupRepo.mirrorStrategy, 'incremental');
+    assert.equal(stored.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(stored.backupRepo.url, 'https://git.example.com/alice/custom-backup-repo');
+});
 
 test('persists token material encrypted and retrieves it via secure helper', () => {
     const secureStorage = {

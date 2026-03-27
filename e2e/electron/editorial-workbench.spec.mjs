@@ -128,7 +128,11 @@ test("editorial workbench journey keeps workspace context across core entry poin
       '.workflow-compact-block--support',
     );
     const publishRecentResult = publishSurface.locator('[data-workflow-zone="recent-result"]');
-    const publishBackupSurface = publishSurface.locator('[data-workflow-zone="backup-workbench"]');
+    const publishAccessAddress = publishSurface.locator('[data-workflow-surface="access-address"]');
+    const importSurface = page.locator(
+      '[data-page-role="import"][data-workflow-surface="editorial-workflow"]',
+    );
+    const importGithubWorkbench = importSurface.locator('[data-workflow-zone="github-import-workbench"]');
     const shellScrollRegion = page.locator('[data-shell-scroll-region="workflow-view"]');
     const expectedSummary = expectedWorkspaceSummary(fixtureState.workspaces[0]);
     const shellAccountBlock = shellUserPopup.locator('[data-popup-block="account"]');
@@ -451,7 +455,8 @@ test("editorial workbench journey keeps workspace context across core entry poin
       panel: publishWorkbenchSurface,
       label: "publish recent-result block",
     });
-    await expect(publishBackupSurface).toBeVisible();
+    await expect(publishWorkbenchSurface).toContainText("统一发布与备份");
+    await expect(publishAccessAddress).toBeVisible();
 
     const journeys = [
       {
@@ -482,7 +487,7 @@ test("editorial workbench journey keeps workspace context across core entry poin
       {
         tabLabel: "导入恢复",
         assertion: () =>
-          expect(page.locator('[data-page-role="import"][data-workflow-surface="editorial-workflow"]')).toBeVisible(),
+          expect(importGithubWorkbench).toBeVisible(),
       },
       {
         tabLabel: "RSS 阅读",

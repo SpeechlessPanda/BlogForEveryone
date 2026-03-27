@@ -233,6 +233,12 @@ test("useAppShell refreshUpdateState handles update API rejection locally", asyn
   );
 });
 
+test("useAppShell keeps repo-capable GitHub auth scope for publish auto-create and GitHub restore flows", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(source, /scope:\s*"repo read:user user:email"/);
+});
+
 test("useAppShell delegates navigation metadata and active-tab behavior to useShellNavigation composable", async () => {
   const source = await readFile(useAppShellPath, "utf8");
 

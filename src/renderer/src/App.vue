@@ -143,7 +143,7 @@ const {
         <PreviewView v-if="activeTab === 'preview'" />
         <ContentEditorView v-if="activeTab === 'content'" />
         <PublishBackupView v-if="isLoggedIn && activeTab === 'publish'" />
-        <ImportView v-if="activeTab === 'import'" />
+        <ImportView v-if="isLoggedIn && activeTab === 'import'" />
         <RssReaderView v-if="activeTab === 'rss'" />
       </div>
     </main>

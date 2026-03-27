@@ -1,3 +1,35 @@
+const {
+    FIXED_BACKUP_REPO_NAME,
+    REMOTE_IMPORT_SOURCES,
+    REMOTE_REPO_VISIBILITY,
+    REMOTE_REPO_SOURCE_TYPES
+} = require('../../shared/remoteWorkspaceContract');
+const { RESULT_CODES, RESULT_CATEGORIES } = require('../../shared/operationResultContract');
+
+function parseGithubRepo(repoUrl) {
+    const clean = String(repoUrl || '').trim().replace(/\.git$/i, '');
+    const match = clean.match(/github\.com[/:]([^/]+)\/([^/]+)$/i);
+    if (!match) {
+        return null;
+    }
+
+    return {
+        owner: match[1],
+        repo: match[2]
+    };
+}
+
+function createValidationOperationError(key, message) {
+    const error = new Error(message);
+    error.operationResult = {
+        ok: false,
+        code: RESULT_CODES.validationFailed,
+        category: RESULT_CATEGORIES.validation,
+        causes: [{ key, message }]
+    };
+    return error;
+}
+
 async function createWorkspaceWorkflow(payload, deps) {
     const { name, projectDir, framework, theme } = payload || {};
     const {
@@ -60,6 +92,97 @@ async function createWorkspaceWorkflow(payload, deps) {
     });
 
     return { workspace, workspaces: next.workspaces };
+}
+
+async function importWorkspaceFromGithubWorkflow(payload, deps) {
+    const {
+        localDestinationPath,
+        name,
+        siteType = null,
+        deployRepo = null,
+        backupRepo = null
+    } = payload || {};
+    const {
+        readStore,
+        updateStore,
+        normalizePathForCompare,
+        cloneRepositoryToDestination,
+        detectFramework,
+        assertSupportedImportedFramework,
+        inferRecognizedThemeIdFromProject,
+        importSubscriptions,
+        getProjectName,
+        createWorkspaceId,
+        now,
+        validateImportRepositoryState
+    } = deps;
+
+    const state = readStore();
+    const normalizedProjectDir = normalizePathForCompare(localDestinationPath);
+    if ((state.workspaces || []).some((item) => normalizePathForCompare(item.projectDir) === normalizedProjectDir)) {
+        throw new Error('该路径已存在管理记录，请勿重复导入。');
+    }
+
+    const stateValidation = validateImportRepositoryState({
+        hasDeployRepo: Boolean(deployRepo && deployRepo.url),
+        hasBackupRepo: Boolean(backupRepo && backupRepo.url)
+    });
+    if (!stateValidation.ok) {
+        const error = new Error(stateValidation.causes?.[0]?.message || 'GitHub 导入仓库状态不受支持。');
+        error.operationResult = stateValidation;
+        throw error;
+    }
+
+    const authoritativeBackupUrl = String(backupRepo?.url || '').trim();
+    if (!authoritativeBackupUrl) {
+        throw createValidationOperationError('github_import_backup_missing', '缺少备份仓库地址，无法执行 GitHub 导入。');
+    }
+
+    const parsedBackupRepo = parseGithubRepo(authoritativeBackupUrl);
+    if (!parsedBackupRepo || String(parsedBackupRepo.repo || '').toLowerCase() !== FIXED_BACKUP_REPO_NAME.toLowerCase()) {
+        throw createValidationOperationError(
+            'backup_repo_name_invalid',
+            `备份仓库必须为 ${FIXED_BACKUP_REPO_NAME}，无法执行 GitHub 导入。`
+        );
+    }
+
+    cloneRepositoryToDestination({
+        repoUrl: authoritativeBackupUrl,
+        destinationPath: localDestinationPath
+    });
+
+    const framework = assertSupportedImportedFramework(detectFramework(localDestinationPath));
+    const workspace = {
+        id: createWorkspaceId(),
+        name: name || getProjectName(localDestinationPath),
+        projectDir: localDestinationPath,
+        framework,
+        theme: inferRecognizedThemeIdFromProject(localDestinationPath, framework),
+        importedAt: now(),
+        siteType,
+        deployRepo: deployRepo || {
+            owner: '',
+            name: '',
+            url: '',
+            visibility: REMOTE_REPO_VISIBILITY.public,
+            sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
+        },
+        backupRepo: {
+            ...(backupRepo || {}),
+            owner: parsedBackupRepo.owner,
+            name: FIXED_BACKUP_REPO_NAME
+        },
+        importSource: REMOTE_IMPORT_SOURCES.githubRemote,
+        localProjectPath: localDestinationPath
+    };
+
+    const next = updateStore((draft) => {
+        draft.workspaces.push(workspace);
+        return draft;
+    });
+
+    const rssRestore = importSubscriptions({ projectDir: localDestinationPath, strategy: 'merge' });
+    return { workspace, workspaces: next.workspaces, rssRestore };
 }
 
 async function importWorkspaceWorkflow(payload, deps) {
@@ -126,5 +249,6 @@ function backupWorkspaceWorkflow(payload, deps) {
 module.exports = {
     createWorkspaceWorkflow,
     importWorkspaceWorkflow,
-    backupWorkspaceWorkflow
+    backupWorkspaceWorkflow,
+    importWorkspaceFromGithubWorkflow
 };

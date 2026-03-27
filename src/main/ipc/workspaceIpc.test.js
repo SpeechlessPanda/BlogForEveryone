@@ -11,8 +11,12 @@ function loadWorkspaceIpcModule({
     workflowCreateResult,
     workflowImportResult,
     workflowBackupResult,
+    workflowGithubImportResult,
     initialState,
-    workspacePolicy
+    workspacePolicy,
+    githubRepoListResult,
+    githubEnsureResult,
+    importPayloadValidationResult
 } = {}) {
     const originalLoad = Module._load;
     const handlers = new Map();
@@ -20,6 +24,9 @@ function loadWorkspaceIpcModule({
     const workflowCreateCalls = [];
     const workflowImportCalls = [];
     const workflowBackupCalls = [];
+    const workflowGithubImportCalls = [];
+    const githubListCalls = [];
+    const githubEnsureCalls = [];
 
     Module._load = function patchedLoad(request, parent, isMain) {
         if (request === '../services/storeService') {
@@ -82,6 +89,27 @@ function loadWorkspaceIpcModule({
             };
         }
 
+        if (request === '../services/githubRepoService') {
+            return {
+                listUserRepositories(payload) {
+                    githubListCalls.push(payload);
+                    return githubRepoListResult;
+                },
+                ensureRemoteRepositories(payload) {
+                    githubEnsureCalls.push(payload);
+                    return githubEnsureResult;
+                }
+            };
+        }
+
+        if (request === '../services/configValidationService') {
+            return {
+                validateGithubImportPayload(payload) {
+                    return importPayloadValidationResult || { ok: true, normalizedPayload: payload };
+                }
+            };
+        }
+
         if (request === '../policies/workspaceImportPolicy') {
             return {
                 assertSupportedImportedFramework(value) {
@@ -103,6 +131,10 @@ function loadWorkspaceIpcModule({
                 backupWorkspaceWorkflow(payload) {
                     workflowBackupCalls.push(payload);
                     return workflowBackupResult;
+                },
+                importWorkspaceFromGithubWorkflow(payload) {
+                    workflowGithubImportCalls.push(payload);
+                    return workflowGithubImportResult;
                 }
             };
         }
@@ -118,6 +150,9 @@ function loadWorkspaceIpcModule({
             workflowCreateCalls,
             workflowImportCalls,
             workflowBackupCalls,
+            workflowGithubImportCalls,
+            githubListCalls,
+            githubEnsureCalls,
             register() {
                 workspaceIpc.registerWorkspaceIpcHandlers({
                     ipcMain: {
@@ -220,6 +255,207 @@ test('workspace import rejects relative user path before workflow orchestration'
     );
 
     assert.equal(moduleRef.workflowImportCalls.length, 0);
+});
+
+test('workspace:listGithubRepos delegates to github repo service listing boundary', async () => {
+    const listResult = [
+        { owner: 'alice', name: 'alice.github.io', url: 'https://github.com/alice/alice.github.io.git', visibility: 'public' },
+        { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git', visibility: 'private' }
+    ];
+
+    const moduleRef = loadWorkspaceIpcModule({ githubRepoListResult: listResult });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:listGithubRepos');
+    const result = await handler({}, { includePrivate: true });
+
+    assert.deepEqual(moduleRef.githubListCalls[0], { includePrivate: true });
+    assert.deepEqual(result, listResult);
+});
+
+test('workspace:createGithubRepos delegates optional deploy/backup creation payload', async () => {
+    const ensureResult = {
+        deployRepo: { owner: 'alice', name: 'alice.github.io', url: 'https://github.com/alice/alice.github.io.git', visibility: 'public' },
+        backupRepo: { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git', visibility: 'private' }
+    };
+    const moduleRef = loadWorkspaceIpcModule({ githubEnsureResult: ensureResult });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:createGithubRepos');
+    const payload = {
+        login: 'alice',
+        siteType: 'user-pages',
+        createDeployRepo: true,
+        createBackupRepo: true
+    };
+    const result = await handler({}, payload);
+
+    assert.deepEqual(moduleRef.githubEnsureCalls[0], payload);
+    assert.deepEqual(result, ensureResult);
+});
+
+test('workspace:importFromGithub validates destination first and does not call workflow on invalid input', async () => {
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowGithubImportResult: { workspace: { id: 'unused' }, workspaces: [] },
+        importPayloadValidationResult: {
+            ok: false,
+            code: 'validation_failed',
+            category: 'validation',
+            causes: [{ key: 'destination_path_invalid', message: 'invalid destination' }]
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:importFromGithub');
+    await assert.rejects(
+        handler({}, { localDestinationPath: 'relative/path' }),
+        /invalid destination/
+    );
+
+    assert.equal(moduleRef.workflowGithubImportCalls.length, 0);
+});
+
+test('workspace:importFromGithub returns one-cause structured failure when destination path is an existing file', async (t) => {
+    const filePath = path.join(os.tmpdir(), `bfe-github-import-file-${Date.now()}.txt`);
+    fs.writeFileSync(filePath, 'not-a-directory', 'utf-8');
+    t.after(() => {
+        fs.rmSync(filePath, { force: true });
+    });
+
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowGithubImportResult: { workspace: { id: 'unused' }, workspaces: [] },
+        importPayloadValidationResult: {
+            ok: true,
+            normalizedPayload: {
+                localDestinationPath: filePath,
+                backupRepo: { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git' },
+                deployRepo: null
+            }
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:importFromGithub');
+    await assert.rejects(
+        handler({}, { localDestinationPath: filePath }),
+        (error) => {
+            assert.equal(error.operationResult.ok, false);
+            assert.equal(error.operationResult.causes.length, 1);
+            assert.equal(error.operationResult.causes[0].key, 'destination_path_not_directory');
+            return true;
+        }
+    );
+
+    assert.equal(moduleRef.workflowGithubImportCalls.length, 0);
+});
+
+test('workspace:importFromGithub returns one-cause structured failure when destination directory is non-empty', async (t) => {
+    const nonEmptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-github-import-non-empty-'));
+    fs.writeFileSync(path.join(nonEmptyDir, 'seed.txt'), 'seed', 'utf-8');
+    t.after(() => {
+        fs.rmSync(nonEmptyDir, { recursive: true, force: true });
+    });
+
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowGithubImportResult: { workspace: { id: 'unused' }, workspaces: [] },
+        importPayloadValidationResult: {
+            ok: true,
+            normalizedPayload: {
+                localDestinationPath: nonEmptyDir,
+                backupRepo: { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git' },
+                deployRepo: null
+            }
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:importFromGithub');
+    await assert.rejects(
+        handler({}, { localDestinationPath: nonEmptyDir }),
+        (error) => {
+            assert.equal(error.operationResult.ok, false);
+            assert.equal(error.operationResult.causes.length, 1);
+            assert.equal(error.operationResult.causes[0].key, 'destination_directory_not_empty');
+            return true;
+        }
+    );
+
+    assert.equal(moduleRef.workflowGithubImportCalls.length, 0);
+});
+
+test('workspace:importFromGithub rejects new destination when parent directory is missing before clone/import', async () => {
+    const missingParent = path.join(os.tmpdir(), `bfe-github-missing-parent-${Date.now()}`);
+    const destinationPath = path.join(missingParent, 'child-project');
+
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowGithubImportResult: { workspace: { id: 'unused' }, workspaces: [] },
+        importPayloadValidationResult: {
+            ok: true,
+            normalizedPayload: {
+                localDestinationPath: destinationPath,
+                backupRepo: { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git' },
+                deployRepo: null
+            }
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:importFromGithub');
+    await assert.rejects(
+        handler({}, { localDestinationPath: destinationPath }),
+        (error) => {
+            assert.equal(error.operationResult.ok, false);
+            assert.equal(error.operationResult.causes.length, 1);
+            assert.equal(error.operationResult.causes[0].key, 'destination_parent_not_found');
+            return true;
+        }
+    );
+
+    assert.equal(moduleRef.workflowGithubImportCalls.length, 0);
+});
+
+test('workspace:importFromGithub delegates to github import workflow and keeps zip fallback out of IPC surface', async () => {
+    const importTargetPath = path.join(os.tmpdir(), 'import-target');
+    const workflowGithubImportResult = {
+        workspace: {
+            id: 'ws-github-1',
+            projectDir: importTargetPath,
+            importSource: 'github-remote'
+        },
+        workspaces: [{ id: 'ws-github-1', projectDir: importTargetPath }],
+        rssRestore: { restored: 1, subscriptions: [] }
+    };
+
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowGithubImportResult,
+        importPayloadValidationResult: {
+            ok: true,
+            normalizedPayload: {
+                localDestinationPath: importTargetPath,
+                backupRepo: { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git' },
+                deployRepo: null
+            }
+        }
+    });
+    moduleRef.register();
+
+    const handler = moduleRef.handlers.get('workspace:importFromGithub');
+    const result = await handler({}, { localDestinationPath: importTargetPath });
+
+    assert.equal(typeof moduleRef.handlers.get('workspace:importFromGithubArchive'), 'undefined');
+    assert.equal(moduleRef.workflowGithubImportCalls.length, 1);
+    assert.equal(path.isAbsolute(moduleRef.workflowGithubImportCalls[0].localDestinationPath), true);
+    assert.equal(
+        path.normalize(moduleRef.workflowGithubImportCalls[0].localDestinationPath),
+        path.normalize(importTargetPath)
+    );
+    assert.deepEqual(moduleRef.workflowGithubImportCalls[0].backupRepo, {
+        owner: 'alice',
+        name: 'BFE',
+        url: 'https://github.com/alice/BFE.git'
+    });
+    assert.equal(moduleRef.workflowGithubImportCalls[0].deployRepo, null);
+    assert.deepEqual(result, workflowGithubImportResult);
 });
 
 test('workspace backup delegates orchestration to workflow boundary', async () => {

@@ -4,8 +4,15 @@ const assert = require('node:assert/strict');
 const {
     createWorkspaceWorkflow,
     importWorkspaceWorkflow,
-    backupWorkspaceWorkflow
+    backupWorkspaceWorkflow,
+    importWorkspaceFromGithubWorkflow
 } = require('./workspaceWorkflowService');
+const {
+    FIXED_BACKUP_REPO_NAME,
+    REMOTE_IMPORT_SOURCES,
+    REMOTE_REPO_SOURCE_TYPES,
+    REMOTE_SITE_TYPES
+} = require('../../shared/remoteWorkspaceContract');
 
 test('workspace workflow service exposes orchestration entry points for create/import/backup', () => {
     const workflowService = require('./workspaceWorkflowService');
@@ -205,4 +212,178 @@ test('backup workspace delegates snapshot metadata and repo push orchestration',
         snapshotDir: '/tmp/backups/snapshot-1',
         pushResult: ['git init', 'git push']
     });
+});
+
+test('github-direct import clones from backup repo as authoritative source and persists remote metadata', async () => {
+    const state = { workspaces: [] };
+    const cloneCalls = [];
+
+    const result = await importWorkspaceFromGithubWorkflow(
+        {
+            name: 'Imported from backup',
+            localDestinationPath: '/tmp/import-target',
+            siteType: REMOTE_SITE_TYPES.projectPages,
+            deployRepo: {
+                owner: 'alice',
+                name: 'alice-blog',
+                url: 'https://github.com/alice/alice-blog.git',
+                visibility: 'public',
+                sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+            },
+            backupRepo: {
+                owner: 'alice',
+                name: FIXED_BACKUP_REPO_NAME,
+                url: 'https://github.com/alice/BFE.git',
+                visibility: 'private',
+                sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+            }
+        },
+        {
+            readStore: () => state,
+            updateStore: (updater) => updater(state),
+            normalizePathForCompare: (value) => value,
+            cloneRepositoryToDestination: async ({ repoUrl, destinationPath }) => {
+                cloneCalls.push({ repoUrl, destinationPath });
+                return { ok: true };
+            },
+            detectFramework: () => 'hugo',
+            assertSupportedImportedFramework: (framework) => framework,
+            inferRecognizedThemeIdFromProject: () => 'stack',
+            importSubscriptions: () => ({ restored: 0, subscriptions: [] }),
+            getProjectName: () => 'import-target',
+            createWorkspaceId: () => 'ws-github-1',
+            now: () => '2026-01-01T00:00:00.000Z',
+            validateImportRepositoryState: () => ({ ok: true })
+        }
+    );
+
+    assert.deepEqual(cloneCalls, [{ repoUrl: 'https://github.com/alice/BFE.git', destinationPath: '/tmp/import-target' }]);
+    assert.equal(result.workspace.importSource, REMOTE_IMPORT_SOURCES.githubRemote);
+    assert.equal(result.workspace.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(result.workspace.deployRepo.name, 'alice-blog');
+    assert.equal(result.workspace.localProjectPath, '/tmp/import-target');
+});
+
+test('github-direct import succeeds when backup exists even if deploy repo is missing', async () => {
+    const result = await importWorkspaceFromGithubWorkflow(
+        {
+            localDestinationPath: '/tmp/backup-only',
+            siteType: REMOTE_SITE_TYPES.projectPages,
+            deployRepo: null,
+            backupRepo: {
+                owner: 'alice',
+                name: FIXED_BACKUP_REPO_NAME,
+                url: 'https://github.com/alice/BFE.git',
+                visibility: 'private',
+                sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+            }
+        },
+        {
+            readStore: () => ({ workspaces: [] }),
+            updateStore: (updater) => updater({ workspaces: [] }),
+            normalizePathForCompare: (value) => value,
+            cloneRepositoryToDestination: async () => ({ ok: true }),
+            detectFramework: () => 'hexo',
+            assertSupportedImportedFramework: (framework) => framework,
+            inferRecognizedThemeIdFromProject: () => 'landscape',
+            importSubscriptions: () => ({ restored: 0, subscriptions: [] }),
+            getProjectName: () => 'backup-only',
+            createWorkspaceId: () => 'ws-github-2',
+            now: () => '2026-01-01T00:00:00.000Z',
+            validateImportRepositoryState: () => ({ ok: true })
+        }
+    );
+
+    assert.equal(result.workspace.importSource, REMOTE_IMPORT_SOURCES.githubRemote);
+    assert.equal(result.workspace.deployRepo.name, '');
+    assert.equal(result.workspace.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+});
+
+test('github-direct import rejects deploy-exists-but-backup-missing with one-cause failure', async () => {
+    await assert.rejects(
+        importWorkspaceFromGithubWorkflow(
+            {
+                localDestinationPath: '/tmp/invalid-import-state',
+                siteType: REMOTE_SITE_TYPES.projectPages,
+                deployRepo: {
+                    owner: 'alice',
+                    name: 'alice-blog',
+                    url: 'https://github.com/alice/alice-blog.git',
+                    visibility: 'public',
+                    sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+                },
+                backupRepo: null
+            },
+            {
+                readStore: () => ({ workspaces: [] }),
+                updateStore: () => {
+                    throw new Error('updateStore should not run when import state is unsupported');
+                },
+                normalizePathForCompare: (value) => value,
+                cloneRepositoryToDestination: async () => {
+                    throw new Error('clone should not run when backup repo is missing');
+                },
+                detectFramework: () => 'hugo',
+                assertSupportedImportedFramework: (framework) => framework,
+                inferRecognizedThemeIdFromProject: () => 'stack',
+                importSubscriptions: () => ({ restored: 0, subscriptions: [] }),
+                getProjectName: () => 'invalid-import-state',
+                createWorkspaceId: () => 'ws-never',
+                now: () => '2026-01-01T00:00:00.000Z',
+                validateImportRepositoryState: () => ({
+                    ok: false,
+                    code: 'validation_failed',
+                    category: 'validation',
+                    causes: [{ key: 'github_import_backup_missing', message: 'backup missing' }]
+                })
+            }
+        ),
+        (error) => {
+            assert.equal(error.operationResult.causes.length, 1);
+            assert.equal(error.operationResult.causes[0].key, 'github_import_backup_missing');
+            return true;
+        }
+    );
+});
+
+test('github-direct import rejects backup repo metadata that is not fixed BFE', async () => {
+    await assert.rejects(
+        importWorkspaceFromGithubWorkflow(
+            {
+                localDestinationPath: '/tmp/invalid-backup-repo',
+                siteType: REMOTE_SITE_TYPES.projectPages,
+                deployRepo: null,
+                backupRepo: {
+                    owner: 'alice',
+                    name: 'not-bfe',
+                    url: 'https://github.com/alice/not-bfe.git',
+                    visibility: 'private',
+                    sourceType: REMOTE_REPO_SOURCE_TYPES.existing
+                }
+            },
+            {
+                readStore: () => ({ workspaces: [] }),
+                updateStore: () => {
+                    throw new Error('updateStore should not run when backup repo metadata is invalid');
+                },
+                normalizePathForCompare: (value) => value,
+                cloneRepositoryToDestination: async () => {
+                    throw new Error('clone should not run when backup repo metadata is invalid');
+                },
+                detectFramework: () => 'hugo',
+                assertSupportedImportedFramework: (framework) => framework,
+                inferRecognizedThemeIdFromProject: () => 'stack',
+                importSubscriptions: () => ({ restored: 0, subscriptions: [] }),
+                getProjectName: () => 'invalid-backup-repo',
+                createWorkspaceId: () => 'ws-never',
+                now: () => '2026-01-01T00:00:00.000Z',
+                validateImportRepositoryState: () => ({ ok: true })
+            }
+        ),
+        (error) => {
+            assert.equal(error.operationResult.causes.length, 1);
+            assert.equal(error.operationResult.causes[0].key, 'backup_repo_name_invalid');
+            return true;
+        }
+    );
 });

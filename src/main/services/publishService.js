@@ -4,6 +4,15 @@ const { spawnSync } = require('child_process');
 const YAML = require('yaml');
 const { normalizePublishResult } = require('../policies/publishResultPolicy');
 const { runCommand } = require('./env/runCommand');
+const { ensureRemoteRepositories } = require('./githubRepoService');
+const { getAccessTokenForPrivilegedUse } = require('./githubAuthService');
+const { backupWorkspace, pushBackupToRepoOutcome } = require('./backupService');
+const {
+    RESULT_CODES,
+    RESULT_CATEGORIES,
+    COMBINED_OPERATION_STATUS
+} = require('../../shared/operationResultContract');
+const { FIXED_BACKUP_REPO_NAME, REMOTE_SITE_TYPES } = require('../../shared/remoteWorkspaceContract');
 
 function runGit(projectDir, args) {
     return spawnSync('git', args, {
@@ -150,6 +159,201 @@ function buildWorkflowContent({ framework, repoUrl }) {
     ].join('\n');
 }
 
+function isNoopCommitResult(result) {
+    if (!result || result.status === 0) {
+        return false;
+    }
+
+    const output = `${String(result.stdout || '')}\n${String(result.stderr || '')}`.toLowerCase();
+    return output.includes('nothing to commit') || output.includes('working tree clean');
+}
+
+function isMissingOriginRemoteResult(result) {
+    if (!result || result.status === 0) {
+        return false;
+    }
+
+    const output = `${String(result.stdout || '')}\n${String(result.stderr || '')}`.toLowerCase();
+    return output.includes('no such remote') && output.includes('origin');
+}
+
+function markLastGitLogAsBenign(outputs, patch = {}) {
+    const current = outputs[outputs.length - 1];
+    if (!current) {
+        return;
+    }
+
+    outputs[outputs.length - 1] = {
+        ...current,
+        code: 0,
+        benign: true,
+        originalCode: current.code,
+        ...patch
+    };
+}
+
+function isGithubHttpsUrl(repoUrl) {
+    return /^https:\/\/github\.com\//i.test(String(repoUrl || '').trim());
+}
+
+function buildGithubGitAuthEnv(repoUrl) {
+    if (!isGithubHttpsUrl(repoUrl)) {
+        return null;
+    }
+
+    let token = null;
+    try {
+        token = getAccessTokenForPrivilegedUse();
+    } catch {
+        return null;
+    }
+    if (!token) {
+        return null;
+    }
+
+    return {
+        ...process.env,
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+        GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`, 'utf-8').toString('base64')}`
+    };
+}
+
+function resolveDefaultBackupDir(projectDir) {
+    return path.join(path.dirname(projectDir), '.bfe-backup', path.basename(projectDir));
+}
+
+function parseGithubRepo(repoUrl) {
+    const clean = String(repoUrl || '').trim().replace(/\.git$/i, '');
+    const match = clean.match(/github\.com[/:]([^/]+)\/([^/]+)$/i);
+    if (!match) {
+        return null;
+    }
+
+    return {
+        owner: match[1],
+        repo: match[2]
+    };
+}
+
+function toOutcome({ ok, code, category, userMessage, detail = '', retryable = false, logs = [] }) {
+    return {
+        ok: Boolean(ok),
+        code,
+        category,
+        userMessage,
+        detail,
+        retryable,
+        logs: Array.isArray(logs) ? logs : []
+    };
+}
+
+function outcomeFromOperationError(error, fallbackMessage, fallbackKey) {
+    const operationResult = error && error.operationResult && typeof error.operationResult === 'object'
+        ? error.operationResult
+        : null;
+    if (operationResult) {
+        const causeMessage = operationResult.causes?.[0]?.message || fallbackMessage;
+        return {
+            ...operationResult,
+            ok: false,
+            code: operationResult.code || RESULT_CODES.runtimeError,
+            category: operationResult.category || RESULT_CATEGORIES.runtime,
+            userMessage: operationResult.userMessage || causeMessage,
+            detail: operationResult.detail || causeMessage,
+            retryable: Boolean(operationResult.retryable),
+            logs: Array.isArray(operationResult.logs) ? operationResult.logs : []
+        };
+    }
+
+    const detail = String(error?.message || '').trim();
+    return toOutcome({
+        ok: false,
+        code: RESULT_CODES.runtimeError,
+        category: RESULT_CATEGORIES.runtime,
+        userMessage: fallbackMessage,
+        detail: detail || fallbackKey,
+        retryable: true,
+        logs: []
+    });
+}
+
+function resolveDeployRepoName(payload = {}) {
+    const explicitName = String(payload.deployRepoName || payload.deployRepo?.name || '').trim();
+    if (explicitName) {
+        return explicitName;
+    }
+    const parsedRepo = parseGithubRepo(payload.repoUrl);
+    if (parsedRepo) {
+        return parsedRepo.repo;
+    }
+    return '';
+}
+
+function resolveBackupRepoName(payload = {}) {
+    const explicitName = String(payload.backupRepoName || payload.backupRepo?.name || '').trim();
+    if (explicitName) {
+        return explicitName;
+    }
+    const parsedRepo = parseGithubRepo(payload.backupRepoUrl);
+    if (parsedRepo) {
+        return parsedRepo.repo;
+    }
+    return '';
+}
+
+function shouldRunCoordinatedPublish(payload = {}) {
+    return Boolean(
+        payload.siteType
+        || payload.backupRepo
+        || payload.backupRepoUrl
+        || payload.backupDir
+        || payload.createBackupRepo
+        || payload.createDeployRepo
+    );
+}
+
+function finalizeCombinedResult(result) {
+    const ensureOk = Boolean(result.deployRepoEnsure?.ok && result.backupRepoEnsure?.ok);
+    const deployOk = Boolean(result.deployPublish?.ok);
+    const backupOk = Boolean(result.backupPush?.ok);
+
+    let status = COMBINED_OPERATION_STATUS.failed;
+    if (ensureOk && deployOk && backupOk) {
+        status = COMBINED_OPERATION_STATUS.success;
+    } else if (ensureOk && ((deployOk && !backupOk) || (!deployOk && backupOk))) {
+        status = COMBINED_OPERATION_STATUS.partialSuccess;
+    }
+
+    return {
+        ...result,
+        status,
+        ok: status === COMBINED_OPERATION_STATUS.success
+    };
+}
+
+function inferDeployPublishOk(deployResult) {
+    if (typeof deployResult?.ok === 'boolean') {
+        return deployResult.ok;
+    }
+
+    const logs = Array.isArray(deployResult?.logs) ? deployResult.logs : [];
+    const failedGitStep = logs.find((entry) => {
+        if (!entry || entry.bin !== 'git') {
+            return false;
+        }
+        if (entry.error) {
+            return true;
+        }
+        if (entry.code === null) {
+            return true;
+        }
+        return typeof entry.code === 'number' && entry.code !== 0;
+    });
+
+    return !failedGitStep;
+}
+
 function ensureWorkflow(projectDir, framework, repoUrl) {
     const workflowDir = path.join(projectDir, '.github', 'workflows');
     fs.mkdirSync(workflowDir, { recursive: true });
@@ -172,9 +376,10 @@ function ensureHexoDeployConfig(projectDir, repoUrl) {
     fs.writeFileSync(configPath, YAML.stringify(config), 'utf-8');
 }
 
-function runShellCommand(projectDir, command, args) {
+function runShellCommand(projectDir, command, args, commandOptions = {}) {
     const result = runCommand(command, args, {
-        cwd: projectDir
+        cwd: projectDir,
+        ...commandOptions
     });
     return {
         command: `${command} ${args.join(' ')}`,
@@ -187,6 +392,7 @@ function runShellCommand(projectDir, command, args) {
 function publishWithHexoDeploy(payload) {
     const { projectDir, repoUrl } = payload;
     const logs = [];
+    const authEnv = buildGithubGitAuthEnv(repoUrl);
 
     ensureHexoDeployConfig(projectDir, repoUrl);
     logs.push({ stage: 'hexo-deploy-config', message: '已写入 _config.yml deploy 配置（type: git / branch: gh-pages）' });
@@ -215,7 +421,7 @@ function publishWithHexoDeploy(payload) {
         throw error;
     }
 
-    const deployResult = runShellCommand(projectDir, 'pnpm', ['exec', 'hexo', 'deploy']);
+    const deployResult = runShellCommand(projectDir, 'pnpm', ['exec', 'hexo', 'deploy'], authEnv ? { env: authEnv } : {});
     logs.push(deployResult);
     if (deployResult.code !== 0) {
         const error = new Error('Hexo deploy 失败。请检查仓库权限、SSH/PAT 凭据后重试。');
@@ -264,25 +470,47 @@ function runGitCommands(projectDir, repoUrl, payload) {
         ['git', ['add', '.']],
         ['git', ['commit', '-m', 'chore: initialize blog project']],
         ['git', ['branch', '-M', 'main']],
-        ['git', ['remote', 'add', 'origin', repoUrl]],
+        ['git', ['remote', 'set-url', 'origin', repoUrl]],
         ['git', ['push', '-u', 'origin', 'main']]
     ];
 
     for (const [bin, args] of commands) {
+        const authEnv = (bin === 'git' && args[0] === 'push') ? buildGithubGitAuthEnv(repoUrl) : null;
         const result = spawnSync(bin, args, {
             cwd: projectDir,
             shell: false,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            ...(authEnv ? { env: authEnv } : {})
         });
         outputs.push({ bin, args, code: result.status, stderr: result.stderr, stdout: result.stdout });
         if (result.status !== 0) {
+            if (args[0] === 'commit' && isNoopCommitResult(result)) {
+                markLastGitLogAsBenign(outputs, {
+                    reason: 'noop_commit',
+                    message: '当前工作区无新增改动，沿用已有提交继续发布。'
+                });
+                continue;
+            }
+
+            if (args[0] === 'remote' && args[1] === 'set-url' && isMissingOriginRemoteResult(result)) {
+                markLastGitLogAsBenign(outputs, {
+                    reason: 'missing_origin_remote',
+                    message: 'origin 不存在，已改为补建 origin 后继续发布。'
+                });
+                const addResult = runGit(projectDir, ['remote', 'add', 'origin', repoUrl]);
+                outputs.push({ bin: 'git', args: ['remote', 'add', 'origin', repoUrl], code: addResult.status, stderr: addResult.stderr, stdout: addResult.stdout });
+                if (addResult.status === 0) {
+                    continue;
+                }
+            }
+
             break;
         }
     }
     return outputs;
 }
 
-function publishToGitHub(payload) {
+function publishDeployOnly(payload) {
     const { projectDir, framework, repoUrl } = payload;
     const mode = payload.publishMode || 'actions';
 
@@ -300,6 +528,198 @@ function publishToGitHub(payload) {
         pagesUrl: inferPagesUrl(repoUrl),
         mode: 'actions'
     });
+}
+
+function publishToGitHub(payload) {
+    if (!shouldRunCoordinatedPublish(payload)) {
+        return publishDeployOnly(payload);
+    }
+
+    return (async () => {
+        const siteType = payload.siteType || REMOTE_SITE_TYPES.projectPages;
+        const login = String(payload.login || '').trim();
+        const deployRepoName = resolveDeployRepoName(payload);
+        const backupRepoName = resolveBackupRepoName(payload);
+
+        const result = {
+            mode: payload.publishMode || 'actions',
+            pagesUrl: '',
+            deployRepoEnsure: toOutcome({
+                ok: false,
+                code: RESULT_CODES.runtimeError,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: '发布仓库检查未执行。'
+            }),
+            backupRepoEnsure: toOutcome({
+                ok: false,
+                code: RESULT_CODES.runtimeError,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: '备份仓库检查未执行。'
+            }),
+            deployPublish: toOutcome({
+                ok: false,
+                code: RESULT_CODES.runtimeError,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: '发布执行未完成。'
+            }),
+            backupPush: toOutcome({
+                ok: false,
+                code: RESULT_CODES.runtimeError,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: '备份推送未完成。'
+            })
+        };
+
+        if (siteType === REMOTE_SITE_TYPES.userPages) {
+            const expected = `${login}.github.io`;
+            if (!login || deployRepoName.toLowerCase() !== expected.toLowerCase()) {
+                result.deployRepoEnsure = toOutcome({
+                    ok: false,
+                    code: RESULT_CODES.validationFailed,
+                    category: RESULT_CATEGORIES.validation,
+                    userMessage: `用户主页仓库名必须为 ${expected}。`
+                });
+                return normalizePublishResult(finalizeCombinedResult(result));
+            }
+        }
+
+        if (backupRepoName.toLowerCase() !== FIXED_BACKUP_REPO_NAME.toLowerCase()) {
+            result.backupRepoEnsure = toOutcome({
+                ok: false,
+                code: RESULT_CODES.validationFailed,
+                category: RESULT_CATEGORIES.validation,
+                userMessage: `备份仓库名称必须为 ${FIXED_BACKUP_REPO_NAME}。`
+            });
+            return normalizePublishResult(finalizeCombinedResult(result));
+        }
+
+        const parsedDeployRepo = parseGithubRepo(payload.repoUrl);
+        const parsedBackupRepo = parseGithubRepo(payload.backupRepoUrl);
+
+        let deployRepo = payload.deployRepo || (parsedDeployRepo
+            ? {
+                owner: parsedDeployRepo.owner,
+                name: deployRepoName || parsedDeployRepo.repo,
+                url: String(payload.repoUrl || '').trim()
+            }
+            : null);
+        let backupRepo = payload.backupRepo || (parsedBackupRepo
+            ? {
+                owner: parsedBackupRepo.owner,
+                name: FIXED_BACKUP_REPO_NAME,
+                url: String(payload.backupRepoUrl || '').trim()
+            }
+            : null);
+
+        try {
+            const ensuredDeploy = await ensureRemoteRepositories({
+                login,
+                siteType,
+                deployRepoName,
+                deployRepo,
+                backupRepo,
+                createDeployRepo: Boolean(payload.createDeployRepo),
+                createBackupRepo: false,
+                deployRepoVisibility: payload.deployRepoVisibility,
+                backupRepoVisibility: payload.backupRepoVisibility
+            });
+            deployRepo = ensuredDeploy.deployRepo || deployRepo;
+            result.deployRepoEnsure = toOutcome({
+                ok: Boolean(deployRepo && deployRepo.url),
+                code: RESULT_CODES.ok,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: '发布仓库已就绪。'
+            });
+        } catch (error) {
+            result.deployRepoEnsure = outcomeFromOperationError(error, '发布仓库准备失败。', 'deploy_repo_ensure_failed');
+            return normalizePublishResult(finalizeCombinedResult(result));
+        }
+
+        try {
+            const ensuredBackup = await ensureRemoteRepositories({
+                login,
+                siteType,
+                deployRepoName,
+                deployRepo,
+                backupRepo,
+                createDeployRepo: false,
+                createBackupRepo: Boolean(payload.createBackupRepo),
+                deployRepoVisibility: payload.deployRepoVisibility,
+                backupRepoVisibility: payload.backupRepoVisibility
+            });
+            backupRepo = ensuredBackup.backupRepo || backupRepo;
+            result.backupRepoEnsure = toOutcome({
+                ok: Boolean(backupRepo && backupRepo.url),
+                code: RESULT_CODES.ok,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: '备份仓库已就绪。'
+            });
+        } catch (error) {
+            result.backupRepoEnsure = outcomeFromOperationError(error, '备份仓库准备失败。', 'backup_repo_ensure_failed');
+            return normalizePublishResult(finalizeCombinedResult(result));
+        }
+
+        const deployRepoUrl = String(deployRepo?.url || payload.repoUrl || '').trim();
+        const backupRepoUrl = String(backupRepo?.url || payload.backupRepoUrl || '').trim();
+
+        try {
+            const deployResult = await Promise.resolve(publishDeployOnly({
+                ...payload,
+                repoUrl: deployRepoUrl
+            }));
+            const deployOk = inferDeployPublishOk(deployResult);
+            result.deployPublish = toOutcome({
+                ok: deployOk,
+                code: deployOk ? RESULT_CODES.ok : RESULT_CODES.runtimeError,
+                category: RESULT_CATEGORIES.runtime,
+                userMessage: deployOk ? '公开发布完成。' : (deployResult.message || '公开发布失败。'),
+                detail: deployOk ? '' : String(deployResult.message || '').trim(),
+                retryable: !deployOk,
+                logs: deployResult.logs || []
+            });
+            if (deployOk) {
+                result.pagesUrl = String(deployResult.pagesUrl || '');
+            }
+        } catch (error) {
+            result.deployPublish = outcomeFromOperationError(error, '公开发布失败。', 'deploy_publish_failed');
+        }
+
+        try {
+            const snapshotDir = backupWorkspace({
+                projectDir: payload.projectDir,
+                backupDir: payload.backupDir || resolveDefaultBackupDir(payload.projectDir),
+                metadata: {
+                    deployRepo,
+                    backupRepo,
+                    siteType,
+                    createdAt: new Date().toISOString()
+                }
+            });
+            const backupPushResult = pushBackupToRepoOutcome(snapshotDir, backupRepoUrl);
+            result.backupPush = {
+                ...backupPushResult,
+                ok: Boolean(backupPushResult.ok),
+                code: backupPushResult.code || (backupPushResult.ok ? RESULT_CODES.ok : RESULT_CODES.runtimeError),
+                category: backupPushResult.category || RESULT_CATEGORIES.runtime,
+                userMessage: backupPushResult.userMessage || (backupPushResult.ok ? '备份推送完成。' : '备份推送失败。'),
+                detail: backupPushResult.detail || '',
+                retryable: Boolean(backupPushResult.retryable),
+                logs: Array.isArray(backupPushResult.logs) ? backupPushResult.logs : []
+            };
+        } catch (error) {
+            result.backupPush = outcomeFromOperationError(error, '备份推送失败。', 'backup_push_failed');
+        }
+
+        const finalizedResult = finalizeCombinedResult(result);
+        const normalized = normalizePublishResult(finalizedResult);
+        if (!normalized.status) {
+            normalized.status = finalizedResult.status;
+        }
+        if (typeof normalized.ok !== 'boolean') {
+            normalized.ok = finalizedResult.ok;
+        }
+        return normalized;
+    })();
 }
 
 function inferPagesUrl(repoUrl) {

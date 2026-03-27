@@ -6,14 +6,36 @@ const { detectFramework, initProject } = require('../services/frameworkService')
 const { installAndApplyTheme, inferRecognizedThemeIdFromProject } = require('../services/themeService');
 const { ensureFrameworkPublishPackages } = require('../services/frameworkToolingService');
 const { backupWorkspace, pushBackupToRepo } = require('../services/backupService');
+const {
+    listUserRepositories,
+    ensureRemoteRepositories,
+    cloneRepositoryToDestination
+} = require('../services/githubRepoService');
 const { importSubscriptions } = require('../services/rssService');
+const {
+    validateGithubImportPayload,
+    validateGithubImportRepositoryState
+} = require('../services/configValidationService');
 const { assertSupportedImportedFramework } = require('../policies/workspaceImportPolicy');
 const { normalizePath, normalizeForCompare } = require('../policies/workspacePathPolicy');
 const {
     createWorkspaceWorkflow,
     importWorkspaceWorkflow,
-    backupWorkspaceWorkflow
+    backupWorkspaceWorkflow,
+    importWorkspaceFromGithubWorkflow
 } = require('../app/workspaceWorkflowService');
+const { RESULT_CODES, RESULT_CATEGORIES } = require('../../shared/operationResultContract');
+
+function createIpcValidationError(key, message) {
+    const error = new Error(message);
+    error.operationResult = {
+        ok: false,
+        code: RESULT_CODES.validationFailed,
+        category: RESULT_CATEGORIES.validation,
+        causes: [{ key, message }]
+    };
+    return error;
+}
 
 function assertWorkspaceCandidatePath(projectDir, action, options = {}) {
     const mustExist = options.mustExist !== false;
@@ -109,6 +131,72 @@ function registerWorkspaceIpcHandlers({ ipcMain, getWorkspacePolicy }) {
                 getProjectName: path.basename,
                 createWorkspaceId: () => Date.now().toString(),
                 now: () => new Date().toISOString()
+            }
+        );
+    });
+
+    ipcMain.handle('workspace:listGithubRepos', async (_event, payload) => {
+        return listUserRepositories(payload);
+    });
+
+    ipcMain.handle('workspace:createGithubRepos', async (_event, payload) => {
+        return ensureRemoteRepositories(payload);
+    });
+
+    ipcMain.handle('workspace:importFromGithub', async (_event, payload) => {
+        const validation = validateGithubImportPayload(payload);
+        if (!validation.ok) {
+            const message = validation.causes?.[0]?.message || 'GitHub 导入参数校验失败。';
+            const error = new Error(message);
+            error.operationResult = validation;
+            throw error;
+        }
+
+        const normalizedPayload = validation.normalizedPayload || payload || {};
+        const safeProjectDir = assertWorkspaceCandidatePath(
+            normalizedPayload.localDestinationPath,
+            'GitHub 导入工程',
+            { mustExist: false }
+        );
+
+        const parentDir = path.dirname(safeProjectDir);
+        if (!fs.existsSync(parentDir)) {
+            throw createIpcValidationError(
+                'destination_parent_not_found',
+                '导入目标路径的父目录不存在，请先创建父目录后重试。'
+            );
+        }
+
+        if (fs.existsSync(safeProjectDir)) {
+            const stats = fs.statSync(safeProjectDir);
+            if (!stats.isDirectory()) {
+                throw createIpcValidationError('destination_path_not_directory', '导入目标路径不是目录，无法执行 GitHub 导入。');
+            }
+
+            const entries = fs.readdirSync(safeProjectDir);
+            if (entries.length > 0) {
+                throw createIpcValidationError('destination_directory_not_empty', '导入目标目录非空，请选择空目录或新目录。');
+            }
+        }
+
+        return importWorkspaceFromGithubWorkflow(
+            {
+                ...normalizedPayload,
+                localDestinationPath: safeProjectDir
+            },
+            {
+                readStore,
+                updateStore,
+                normalizePathForCompare: normalizeForCompare,
+                cloneRepositoryToDestination,
+                detectFramework,
+                assertSupportedImportedFramework,
+                inferRecognizedThemeIdFromProject,
+                importSubscriptions,
+                getProjectName: path.basename,
+                createWorkspaceId: () => Date.now().toString(),
+                now: () => new Date().toISOString(),
+                validateImportRepositoryState: validateGithubImportRepositoryState
             }
         );
     });

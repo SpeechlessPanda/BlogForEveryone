@@ -19,7 +19,6 @@ const form = reactive({
   title: "",
   slug: "",
   autoPublish: true,
-  repoUrl: "",
 });
 
 const state = reactive({
@@ -101,11 +100,10 @@ async function createAndEdit() {
       state.filePath = result.filePath;
       await refreshExistingContents();
 
-      if (form.autoPublish && form.repoUrl) {
+      if (form.autoPublish) {
         const job = await contentActions.watchAndAutoPublish({
           workspaceId: ws.id,
           filePath: result.filePath,
-          repoUrl: form.repoUrl,
         });
         state.jobId = job.jobId;
         state.jobStatus = job.status;
@@ -417,23 +415,14 @@ watch(
         <summary>自动流程（后置）</summary>
         <div class="advanced-panel-content">
           <p class="section-helper">
-            如果只是先把文章写出来，可以先不配这部分。等你确认手动预览和发布都正常后，再打开自动发布。
+            如果只是先把文章写出来，可以先不配这部分。等发布工作台里的仓库设置跑通后，再打开自动发布。
           </p>
-          <div class="grid-2">
-            <div>
-              <label>保存后自动发布（需要仓库地址）</label>
-              <select v-model="form.autoPublish">
-                <option :value="true">true</option>
-                <option :value="false">false</option>
-              </select>
-            </div>
-            <div>
-              <label>发布仓库地址</label>
-              <input
-                v-model="form.repoUrl"
-                placeholder="https://github.com/you/your-blog.git"
-              />
-            </div>
+          <div>
+            <label>保存后自动发布（沿用发布工作台里的仓库设置）</label>
+            <select v-model="form.autoPublish">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
           </div>
         </div>
       </details>

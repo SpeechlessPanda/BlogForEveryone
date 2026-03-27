@@ -10,65 +10,117 @@ import { useAsyncAction } from "../composables/useAsyncAction";
 import { useOperationEvents } from "../composables/useOperationEvents";
 import { useShellActions } from "../composables/useShellActions.mjs";
 import { usePublishBackupActions } from "../composables/usePublishBackupActions.mjs";
+import {
+  buildChildOutcomeCards,
+  collectOperationMessages,
+} from "../utils/workflowViewHelpers.mjs";
+
+const USER_PAGES = "user-pages";
+const FIXED_BACKUP_REPO_NAME = "BFE";
+const PUBLISH_OUTCOME_LABELS = {
+  deployRepoEnsure: "发布仓库准备",
+  backupRepoEnsure: "备份仓库准备",
+  deployPublish: "线上发布",
+  backupPush: "备份推送",
+};
 
 const publishForm = reactive({
-  repoUrl: "",
+  siteType: "project-pages",
+  login: "",
+  deployRepoName: "",
+  backupRepoName: FIXED_BACKUP_REPO_NAME,
+  backupDir: "",
+  createDeployRepo: true,
+  createBackupRepo: true,
   publishMode: "actions",
   gitUserName: "",
   gitUserEmail: "",
 });
 
-const backupForm = reactive({
-  backupDir: "",
-  backupRepoUrl: "",
-  visibility: "private",
-});
-
 const logs = ref("");
 const pagesUrl = ref("");
+const publishOutcomeCards = ref([]);
+const publishOutcomeSummary = ref("");
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["publish"]);
 const selectedWorkspace = computed(() => getSelectedWorkspace());
 const shellActions = useShellActions();
-const {
-  publishToGitHub,
-  backupWorkspace,
-  pickDirectory,
-  getGithubAuthState,
-} = usePublishBackupActions();
+const { publishToGitHub, pickDirectory, getGithubAuthState } =
+  usePublishBackupActions();
+
+const resolvedDeployRepoName = computed(() => {
+  if (publishForm.siteType === USER_PAGES) {
+    return publishForm.login ? `${publishForm.login}.github.io` : "";
+  }
+  return String(publishForm.deployRepoName || "").trim();
+});
+
+const deployRepoUrl = computed(() =>
+  buildGithubRepoUrl(publishForm.login, resolvedDeployRepoName.value),
+);
+const backupRepoUrl = computed(() =>
+  buildGithubRepoUrl(publishForm.login, publishForm.backupRepoName),
+);
+const accessAddress = computed(() => {
+  if (!publishForm.login || !resolvedDeployRepoName.value) {
+    return "等待填写 GitHub 用户名与发布仓库名称。";
+  }
+  if (publishForm.siteType === USER_PAGES) {
+    return `https://${publishForm.login}.github.io/`;
+  }
+  return `https://${publishForm.login}.github.io/${resolvedDeployRepoName.value}/`;
+});
 
 const publishReadiness = computed(() => {
   if (!selectedWorkspace.value) {
     return "未准备：先选择博客工程。";
   }
-  if (!publishForm.repoUrl) {
-    return "待补充：填写 GitHub 仓库地址。";
+  if (!publishForm.login) {
+    return "待补充：填写 GitHub 用户名。";
+  }
+  if (!resolvedDeployRepoName.value) {
+    return "待补充：填写发布仓库名称。";
+  }
+  if (!publishForm.backupDir) {
+    return "待补充：选择本地备份目录。";
   }
   if (!publishForm.gitUserName || !publishForm.gitUserEmail) {
     return "待补充：填写 Git 提交身份。";
   }
-  return "已具备基础发布条件。";
+  return "已具备统一发布与备份条件。";
 });
 
 const publishResultSummary = computed(() => {
+  if (publishOutcomeSummary.value) {
+    return publishOutcomeSummary.value;
+  }
   if (pagesUrl.value) {
     return `发布完成，可访问 ${pagesUrl.value}`;
-  }
-  if (logs.value) {
-    return logs.value.split("\n")[0];
   }
   return "还没有最近一次发布结果。";
 });
 
 const publishNextStep = computed(() => {
+  if (publishOutcomeCards.value.some((card) => !card.ok)) {
+    return "请先处理标记为待处理的链路，再决定是否重跑统一发布。";
+  }
   if (pagesUrl.value) {
-    return "先打开博客地址确认线上结果，再决定是否生成一份恢复用备份。";
+    return "先打开访问地址确认线上结果，再决定是否继续内容编辑或二次发布。";
   }
-  if (publishReadiness.value !== "已具备基础发布条件。") {
-    return "先补齐仓库地址、Git 身份和工作区上下文，再执行发布。";
+  if (publishReadiness.value !== "已具备统一发布与备份条件。") {
+    return "先补齐站点类型、仓库命名、备份目录和 Git 身份，再执行发布。";
   }
-  return "进入发布设置，先完成一次可访问的线上发布。";
+  return "发布成功后，这里会按链路展示仓库准备、线上发布和备份推送结果。";
 });
+
+function buildGithubRepoUrl(owner, repoName) {
+  const cleanOwner = String(owner || "").trim();
+  const cleanRepoName = String(repoName || "").trim();
+  if (!cleanOwner || !cleanRepoName) {
+    return "";
+  }
+  return `https://github.com/${cleanOwner}/${cleanRepoName}.git`;
+}
 
 function parseGithubRepo(repoUrl) {
   const clean = String(repoUrl || "")
@@ -84,18 +136,65 @@ function parseGithubRepo(repoUrl) {
   };
 }
 
+function applyWorkspaceMetadata(workspace) {
+  if (!workspace) {
+    return;
+  }
+
+  if (workspace.siteType) {
+    publishForm.siteType = workspace.siteType;
+  }
+
+  const deployRepoMeta = parseGithubRepo(workspace.deployRepo?.url);
+  const backupRepoMeta = parseGithubRepo(workspace.backupRepo?.url);
+
+  if (!publishForm.login) {
+    publishForm.login = deployRepoMeta?.owner || backupRepoMeta?.owner || "";
+  }
+  if (publishForm.siteType !== USER_PAGES && !publishForm.deployRepoName) {
+    publishForm.deployRepoName = workspace.deployRepo?.name || "";
+  }
+  if (workspace.backupRepo?.name) {
+    publishForm.backupRepoName = workspace.backupRepo.name;
+  }
+}
+
+function buildPublishSummary(result) {
+  if (result?.status === "partial_success") {
+    return "发布已完成，但备份链路仍需处理。";
+  }
+  if (result?.status === "failed" || result?.ok === false) {
+    return collectOperationMessages(result)[0] || "统一发布未完成。";
+  }
+  if (result?.pagesUrl) {
+    return `发布完成，可访问 ${result.pagesUrl}`;
+  }
+  return result?.message || "统一发布已完成。";
+}
+
+function buildCauseCards(messages, label) {
+  return messages.map((message, index) => ({
+    key: `${label}-${index}`,
+    label,
+    ok: false,
+    message,
+    causes: [],
+  }));
+}
+
 async function publish() {
   await run("publish", async () => {
     const ws = getSelectedWorkspace();
     if (!ws) {
-      logs.value = "请先在其他页面选择或创建工程。";
+      publishOutcomeSummary.value = "请先在其他页面选择或创建工程。";
+      publishOutcomeCards.value = [];
+      logs.value = "";
       return;
     }
 
-    const parsedRepo = parseGithubRepo(publishForm.repoUrl);
-    if (!parsedRepo) {
-      logs.value =
-        "发布仓库地址格式错误。请填写完整地址，例如 https://github.com/你的用户名/你的用户名.github.io.git";
+    if (publishReadiness.value !== "已具备统一发布与备份条件。") {
+      publishOutcomeSummary.value = publishReadiness.value;
+      publishOutcomeCards.value = [];
       return;
     }
 
@@ -103,22 +202,37 @@ async function publish() {
       const result = await publishToGitHub({
         projectDir: ws.projectDir,
         framework: ws.framework,
-        repoUrl: publishForm.repoUrl,
+        siteType: publishForm.siteType,
+        login: publishForm.login,
+        deployRepoName: resolvedDeployRepoName.value,
+        backupRepoName: publishForm.backupRepoName,
+        repoUrl: deployRepoUrl.value,
+        backupRepoUrl: backupRepoUrl.value,
+        createDeployRepo: publishForm.createDeployRepo,
+        createBackupRepo: publishForm.createBackupRepo,
+        backupDir: publishForm.backupDir,
         publishMode: publishForm.publishMode,
         gitUserName: publishForm.gitUserName,
         gitUserEmail: publishForm.gitUserEmail,
       });
 
-      if (!result?.ok) {
-        pagesUrl.value = "";
-        logs.value = `发布失败：${result?.message || "发布流程未完成。"}\n${JSON.stringify(result.logs || result, null, 2)}`;
-        return;
-      }
-
-      pagesUrl.value = result.pagesUrl || "";
-      logs.value = JSON.stringify(result.logs || result, null, 2);
+      pagesUrl.value = result?.pagesUrl || accessAddress.value || "";
+      publishOutcomeSummary.value = buildPublishSummary(result);
+      publishOutcomeCards.value = buildChildOutcomeCards(
+        result,
+        PUBLISH_OUTCOME_LABELS,
+      );
+      logs.value = JSON.stringify(result, null, 2);
     } catch (error) {
-      logs.value = `发布失败：${String(error?.message || error)}`;
+      const messages = collectOperationMessages(error);
+      pagesUrl.value = "";
+      publishOutcomeSummary.value = messages[0] || "统一发布未完成。";
+      publishOutcomeCards.value = buildCauseCards(messages, "发布校验");
+      logs.value = JSON.stringify(
+        error?.operationResult || { message: String(error?.message || error) },
+        null,
+        2,
+      );
     }
   });
 }
@@ -130,47 +244,30 @@ function openPagesUrl() {
   window.open(pagesUrl.value, "_blank");
 }
 
-async function backup() {
-  await run("backup", async () => {
-    const ws = getSelectedWorkspace();
-    if (!ws) {
-      logs.value = "请先在其他页面选择或创建工程。";
-      return;
-    }
-
-    try {
-      const result = await backupWorkspace({
-        projectDir: ws.projectDir,
-        backupDir: backupForm.backupDir,
-        repoUrl: backupForm.backupRepoUrl,
-        visibility: backupForm.visibility,
-      });
-
-      logs.value = JSON.stringify(result, null, 2);
-    } catch (error) {
-      logs.value = `备份失败：${String(error?.message || error)}`;
-    }
-  });
-}
-
 async function pickBackupDirectory() {
   try {
     const result = await pickDirectory({
-      title: "选择备份目录",
-      defaultPath: backupForm.backupDir || undefined,
+      title: "选择本地备份目录",
+      defaultPath: publishForm.backupDir || undefined,
     });
     if (!result.canceled && result.path) {
-      backupForm.backupDir = result.path;
+      publishForm.backupDir = result.path;
     }
   } catch (error) {
-    logs.value = `选择备份目录失败：${String(error?.message || error)}`;
+    const messages = collectOperationMessages(error);
+    publishOutcomeSummary.value = messages[0] || "选择本地备份目录失败。";
   }
 }
 
 onMounted(async () => {
   await refreshWorkspaces();
+  applyWorkspaceMetadata(selectedWorkspace.value);
+
   try {
     const auth = await getGithubAuthState();
+    if (auth?.account?.login && !publishForm.login) {
+      publishForm.login = auth.account.login;
+    }
     if (auth?.account?.login && !publishForm.gitUserName) {
       publishForm.gitUserName = auth.account.login;
     }
@@ -207,7 +304,7 @@ function jumpToZone(zoneId) {
             <p class="page-kicker">Release control center</p>
             <h2 class="page-title">发布控制中心</h2>
             <p class="page-lead">
-              先确认博客是否准备好，再决定发布模式并执行。发布结果和可访问地址应该先于技术日志出现，帮助你更快判断是否可以对外交付。
+              统一发布与备份现在收敛到一个工作台：先决定 GitHub Pages 站点类型和命名，再一次性跑完发布仓库准备、线上发布和恢复用备份链路。
             </p>
             <div class="workflow-hero-actions" data-workflow-zone="hero-actions">
               <button
@@ -216,7 +313,7 @@ function jumpToZone(zoneId) {
                 data-workflow-action-level="primary"
                 @click="jumpToZone('publish-workbench')"
               >
-                前往发布设置
+                前往发布工作台
               </button>
               <button
                 class="secondary"
@@ -230,14 +327,14 @@ function jumpToZone(zoneId) {
                 class="secondary"
                 type="button"
                 data-workflow-action-level="tertiary"
-                @click="jumpToZone('backup-workbench')"
+                @click="jumpToZone('publish-naming')"
               >
-                跳到备份设置
+                查看仓库命名规则
               </button>
             </div>
             <div class="page-link-row">
               <a href="#" @click.prevent="goTutorialCenter"
-                >不知道仓库地址怎么填？打开教程中心（发布与访问地址）</a
+                >不知道站点类型怎么选？打开教程中心（发布与访问地址）</a
               >
             </div>
           </div>
@@ -251,19 +348,21 @@ function jumpToZone(zoneId) {
               {{
                 selectedWorkspace
                   ? `${selectedWorkspace.framework.toUpperCase()} · 主题 ${selectedWorkspace.theme || '未识别'}`
-                  : "先选择一个博客工程，再填写仓库地址和 Git 身份。"
+                  : "先选择一个博客工程，再填写 GitHub 命名与 Git 身份。"
               }}
             </p>
           </div>
           <div class="page-signal">
-            <p class="section-eyebrow">推荐发布方式</p>
-            <strong>GitHub Actions（默认推荐）</strong>
-            <p class="section-helper">Hexo 和 Hugo 都更适合先用 Actions 跑通。</p>
+            <p class="section-eyebrow">GitHub Pages 站点类型</p>
+            <strong>{{ publishForm.siteType === USER_PAGES ? "用户站点" : "项目站点" }}</strong>
+            <p class="section-helper">
+              用户站点固定使用 <code>用户名.github.io</code>，项目站点则会在访问地址里附带仓库名。
+            </p>
           </div>
           <div class="page-signal page-signal--quiet">
             <p class="section-eyebrow">发布准备度</p>
             <strong>{{ publishReadiness }}</strong>
-            <p class="section-helper">准备度不足时，先补齐仓库地址、身份与预览检查。</p>
+            <p class="section-helper">准备度不足时，先补齐仓库命名、备份目录和 Git 身份。</p>
           </div>
         </div>
       </section>
@@ -275,22 +374,25 @@ function jumpToZone(zoneId) {
       >
         <div class="workflow-section-heading">
           <div class="workflow-section-heading-copy">
-            <p class="section-eyebrow">Step 01 · 对外发布</p>
-            <h2>发布到 GitHub Pages</h2>
+            <p class="section-eyebrow">Step 01 · 统一发布与备份</p>
+            <h2>统一发布与备份</h2>
             <p class="section-helper">
-              先让访问地址变成可交付结果，再决定是否补一份离线恢复用的备份仓库。
+              这里是发布仓库、访问地址和恢复底仓的唯一入口。内容编辑页里的自动发布会直接沿用这里的仓库设置。
             </p>
           </div>
         </div>
 
-        <div class="workflow-compact-block workflow-compact-block--support">
+        <div
+          id="publish-naming"
+          class="workflow-compact-block workflow-compact-block--support"
+        >
           <p class="section-eyebrow">发布前检查清单</p>
-          <strong>先确认这 4 件事</strong>
+          <strong>仓库命名与访问地址</strong>
           <ul class="checklist">
-            <li>已经选中正确的博客工程</li>
-            <li>仓库地址是完整的 GitHub URL</li>
-            <li>Git 提交用户名和邮箱已填写</li>
-            <li>本地预览和内容都已经检查过</li>
+            <li>用户站点固定命名为 <code>用户名.github.io</code></li>
+            <li>项目站点访问地址示例：<code>https://用户名.github.io/仓库名/</code></li>
+            <li>固定备份仓库：BFE</li>
+            <li>如仓库不存在，可勾选自动创建并在同一次发布中完成</li>
           </ul>
         </div>
 
@@ -307,17 +409,49 @@ function jumpToZone(zoneId) {
                 {{ ws.name }}
               </option>
             </select>
-            <p class="muted stack-top">当前主题：{{ selectedWorkspace?.theme || "未识别" }}</p>
           </div>
           <div>
-            <label>GitHub 仓库地址</label>
+            <label>GitHub 用户名</label>
+            <input v-model="publishForm.login" placeholder="例如 yourname" />
+          </div>
+          <div>
+            <label>GitHub Pages 站点类型</label>
+            <select v-model="publishForm.siteType">
+              <option value="project-pages">project-pages</option>
+              <option value="user-pages">user-pages</option>
+            </select>
+          </div>
+          <div>
+            <label>发布仓库名称</label>
             <input
-              v-model="publishForm.repoUrl"
-              placeholder="https://github.com/yourname/yourname.github.io.git"
+              v-model="publishForm.deployRepoName"
+              :disabled="publishForm.siteType === USER_PAGES"
+              :placeholder="publishForm.siteType === USER_PAGES ? '会自动固定为 用户名.github.io' : '例如 my-blog'"
             />
-            <p class="muted stack-top">
-              既支持 用户名.github.io（根域名），也支持 project page（会自动推断子路径）。
+            <p class="muted stack-top">当前仓库：{{ resolvedDeployRepoName || "等待填写" }}</p>
+          </div>
+          <div>
+            <label>固定备份仓库</label>
+            <input v-model="publishForm.backupRepoName" disabled />
+            <p class="muted stack-top">{{ backupRepoUrl || "等待填写 GitHub 用户名" }}</p>
+          </div>
+          <div>
+            <label>访问地址预期</label>
+            <p class="workflow-access-address" data-workflow-surface="access-address">
+              <code>{{ accessAddress }}</code>
             </p>
+          </div>
+          <div>
+            <label>本地备份目录</label>
+            <div class="path-input-row">
+              <input
+                v-model="publishForm.backupDir"
+                placeholder="例如 D:/blog-backups/demo"
+              />
+              <button class="secondary" type="button" @click="pickBackupDirectory">
+                选择目录
+              </button>
+            </div>
           </div>
           <div>
             <label>发布模式</label>
@@ -330,9 +464,20 @@ function jumpToZone(zoneId) {
                 Hexo 命令发布（hexo deploy）
               </option>
             </select>
-            <p class="muted stack-top">
-              Actions 适配 Hexo/Hugo；Hexo 命令发布会自动配置 deploy 并执行 clean/generate/deploy。
-            </p>
+          </div>
+          <div>
+            <label>自动创建发布仓库</label>
+            <select v-model="publishForm.createDeployRepo">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </div>
+          <div>
+            <label>自动创建备份仓库</label>
+            <select v-model="publishForm.createBackupRepo">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
           </div>
           <div>
             <label>Git 提交用户名</label>
@@ -344,17 +489,14 @@ function jumpToZone(zoneId) {
               v-model="publishForm.gitUserEmail"
               placeholder="例如 123456+ming@users.noreply.github.com"
             />
-            <p class="muted stack-top">
-              首次发布若未配置 Git 身份，软件会用这里的信息自动写入当前工程。
-            </p>
           </div>
         </div>
 
         <div class="actions">
           <AsyncActionButton
             kind="primary"
-            label="开始发布"
-            busy-label="发布中..."
+            label="开始统一发布"
+            busy-label="统一发布中..."
             :busy="isBusy('publish')"
             data-workflow-action-level="primary"
             @click="publish"
@@ -380,79 +522,32 @@ function jumpToZone(zoneId) {
         <div>
           <p class="section-eyebrow">最近结果</p>
           <strong>{{ publishResultSummary }}</strong>
-          <p class="page-result-note">
-            {{ pagesUrl ? "访问地址已经可见，可继续打开验证。" : "还没有成功发布结果时，先检查准备度与表单输入。" }}
-          </p>
+          <p class="page-result-note">{{ publishNextStep }}</p>
         </div>
         <div>
-          <p class="section-eyebrow">当前状态</p>
-          <strong>{{ publishReadiness }}</strong>
-          <p class="page-result-note">{{ publishNextStep }}</p>
+          <p class="section-eyebrow">结构化链路结果</p>
+          <strong>{{ publishOutcomeCards.length ? "按子步骤展示" : "等待第一次执行" }}</strong>
+          <p class="page-result-note">不会再把部分成功压缩成一行泛化错误。</p>
         </div>
         <div class="actions" v-if="pagesUrl">
           <button class="secondary" @click="openPagesUrl">打开博客地址</button>
         </div>
-      </section>
 
-      <section
-        id="backup-workbench"
-        class="panel workflow-section-panel"
-        data-workflow-zone="backup-workbench"
-      >
-        <div class="workflow-section-heading">
-          <div class="workflow-section-heading-copy">
-            <p class="section-eyebrow">Step 02 · 备份支线</p>
-            <h2>备份到底层仓库</h2>
-            <p class="section-helper">
-              将本地博客工程打包到快照目录，可选推送到另一个 GitHub 仓库，用于换设备恢复。
-            </p>
-          </div>
-        </div>
-
-        <div class="workflow-compact-block workflow-compact-block--support workflow-compact-block--subtle">
-          <p class="section-eyebrow">备份适用场景</p>
-          <strong>发布跑通后，再补一份恢复用底仓快照。</strong>
-          <p class="page-result-note">这样不会让备份动作盖过本页最重要的对外发布。</p>
-        </div>
-
-        <div class="grid-2">
-          <div>
-            <label>本地备份目录</label>
-            <div class="path-input-row">
-              <input
-                v-model="backupForm.backupDir"
-                placeholder="例如 D:/blog-backups"
-              />
-              <button class="secondary" type="button" @click="pickBackupDirectory">
-                选择目录
-              </button>
-            </div>
-          </div>
-          <div>
-            <label>备份仓库地址（可选）</label>
-            <input
-              v-model="backupForm.backupRepoUrl"
-              placeholder="https://github.com/you/blog-backup.git"
-            />
-          </div>
-          <div>
-            <label>备份仓库可见性</label>
-            <select v-model="backupForm.visibility">
-              <option value="private">private</option>
-              <option value="public">public</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="actions">
-          <AsyncActionButton
-            kind="secondary"
-            label="生成并推送备份"
-            busy-label="备份中..."
-            :busy="isBusy('backup')"
-            data-workflow-action-level="tertiary"
-            @click="backup"
-          />
+        <div v-if="publishOutcomeCards.length" class="publish-outcome-list stack-top">
+          <article
+            v-for="card in publishOutcomeCards"
+            :key="card.key"
+            class="workflow-compact-block workflow-compact-block--support"
+          >
+            <p class="section-eyebrow">{{ card.label }}</p>
+            <strong>{{ card.ok ? "已完成" : "待处理" }}</strong>
+            <p class="page-result-note">{{ card.message }}</p>
+            <ul v-if="card.causes.length" class="page-guidance-list">
+              <li v-for="cause in card.causes" :key="`${card.key}-${cause}`">
+                {{ cause }}
+              </li>
+            </ul>
+          </article>
         </div>
       </section>
     </div>

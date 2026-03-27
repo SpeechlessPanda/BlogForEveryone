@@ -134,11 +134,26 @@ function checkMarkers(item) {
 
 async function verifyItem(item, index) {
     const port = 31000 + index;
-    const preview = await startLocalPreview({
-        projectDir: item.projectDir,
-        framework: item.framework,
-        port
-    });
+    let preview = null;
+    const previewAttempts = item.framework === 'hexo' ? 2 : 1;
+
+    for (let attempt = 0; attempt < previewAttempts; attempt += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        preview = await startLocalPreview({
+            projectDir: item.projectDir,
+            framework: item.framework,
+            port
+        });
+
+        if (preview?.ok) {
+            break;
+        }
+
+        if (attempt < previewAttempts - 1) {
+            // eslint-disable-next-line no-await-in-loop
+            await stopLocalPreview({ projectDir: item.projectDir, framework: item.framework });
+        }
+    }
 
     let previewHttpOk = false;
     if (preview.ok && preview.url) {

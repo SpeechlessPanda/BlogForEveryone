@@ -1,3 +1,7 @@
+const path = require('path');
+const { FIXED_BACKUP_REPO_NAME } = require('../../shared/remoteWorkspaceContract');
+const { RESULT_CODES, RESULT_CATEGORIES } = require('../../shared/operationResultContract');
+
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }
@@ -122,7 +126,75 @@ function validatePublishPayload(payload) {
     };
 }
 
+function createValidationFailure(key, message, normalizedPayload = null) {
+    return {
+        ok: false,
+        code: RESULT_CODES.validationFailed,
+        category: RESULT_CATEGORIES.validation,
+        causes: [{ key, message }],
+        normalizedPayload
+    };
+}
+
+function validateGithubImportPayload(payload = {}) {
+    const localDestinationPath = String(payload.localDestinationPath || '').trim();
+    if (!localDestinationPath || !path.isAbsolute(localDestinationPath)) {
+        return createValidationFailure('destination_path_invalid', '导入目标路径必须为绝对路径。');
+    }
+
+    const backupRepo = payload.backupRepo && typeof payload.backupRepo === 'object'
+        ? payload.backupRepo
+        : null;
+    const backupRepoUrl = String(payload.backupRepoUrl || backupRepo?.url || '').trim();
+    const parsedBackupRepo = parseGithubRepo(backupRepoUrl);
+    if (!parsedBackupRepo) {
+        return createValidationFailure('backup_repo_invalid', '备份仓库地址格式错误，无法执行 GitHub 导入。');
+    }
+
+    if (String(parsedBackupRepo.repo || '').toLowerCase() !== FIXED_BACKUP_REPO_NAME.toLowerCase()) {
+        return createValidationFailure(
+            'backup_repo_name_invalid',
+            `备份仓库必须为 ${FIXED_BACKUP_REPO_NAME}，无法执行 GitHub 导入。`
+        );
+    }
+
+    return {
+        ok: true,
+        normalizedPayload: {
+            ...payload,
+            localDestinationPath,
+            backupRepo: backupRepo
+                ? {
+                    ...backupRepo,
+                    owner: parsedBackupRepo.owner,
+                    name: FIXED_BACKUP_REPO_NAME,
+                    url: backupRepoUrl
+                }
+                : {
+                    owner: parsedBackupRepo.owner,
+                    name: FIXED_BACKUP_REPO_NAME,
+                    url: backupRepoUrl
+                }
+        }
+    };
+}
+
+function validateGithubImportRepositoryState(payload = {}) {
+    const hasDeployRepo = Boolean(payload.hasDeployRepo);
+    const hasBackupRepo = Boolean(payload.hasBackupRepo);
+    if (hasDeployRepo && !hasBackupRepo) {
+        return createValidationFailure(
+            'github_import_backup_missing',
+            '仅存在发布仓库且缺少 BFE 备份仓库时，不支持 GitHub 直连导入。'
+        );
+    }
+
+    return { ok: true };
+}
+
 module.exports = {
     validateThemeSettings,
-    validatePublishPayload
+    validatePublishPayload,
+    validateGithubImportPayload,
+    validateGithubImportRepositoryState
 };

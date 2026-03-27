@@ -39,6 +39,7 @@ test("ShellTopBar stays focused on page context and popup mounting", async () =>
 
   assert.match(source, /activeTabMeta\.label/);
   assert.match(source, /activeSectionMeta\.label/);
+  assert.match(source, /shellAppearance/);
   assert.match(source, /shellPopupAnchorStyle/);
   assert.match(source, /<slot name="page-actions" \/>/);
   assert.match(source, /<slot \/>/);
@@ -59,8 +60,13 @@ test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overl
   );
   assert.match(
     source,
-    /class="shell-popup-overlay shell-popup-overlay--sidebar"/,
+    /class="shell-popup-overlay shell-popup-overlay--sidebar shell-popup-theme"/,
     "expected ShellTopBar.vue to expose a sidebar-aligned fixed overlay wrapper for the account popup",
+  );
+  assert.match(
+    source,
+    /:data-shell-appearance="shellAppearance"/,
+    "expected ShellTopBar.vue to pass the current shell appearance onto the teleported popup theme root",
   );
   assert.match(
     source,
@@ -71,5 +77,15 @@ test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overl
     source.includes('class="shell-popup-mount"'),
     false,
     "expected ShellTopBar.vue to stop rendering the popup as inline shell content that scrolls with the page",
+  );
+});
+
+test("ShellTopBar closes the shared popup from keyboard Escape without changing popup ownership", async () => {
+  const source = await readFile(topBarPath, "utf8");
+
+  assert.match(
+    source,
+    /@keydown\.esc\.stop\.prevent="\$emit\('close-shell-popup'\)"/,
+    "expected ShellTopBar.vue to expose Escape-based popup dismissal through the existing close-shell-popup event",
   );
 });

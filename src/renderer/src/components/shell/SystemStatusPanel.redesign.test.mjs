@@ -49,3 +49,14 @@ test("SystemStatusPanel preserves auth-required and environment-required flows i
   assert.match(source, /shellAppearanceToggleLabel/);
   assert.match(source, /toggle-shell-appearance/);
 });
+
+test("SystemStatusPanel targets the requested popup block with active marker, scroll alignment, and first-control focus", async () => {
+  const source = await readFile(panelPath, "utf8");
+
+  assert.match(source, /activePopupSection/);
+  assert.match(source, /isShellPopupOpen/);
+  assert.match(source, /data-popup-active/);
+  assert.match(source, /scrollIntoView\(/);
+  assert.match(source, /querySelector\(/);
+  assert.match(source, /focus\(/);
+});

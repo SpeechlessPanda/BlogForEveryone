@@ -1,8 +1,20 @@
 <script setup>
+import { nextTick, ref, watch } from "vue";
+
 import { isAuthRequiredForTab } from "../../utils/workflowViewHelpers.mjs";
 
-defineProps({
+const POPUP_FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[href]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(", ");
+
+const props = defineProps({
   activeTab: { type: String, required: true },
+  activePopupSection: { type: String, default: "account" },
   authClientId: { type: String, required: true },
   authLog: { type: String, required: true },
   authState: { type: Object, default: null },
@@ -10,12 +22,61 @@ defineProps({
   envActionLog: { type: String, required: true },
   envStatus: { type: Object, required: true },
   isLoggedIn: { type: Boolean, required: true },
+  isShellPopupOpen: { type: Boolean, required: true },
   pnpmInstalling: { type: Boolean, required: true },
   pnpmProgress: { type: Array, required: true },
   shellAppearance: { type: String, required: true },
   shellAppearanceToggleLabel: { type: String, required: true },
   updateState: { type: Object, required: true },
 });
+
+const accountBlock = ref(null);
+const appearanceBlock = ref(null);
+
+const popupBlockRefs = {
+  account: accountBlock,
+  appearance: appearanceBlock,
+};
+
+async function focusActivePopupSection(sectionKey) {
+  if (!props.isShellPopupOpen) {
+    return;
+  }
+
+  await nextTick();
+
+  const activeBlock = popupBlockRefs[sectionKey]?.value;
+  if (!activeBlock) {
+    return;
+  }
+
+  if (typeof activeBlock.scrollIntoView === "function") {
+    activeBlock.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }
+
+  const firstInteractiveControl = activeBlock.querySelector(
+    POPUP_FOCUSABLE_SELECTOR,
+  );
+  if (typeof firstInteractiveControl?.focus === "function") {
+    firstInteractiveControl.focus({ preventScroll: true });
+  }
+}
+
+watch(
+  () => [props.isShellPopupOpen, props.activePopupSection],
+  ([isShellPopupOpen, activePopupSection]) => {
+    if (!isShellPopupOpen) {
+      return;
+    }
+
+    void focusActivePopupSection(activePopupSection);
+  },
+  { immediate: true },
+);
 
 defineEmits([
   "update:auth-client-id",
@@ -36,7 +97,12 @@ defineEmits([
 
 <template>
   <section class="shell-popup-panel" data-shell-surface="user-popup">
-    <section class="shell-popup-block" data-popup-block="account">
+    <section
+      ref="accountBlock"
+      class="shell-popup-block"
+      data-popup-block="account"
+      :data-popup-active="activePopupSection === 'account' ? 'true' : null"
+    >
       <div class="shell-popup-heading">
         <div>
           <p class="status-label">账户</p>
@@ -77,7 +143,12 @@ defineEmits([
       <pre v-if="authLog" class="shell-popup-log">{{ authLog }}</pre>
     </section>
 
-    <section class="shell-popup-block" data-popup-block="appearance">
+    <section
+      ref="appearanceBlock"
+      class="shell-popup-block"
+      data-popup-block="appearance"
+      :data-popup-active="activePopupSection === 'appearance' ? 'true' : null"
+    >
       <p class="status-label">显示模式</p>
       <strong>{{ shellAppearance === "dark" ? "暗色编辑台" : "亮色编辑台" }}</strong>
       <div class="actions shell-popup-actions">

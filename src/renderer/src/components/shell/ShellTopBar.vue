@@ -3,6 +3,7 @@ defineProps({
   activeSectionMeta: { type: Object, required: true },
   activeTabMeta: { type: Object, required: true },
   isShellPopupOpen: { type: Boolean, required: true },
+  shellAppearance: { type: String, required: true },
   shellPopupAnchorStyle: { type: Object, required: true },
 });
 
@@ -24,9 +25,11 @@ defineEmits(["close-shell-popup"]);
   <Teleport to="body">
     <div
       v-show="isShellPopupOpen"
-      class="shell-popup-overlay shell-popup-overlay--sidebar"
+      class="shell-popup-overlay shell-popup-overlay--sidebar shell-popup-theme"
+      :data-shell-appearance="shellAppearance"
       data-topbar-region="popup-mount"
       @click.self="$emit('close-shell-popup')"
+      @keydown.esc.stop.prevent="$emit('close-shell-popup')"
     >
       <div class="shell-popup-panel-wrap" :style="shellPopupAnchorStyle">
         <div class="shell-popup-dismiss-row">

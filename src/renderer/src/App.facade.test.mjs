@@ -16,7 +16,9 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /ShellModalLayer/);
   assert.match(source, /:data-shell-appearance="shellAppearance"/);
   assert.match(source, /:is-shell-popup-open="isShellPopupOpen"/);
+  assert.match(source, /:shell-appearance="shellAppearance"/);
   assert.match(source, /:shell-popup-anchor-style="shellPopupAnchorStyle"/);
+  assert.match(source, /:active-popup-section="shellPopupSectionKey"/);
   assert.match(source, /:shell-user-entry-label="shellUserEntryLabel"/);
   assert.match(source, /:tutorial-target="tutorialTarget"/);
   assert.match(source, /@open-shell-popup="openShellPopup"/);
@@ -105,8 +107,18 @@ test("App shell styles keep document scroll outside the workflow view container"
   );
   assert.match(
     stylesSource,
-    /\.shell-popup-panel-wrap\s*\{[\s\S]*top:\s*var\(--shell-popup-top[\s\S]*left:\s*calc\(var\(--shell-popup-left[\s\S]*var\(--shell-popup-width/,
+    /\.shell-popup-panel-wrap\s*\{[\s\S]*position:\s*fixed;[\s\S]*top:\s*var\(--shell-popup-top[\s\S]*left:\s*calc\(var\(--shell-popup-left[\s\S]*var\(--shell-popup-width/,
     "expected styles.css to position the shell popup from sidebar anchor CSS variables instead of fixed sidebar padding",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-theme\s*\{[\s\S]*--shell-bg:[\s\S]*--shell-panel:[\s\S]*--shell-ink:/,
+    "expected styles.css to define teleport-safe shell popup theme tokens outside layout ancestry",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-block\[data-popup-active="true"\]\s*\{[\s\S]*border-color:[\s\S]*background:/,
+    "expected styles.css to style the requested popup block with an explicit active-state marker",
   );
   assert.equal(
     stylesSource.includes("padding-left: 234px;"),

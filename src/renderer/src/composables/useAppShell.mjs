@@ -61,8 +61,10 @@ export function useAppShell() {
   const pnpmInstalling = ref(false);
   const shellAppearance = ref("light");
   const isShellPopupOpen = ref(false);
+  const shellPopupTriggerElement = ref(null);
+  const shellPopupSectionKey = ref("account");
   const shellPopupAnchor = ref({
-    key: "user",
+    key: "account",
     top: 24,
     left: 24,
     width: 0,
@@ -171,10 +173,19 @@ export function useAppShell() {
 
   function syncShellPopupAnchor(anchor) {
     const anchorElement = anchor && anchor.element;
-    const anchorRect = anchorElement?.getBoundingClientRect();
+    const anchorRect = anchorElement?.getBoundingClientRect?.();
     if (!anchorRect) {
-      return;
+      shellPopupTriggerElement.value = null;
+      shellPopupAnchor.value = {
+        key: anchor?.key || "account",
+        top: 24,
+        left: 24,
+        width: 0,
+      };
+      return false;
     }
+
+    shellPopupTriggerElement.value = anchorElement;
 
     const viewportHeight =
       globalThis.innerHeight ||
@@ -191,11 +202,13 @@ export function useAppShell() {
     );
 
     shellPopupAnchor.value = {
-      key: anchor?.key || "user",
+      key: anchor?.key || "account",
       top: popupTop,
       left: anchorRect.left,
       width: anchorRect.width,
     };
+
+    return true;
   }
 
   function setActiveTab(tabKey) {
@@ -212,12 +225,18 @@ export function useAppShell() {
   }
 
   function openShellPopup(anchor) {
-    syncShellPopupAnchor(anchor);
+    shellPopupSectionKey.value = anchor?.key === "appearance" ? "appearance" : "account";
+    if (!syncShellPopupAnchor(anchor)) {
+      isShellPopupOpen.value = false;
+      return;
+    }
     isShellPopupOpen.value = true;
   }
 
   function closeShellPopup() {
     isShellPopupOpen.value = false;
+    shellPopupTriggerElement.value?.focus({ preventScroll: true });
+    shellPopupTriggerElement.value = null;
   }
 
   function openInfoModal(key) {
@@ -563,6 +582,7 @@ export function useAppShell() {
     setActiveTab,
     shellAppearance,
     shellPopupAnchorStyle,
+    shellPopupSectionKey,
     shellAppearanceToggleLabel,
     shellUserEntryLabel,
     sidebarLoginText,

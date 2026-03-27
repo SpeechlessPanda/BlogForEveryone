@@ -22,6 +22,7 @@ test("useAppShell keeps shell summary and presentation state in facade", async (
     "shellAppearanceToggleLabel",
     "isShellPopupOpen",
     "shellPopupAnchorStyle",
+    "shellPopupSectionKey",
     "shellUserEntryLabel",
     "tutorialTarget",
   ];
@@ -105,15 +106,28 @@ test("useAppShell owns popup utility state for the refined shell", async () => {
 
   assert.match(source, /const isShellPopupOpen = ref\(false\)/);
   assert.match(source, /const shellPopupAnchor = ref\(/);
+  assert.match(source, /const shellPopupTriggerElement = ref\(null\)/);
+  assert.match(source, /const shellPopupSectionKey = ref\("account"\)/);
   assert.match(source, /const shellPopupAnchorStyle = computed\(/);
   assert.match(source, /const tutorialTarget = ref\("tutorial-home"\)/);
   assert.match(source, /const shellUserEntryLabel = computed\(/);
   assert.match(source, /function openShellPopup\(anchor\)/);
   assert.match(source, /function closeShellPopup\(\)/);
   assert.match(source, /anchor\.element/);
-  assert.match(source, /getBoundingClientRect\(\)/);
+  assert.match(source, /getBoundingClientRect\?\.\(\)/);
+  assert.match(source, /shellPopupSectionKey\.value = anchor\?\.key === "appearance" \? "appearance" : "account"/);
   assert.match(source, /isShellPopupOpen\.value = true/);
   assert.match(source, /isShellPopupOpen\.value = false/);
+  assert.match(source, /shellPopupTriggerElement\.value = anchorElement/);
+  assert.match(source, /shellPopupTriggerElement\.value\?\.focus\(/);
+  assert.match(source, /shellPopupTriggerElement\.value = null/);
+});
+
+test("useAppShell does not reopen the shared popup from stale anchor coordinates", async () => {
+  const source = await readFile(useAppShellPath, "utf8");
+
+  assert.match(source, /if \(!anchorRect\) \{[\s\S]*shellPopupAnchor\.value = \{[\s\S]*top: 24,[\s\S]*left: 24,[\s\S]*width: 0,[\s\S]*\}[\s\S]*return false[\s\S]*\}/);
+  assert.match(source, /if \(!syncShellPopupAnchor\(anchor\)\) \{[\s\S]*isShellPopupOpen\.value = false[\s\S]*return[\s\S]*\}/);
 });
 
 test("useAppShell clamps sidebar popup placement to desktop viewport bounds", async () => {

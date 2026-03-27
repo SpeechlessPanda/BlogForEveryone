@@ -55,6 +55,7 @@ const {
   setActiveTab,
   shellAppearance,
   shellPopupAnchorStyle,
+  shellPopupSectionKey,
   shellAppearanceToggleLabel,
   shellUserEntryLabel,
   toggleShellAppearance,
@@ -82,16 +83,25 @@ const {
         :active-section-meta="activeSectionMeta"
         :active-tab-meta="activeTabMeta"
         :is-shell-popup-open="isShellPopupOpen"
+        :shell-appearance="shellAppearance"
         :shell-popup-anchor-style="shellPopupAnchorStyle"
         @close-shell-popup="closeShellPopup"
       >
         <template #page-actions>
-          <WorkflowSummary
-            :active-section-meta="activeSectionMeta"
-            :active-tab-meta="activeTabMeta"
-            :next-step="nextStep"
-            :workspace-summary="workspaceSummary"
-          />
+          <div class="shell-page-actions-summary">
+            <WorkflowSummary
+              :active-section-meta="activeSectionMeta"
+              :active-tab-meta="activeTabMeta"
+              :next-step="nextStep"
+              :workspace-summary="workspaceSummary"
+            />
+            <p
+              class="shell-summary-copy shell-summary-copy--workspace-detail"
+              data-summary-detail="workspace"
+            >
+              {{ workspaceSummary.detail }}
+            </p>
+          </div>
         </template>
 
         <SystemStatusPanel
@@ -102,7 +112,9 @@ const {
           :device-flow="deviceFlow"
           :env-action-log="envActionLog"
           :env-status="envStatus"
+          :active-popup-section="shellPopupSectionKey"
           :is-logged-in="isLoggedIn"
+          :is-shell-popup-open="isShellPopupOpen"
           :pnpm-installing="pnpmInstalling"
           :pnpm-progress="pnpmProgress"
           :shell-appearance="shellAppearance"

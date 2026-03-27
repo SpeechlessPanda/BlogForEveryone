@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 const previewViewPath = new URL("./PreviewView.vue", import.meta.url);
 const stylesPath = new URL("../styles.css", import.meta.url);
 
-test("PreviewView joins the shared editorial workflow family without duplicating hero summary cards", async () => {
+test("PreviewView keeps preview status and results in a single vertical workflow", async () => {
   const source = await readFile(previewViewPath, "utf8");
 
   const requiredHooks = [
@@ -32,15 +32,18 @@ test("PreviewView joins the shared editorial workflow family without duplicating
   assert.equal(source.includes("workflow-inline-note"), false);
   assert.equal(source.includes("page-status-grid"), false);
   assert.match(source, /workflow-status-grid/);
-  assert.match(source, /workflow-inline-panel/);
-  assert.match(source, /预览结果摘要/);
+  assert.doesNotMatch(source, /workflow-inline-panel/);
+  assert.doesNotMatch(source, /priority-panel priority-panel--support workflow-result-panel/);
+  assert.match(source, /workflow-compact-block workflow-result-block/);
   assert.match(source, /最近结果/);
+  assert.match(source, /当前状态/);
+  assert.match(source, /查看详细日志与链路事件/);
   assert.match(source, /useShellActions/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
   assert.match(source, /shellActions\.openTutorial\("preview-check"\)/);
 });
 
-test("PreviewView shares stronger button hover affordances while keeping focus-visible explicit", async () => {
+test("PreviewView redesign uses shared compact workflow blocks and keeps hover affordances", async () => {
   const stylesSource = await readFile(stylesPath, "utf8");
 
   assert.match(
@@ -49,15 +52,23 @@ test("PreviewView shares stronger button hover affordances while keeping focus-v
   );
   assert.match(
     stylesSource,
+    /\.workflow-section-heading--stacked[\s\S]*display:\s*grid/,
+  );
+  assert.match(
+    stylesSource,
+    /\.workflow-compact-block[\s\S]*border-radius:\s*12px/,
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial \.priority-panel,[\s\S]*\.layout--editorial \.context-card,[\s\S]*\.layout--editorial \.page-signal,[\s\S]*\.layout--editorial \.workflow-compact-block[\s\S]*background:\s*var\(--shell-panel-alt\)/,
+  );
+  assert.match(
+    stylesSource,
     /button\.primary:hover,[\s\S]*button\.secondary:hover,[\s\S]*button\.danger:hover[\s\S]*translateY\(-2px\)/,
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial \.shell-user-anchor:hover,[\s\S]*\.layout--editorial \.shell-popup-dismiss:hover,[\s\S]*\.layout--editorial button\.primary:hover,[\s\S]*\.layout--editorial button\.secondary:hover,[\s\S]*\.layout--editorial button\.danger:hover[\s\S]*(translateY\(-1px\)|translate3d\([^)]*-1px[^)]*\))/,
-  );
-  assert.doesNotMatch(
-    stylesSource,
-    /\.layout--editorial \.shell-user-anchor:hover,[\s\S]*\.layout--editorial \.shell-popup-dismiss:hover,[\s\S]*\.layout--editorial button\.primary:hover,[\s\S]*\.layout--editorial button\.secondary:hover,[\s\S]*\.layout--editorial button\.danger:hover[\s\S]*transform:\s*none/,
+    /button\.primary:hover,[\s\S]*button\.secondary:hover,[\s\S]*button\.danger:hover[\s\S]*translateY\(-2px\)/,
   );
   assert.match(stylesSource, /button:focus-visible/);
   assert.match(stylesSource, /a:focus-visible/);

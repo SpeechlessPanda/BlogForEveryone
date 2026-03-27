@@ -296,12 +296,6 @@ watch(
           </div>
         </div>
 
-        <div class="workflow-inline-panel priority-panel priority-panel--support">
-          <p class="section-eyebrow">预览结果摘要</p>
-          <strong>{{ previewResultSummary }}</strong>
-          <p class="page-result-note">{{ previewNextStep }}</p>
-        </div>
-
         <div class="grid-2">
           <div>
             <label>选择工程</label>
@@ -370,14 +364,21 @@ watch(
     <div class="page-layer" data-page-layer="explanation">
       <section
         id="preview-result"
-        class="priority-panel priority-panel--support workflow-result-panel"
+        class="workflow-compact-block workflow-result-block"
         data-workflow-zone="recent-result"
       >
-        <p class="section-eyebrow">最近结果</p>
-        <strong>{{ previewResultSummary }}</strong>
-        <p class="page-result-note">
-          {{ preview.url ? `预览地址：${preview.url}` : "还没有可确认的结果地址。" }}
-        </p>
+        <div>
+          <p class="section-eyebrow">最近结果</p>
+          <strong>{{ previewResultSummary }}</strong>
+          <p class="page-result-note">
+            {{ preview.url ? `预览地址：${preview.url}` : "还没有可确认的结果地址。" }}
+          </p>
+        </div>
+        <div>
+          <p class="section-eyebrow">当前状态</p>
+          <strong>{{ preview.running ? "预览运行中" : "预览未启动" }}</strong>
+          <p class="page-result-note">{{ previewCheckpointState }}</p>
+        </div>
       </section>
     </div>
 

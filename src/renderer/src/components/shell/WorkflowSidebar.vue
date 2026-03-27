@@ -58,8 +58,8 @@ defineEmits(["navigate", "open-shell-popup"]);
 
         <button
           class="sidebar-entry"
-          data-sidebar-entry="user"
-          @click="$emit('open-shell-popup', { key: 'user', element: $event.currentTarget })"
+          data-sidebar-entry="account"
+          @click="$emit('open-shell-popup', { key: 'account', element: $event.currentTarget })"
         >
           <span class="sidebar-entry-label">账户</span>
           <strong>{{ shellUserEntryLabel }}</strong>

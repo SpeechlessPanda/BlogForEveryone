@@ -12,7 +12,7 @@ test("WorkflowSidebar is reduced to minimal nav plus appearance and user entry p
     'data-sidebar-region="brand"',
     'data-sidebar-region="nav"',
     'data-sidebar-entry="appearance"',
-    'data-sidebar-entry="user"',
+    'data-sidebar-entry="account"',
   ];
 
   for (const hook of requiredHooks) {
@@ -73,7 +73,12 @@ test("WorkflowSidebar keeps grouped workflow navigation without persistent utili
   );
   assert.match(
     source,
-    /@click="\$emit\('open-shell-popup', \{ key: 'user', element: \$event\.currentTarget \}\)"/,
+    /@click="\$emit\('open-shell-popup', \{ key: 'account', element: \$event\.currentTarget \}\)"/,
+  );
+  assert.equal(
+    source.includes("key: 'user'"),
+    false,
+    "expected WorkflowSidebar.vue to map the footer account entry to the shared popup account block",
   );
 
   const removedUtilityBindings = [

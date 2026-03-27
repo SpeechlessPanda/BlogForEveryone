@@ -12,7 +12,7 @@ const existingContentSectionPath = new URL(
   import.meta.url,
 );
 
-test("ContentEditorView keeps the writing hub flow while removing duplicated hero summary cards", async () => {
+test("ContentEditorView keeps one primary writing flow and demotes helper blocks", async () => {
   const source = await readFile(contentEditorPath, "utf8");
   const heroSectionSource = await readFile(contentWorkflowHeroPath, "utf8");
 
@@ -22,7 +22,6 @@ test("ContentEditorView keeps the writing hub flow while removing duplicated her
     'data-workflow-zone="hero"',
     'data-workflow-zone="create-content"',
     'data-workflow-zone="existing-content"',
-    'data-workflow-zone="recent-result"',
   ];
 
   for (const hook of requiredHooks) {
@@ -48,10 +47,22 @@ test("ContentEditorView keeps the writing hub flow while removing duplicated her
   assert.equal(source.includes("page-hero-aside"), false);
   assert.equal(source.includes("page-status-grid"), false);
   assert.equal(
+    source.includes('data-page-layer="explanation"'),
+    false,
+    "expected ContentEditorView to fold result summaries back into the writing flow instead of keeping a separate explanation rail",
+  );
+  assert.equal(
+    source.includes('data-workflow-zone="recent-result"'),
+    false,
+    "expected ContentEditorView to stop rendering a separate recent-result panel",
+  );
+  assert.equal(
     source.includes('class="workflow-inline-note'),
     false,
     "expected ContentEditorView to move the write-result note below the heading instead of keeping it on the right",
   );
+  assert.doesNotMatch(source, /workflow-inline-panel priority-panel priority-panel--support/);
+  assert.match(source, /workflow-compact-block workflow-result-block/);
   assert.match(source, /写作结果摘要/);
   assert.match(source, /自动流程（后置）/);
   assert.match(source, /data-page-layer="detail"[\s\S]*自动流程（后置）/);
@@ -81,4 +92,8 @@ test("ContentEditorView redesign extracts hero and existing-content structures i
   assert.match(existingSectionSource, /选择已有内容/);
   assert.match(existingSectionSource, /正文（Markdown）/);
   assert.match(existingSectionSource, /保存标题与正文/);
+  assert.match(existingSectionSource, /workflow-section-heading--stacked/);
+  assert.match(existingSectionSource, /workflow-compact-block workflow-compact-block--subtle/);
+  assert.doesNotMatch(existingSectionSource, /workflow-inline-note/);
+  assert.doesNotMatch(existingSectionSource, /<aside/);
 });

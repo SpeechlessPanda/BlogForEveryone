@@ -329,7 +329,7 @@ watch(
           </div>
         </div>
 
-        <div class="workflow-inline-panel priority-panel priority-panel--support">
+        <div class="workflow-compact-block workflow-result-block">
           <p class="section-eyebrow">写作结果摘要</p>
           <strong>{{ contentRecentResult }}</strong>
           <p class="page-result-note">{{ contentNextStep }}</p>
@@ -410,17 +410,6 @@ watch(
         :open-selected-existing-in-editor="openSelectedExistingInEditor"
         @update:selected-existing-path="selectedExistingPath = $event"
       />
-    </div>
-
-    <div class="page-layer" data-page-layer="explanation">
-      <section
-        class="priority-panel priority-panel--support workflow-result-panel"
-        data-workflow-zone="recent-result"
-      >
-        <p class="section-eyebrow">最近结果</p>
-        <strong>{{ contentRecentResult }}</strong>
-        <p class="page-result-note">{{ contentNextStep }}</p>
-      </section>
     </div>
 
     <div class="page-layer" data-page-layer="detail">

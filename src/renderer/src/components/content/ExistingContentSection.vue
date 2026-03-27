@@ -41,7 +41,7 @@ const emit = defineEmits(["update:selectedExistingPath"]);
     class="panel workflow-section-panel"
     data-workflow-zone="existing-content"
   >
-    <div class="workflow-section-heading">
+    <div class="workflow-section-heading workflow-section-heading--stacked">
       <div class="workflow-section-heading-copy">
         <p class="section-eyebrow">Step 02 · 继续写作</p>
         <h2>已有内容二次编辑</h2>
@@ -49,11 +49,11 @@ const emit = defineEmits(["update:selectedExistingPath"]);
           读取当前工程已有文章或页面，继续改标题、正文，再决定是否改用外部编辑器深化写作。
         </p>
       </div>
-      <aside class="workflow-inline-note priority-panel priority-panel--subtle">
+      <div class="workflow-compact-block workflow-compact-block--subtle">
         <p class="section-eyebrow">当前写作状态</p>
         <strong>{{ existingList.length ? `已有 ${existingList.length} 项内容` : "还没有已载入内容" }}</strong>
         <p class="page-result-note">已存在内容也能在这里直接继续编辑。</p>
-      </aside>
+      </div>
     </div>
     <div class="grid-2">
       <div>

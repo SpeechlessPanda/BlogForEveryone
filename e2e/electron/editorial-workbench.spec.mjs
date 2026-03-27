@@ -87,11 +87,13 @@ test("editorial workbench journey keeps workspace context across core entry poin
     const { page } = app;
     const shellRoot = page.locator(".layout.layout--editorial");
     const sidebar = page.locator('[data-shell-surface="sidebar"]');
-    const shellUserEntry = sidebar.locator('[data-sidebar-entry="user"]');
+    const shellAppearanceEntry = sidebar.locator('[data-sidebar-entry="appearance"]');
+    const shellAccountEntry = sidebar.locator('[data-sidebar-entry="account"]');
     const shellPopupMount = page.locator('[data-topbar-region="popup-mount"]');
     const shellUserPopup = page.locator('[data-shell-surface="user-popup"]');
     const shellSidebarPopupOverlay = page.locator('.shell-popup-overlay.shell-popup-overlay--sidebar');
     const workspaceSummary = page.locator('[data-summary-item="workspace"]');
+    const workspaceSummaryDetail = page.locator('[data-summary-detail="workspace"]');
     const tutorialSurface = page.locator('[data-tutorial-surface="sectioned-tutorial-center"]');
     const tutorialHeroSurface = page.locator("#tutorial-home");
     const tutorialPreviewSection = page.locator('[data-tutorial-zone="tutorial-preview-check"]');
@@ -108,24 +110,57 @@ test("editorial workbench journey keeps workspace context across core entry poin
       '[data-page-role="preview"][data-workflow-surface="editorial-workflow"]',
     );
     const previewWorkbenchSurface = page.locator('[data-workflow-zone="preview-workbench"]');
+    const previewRecentResult = page.locator('[data-page-role="preview"] [data-workflow-zone="recent-result"]');
     const previewTutorialCta = previewSurface.getByRole("button", {
       name: "打开教程中心",
     });
+    const contentSurface = page.locator(
+      '[data-page-role="content-editor"][data-workflow-surface="editorial-workflow"]',
+    );
+    const contentCreateSurface = contentSurface.locator('[data-workflow-zone="create-content"]');
+    const contentCreateResult = contentCreateSurface.locator('.workflow-result-block');
+    const contentExistingSurface = contentSurface.locator('[data-workflow-zone="existing-content"]');
+    const publishSurface = page.locator(
+      '[data-page-role="publish"][data-workflow-surface="editorial-workflow"]',
+    );
+    const publishWorkbenchSurface = publishSurface.locator('[data-workflow-zone="publish-workbench"]');
+    const publishWorkbenchSupport = publishWorkbenchSurface.locator(
+      '.workflow-compact-block--support',
+    );
+    const publishRecentResult = publishSurface.locator('[data-workflow-zone="recent-result"]');
+    const publishBackupSurface = publishSurface.locator('[data-workflow-zone="backup-workbench"]');
     const shellScrollRegion = page.locator('[data-shell-scroll-region="workflow-view"]');
     const expectedSummary = expectedWorkspaceSummary(fixtureState.workspaces[0]);
+    const shellAccountBlock = shellUserPopup.locator('[data-popup-block="account"]');
     const shellAppearanceBlock = shellUserPopup.locator('[data-popup-block="appearance"]');
+    const shellUpdatesBlock = shellUserPopup.locator('[data-popup-block="updates"]');
+    const shellEnvironmentBlock = shellUserPopup.locator('[data-popup-block="environment"]');
     const shellPopupDismiss = page.getByRole("button", { name: "关闭" });
+    const shellRefreshAuthButton = shellAccountBlock.getByRole("button", {
+      name: "刷新登录状态",
+    });
+    const shellAppearanceToggleButton = shellAppearanceBlock.getByRole("button", {
+      name: /切换到.*编辑台/,
+    });
     const shellLogoutButton = shellUserPopup.getByRole("button", { name: "退出登录" });
-    const openShellUserPopup = async () => {
-      if (!(await shellUserPopup.isVisible())) {
-        await shellUserEntry.click();
+    const openShellPopupFromEntry = async ({ entry, activeBlock }) => {
+      if (await shellSidebarPopupOverlay.isVisible()) {
+        await shellPopupDismiss.click();
+        await expect(shellSidebarPopupOverlay).toBeHidden();
       }
 
+      await entry.click();
       await expect(shellSidebarPopupOverlay).toBeVisible();
       await expect(shellPopupMount).toBeVisible();
       await expect(shellUserPopup).toBeVisible();
+      await expect(activeBlock).toHaveAttribute("data-popup-active", "true");
     };
     const navigateToTab = async (tabLabel) => {
+      if (await shellSidebarPopupOverlay.isVisible()) {
+        await shellPopupDismiss.click();
+        await expect(shellSidebarPopupOverlay).toBeHidden();
+      }
+
       const targetTab = sidebar.locator("button.tab").filter({ hasText: tabLabel });
       await expect(targetTab).toHaveCount(1);
       await targetTab.click();
@@ -218,6 +253,50 @@ test("editorial workbench journey keeps workspace context across core entry poin
       await locator.focus();
       await expect(locator, `${probeName} should accept keyboard focus`).toBeFocused();
     };
+    const readElementRect = (locator) =>
+      locator.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        };
+      });
+    const expectCompactWorkflowBlock = async (locator, label) => {
+      await expect(locator, `${label} should stay visible as a subordinate block`).toBeVisible();
+      const { isPanel, isAdvancedPanel } = await locator.evaluate((element) => ({
+        isPanel: element.classList.contains("panel"),
+        isAdvancedPanel: element.classList.contains("advanced-panel"),
+      }));
+
+      expect(isPanel, `${label} should not be promoted into a primary panel`).toBe(false);
+      expect(isAdvancedPanel, `${label} should not use the oversized advanced-panel shell`).toBe(
+        false,
+      );
+    };
+    const expectSubordinateBlockToStayCompact = async ({ block, panel, label }) => {
+      await expectCompactWorkflowBlock(block, label);
+      const [blockRect, panelRect] = await Promise.all([
+        readElementRect(block),
+        readElementRect(panel),
+      ]);
+
+      expect(
+        blockRect.height,
+        `${label} should remain shorter than the page's primary workflow panel`,
+      ).toBeLessThan(panelRect.height);
+    };
+    const expectNoNestedPrimaryPanels = async (surface, label) => {
+      const nestedPanelCount = await surface.evaluate((element) =>
+        element.querySelectorAll(
+          ".panel .panel, .panel .advanced-panel, .advanced-panel .panel, .advanced-panel .advanced-panel",
+        ).length,
+      );
+
+      expect(
+        nestedPanelCount,
+        `${label} should not render oversized same-weight inner panels`,
+      ).toBe(0);
+    };
 
     await expect(tutorialSurface).toBeVisible();
     await expect(page.locator("#tutorial-home")).toBeVisible();
@@ -227,41 +306,72 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(page.getByRole("button", { name: "打开发布与备份页" })).toBeVisible();
     await expect(page.getByRole("button", { name: "查看本节教程" }).first()).toBeVisible();
     await expect(workspaceSummary).toContainText(expectedSummary.title);
+    await expect(workspaceSummaryDetail).toContainText(expectedSummary.detail);
     await expect(shellRoot).toHaveAttribute("data-shell-appearance", "light");
     const lightPalette = await expectRepresentativeSurfacesToMatchAppearance("light");
 
-    await openShellUserPopup();
+    await openShellPopupFromEntry({
+      entry: shellAppearanceEntry,
+      activeBlock: shellAppearanceBlock,
+    });
+    await expect(shellAppearanceToggleButton).toBeFocused();
+    await expect(shellUpdatesBlock).toBeVisible();
+    await expect(shellEnvironmentBlock).toBeVisible();
     await expect(shellAppearanceBlock).toContainText("亮色编辑台");
     await page.getByRole("button", { name: "切换到暗色编辑台" }).click();
 
     await expect(shellRoot).toHaveAttribute("data-shell-appearance", "dark");
-    await openShellUserPopup();
+    await openShellPopupFromEntry({
+      entry: shellAppearanceEntry,
+      activeBlock: shellAppearanceBlock,
+    });
+    await expect(shellAppearanceToggleButton).toBeFocused();
     await expect(shellAppearanceBlock).toContainText("暗色编辑台");
     const darkPalette = await expectRepresentativeSurfacesToMatchAppearance("dark");
     expect(darkPalette.panelBackground).not.toBe(lightPalette.panelBackground);
     expect(darkPalette.panelBorder).not.toBe(lightPalette.panelBorder);
 
-    await openShellUserPopup();
+    await openShellPopupFromEntry({
+      entry: shellAppearanceEntry,
+      activeBlock: shellAppearanceBlock,
+    });
     await page.getByRole("button", { name: "切换到亮色编辑台" }).click();
     await expect(shellRoot).toHaveAttribute("data-shell-appearance", "light");
-    await openShellUserPopup();
+    await openShellPopupFromEntry({
+      entry: shellAppearanceEntry,
+      activeBlock: shellAppearanceBlock,
+    });
+    await expect(shellAppearanceToggleButton).toBeFocused();
     await expect(shellAppearanceBlock).toContainText("亮色编辑台");
     const restoredLightPalette = await expectRepresentativeSurfacesToMatchAppearance("light");
     expect(restoredLightPalette).toEqual(lightPalette);
 
+    await openShellPopupFromEntry({
+      entry: shellAccountEntry,
+      activeBlock: shellAccountBlock,
+    });
+    await expect(shellRefreshAuthButton).toBeFocused();
+    await expect(shellUpdatesBlock).toBeVisible();
+    await expect(shellEnvironmentBlock).toBeVisible();
+    await shellPopupDismiss.click();
+    await expect(shellSidebarPopupOverlay).toBeHidden();
+
     await navigateToTab("博客创建");
     await expect(workspaceSurface).toBeVisible();
     await setScrollTop(0);
-    await openShellUserPopup();
+    await openShellPopupFromEntry({
+      entry: shellAppearanceEntry,
+      activeBlock: shellAppearanceBlock,
+    });
     const popupBeforeScroll = await shellUserPopup.boundingBox();
-    const userEntryBeforeScroll = await shellUserEntry.boundingBox();
+    const userEntryBeforeScroll = await shellAppearanceEntry.boundingBox();
     expect(popupBeforeScroll).not.toBeNull();
     expect(userEntryBeforeScroll).not.toBeNull();
 
     await setScrollTop(900);
     await expect.poll(readScrollTop).toBeGreaterThan(400);
     const popupAfterScroll = await shellUserPopup.boundingBox();
-    const userEntryAfterScroll = await shellUserEntry.boundingBox();
+    const userEntryAfterScroll = await shellAppearanceEntry.boundingBox();
     expect(popupAfterScroll).not.toBeNull();
     expect(userEntryAfterScroll).not.toBeNull();
     expect(Math.abs(popupAfterScroll.x - popupBeforeScroll.x)).toBeLessThanOrEqual(1);
@@ -309,6 +419,40 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await page.keyboard.press("Escape");
     await expect(workspaceThemePreviewOverlay).toBeHidden();
 
+    await navigateToTab("内容编辑");
+    await expect(contentSurface).toBeVisible();
+    await expectNoNestedPrimaryPanels(contentSurface, "content editor journey");
+    await expectSubordinateBlockToStayCompact({
+      block: contentCreateResult,
+      panel: contentCreateSurface,
+      label: "content editor result summary",
+    });
+    await expect(contentExistingSurface).toBeVisible();
+
+    await navigateToTab("本地预览");
+    await expect(previewSurface).toBeVisible();
+    await expectNoNestedPrimaryPanels(previewSurface, "preview journey");
+    await expectSubordinateBlockToStayCompact({
+      block: previewRecentResult,
+      panel: previewWorkbenchSurface,
+      label: "preview recent-result block",
+    });
+
+    await navigateToTab("发布与备份");
+    await expect(publishSurface).toBeVisible();
+    await expectNoNestedPrimaryPanels(publishSurface, "publish journey");
+    await expectSubordinateBlockToStayCompact({
+      block: publishWorkbenchSupport,
+      panel: publishWorkbenchSurface,
+      label: "publish preflight support block",
+    });
+    await expectSubordinateBlockToStayCompact({
+      block: publishRecentResult,
+      panel: publishWorkbenchSurface,
+      label: "publish recent-result block",
+    });
+    await expect(publishBackupSurface).toBeVisible();
+
     const journeys = [
       {
         tabLabel: "博客创建",
@@ -323,17 +467,17 @@ test("editorial workbench journey keeps workspace context across core entry poin
       {
         tabLabel: "本地预览",
         assertion: () =>
-          expect(page.locator('[data-page-role="preview"][data-workflow-surface="editorial-workflow"]')).toBeVisible(),
+          expect(previewSurface).toBeVisible(),
       },
       {
         tabLabel: "内容编辑",
         assertion: () =>
-          expect(page.locator('[data-page-role="content-editor"][data-workflow-surface="editorial-workflow"]')).toBeVisible(),
+          expect(contentSurface).toBeVisible(),
       },
       {
         tabLabel: "发布与备份",
         assertion: () =>
-          expect(page.locator('[data-page-role="publish"][data-workflow-surface="editorial-workflow"]')).toBeVisible(),
+          expect(publishSurface).toBeVisible(),
       },
       {
         tabLabel: "导入恢复",
@@ -351,6 +495,7 @@ test("editorial workbench journey keeps workspace context across core entry poin
       await navigateToTab(journey.tabLabel);
       await journey.assertion();
       await expect(workspaceSummary).toContainText(expectedSummary.title);
+      await expect(workspaceSummaryDetail).toContainText(expectedSummary.detail);
     }
   } finally {
     await app.close();

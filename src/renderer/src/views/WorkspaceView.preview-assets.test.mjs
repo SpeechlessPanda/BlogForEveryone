@@ -36,7 +36,7 @@ test("theme preview manifest covers all 10 shipped preview assets", async () => 
 
   for (const asset of expectedAssets) {
     const rowPattern = new RegExp(
-      `\\|\\s*${asset.filename.replace('.', '\\.')}\\s*\\|\\s*${asset.themeId.replace(':', '\\:')}\\s*\\|\\s*.+\\|\\s*(manual capture|repo screenshot)\\s*\\|\\s*.+\\|\\s*.+\\|`,
+      `\\|\\s*${asset.filename.replace('.', '\\.')}\\s*\\|\\s*${asset.themeId.replace(':', '\\:')}\\s*\\|\\s*.+\\|\\s*live capture\\s*\\|\\s*.+\\|\\s*.+\\|`,
       "i",
     );
 

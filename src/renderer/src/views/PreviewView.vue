@@ -361,7 +361,7 @@ watch(
       </section>
     </div>
 
-    <div class="page-layer" data-page-layer="explanation">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="explanation">
       <section
         id="preview-result"
         class="workflow-compact-block workflow-result-block"
@@ -382,7 +382,7 @@ watch(
       </section>
     </div>
 
-    <div class="page-layer" data-page-layer="detail">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="detail">
       <details class="advanced-panel" v-if="preview.logs || events.length">
         <summary>查看详细日志与链路事件</summary>
         <div class="advanced-panel-content">

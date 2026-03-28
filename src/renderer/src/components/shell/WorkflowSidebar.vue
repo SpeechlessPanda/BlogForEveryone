@@ -61,7 +61,7 @@ defineEmits(["navigate", "open-shell-popup"]);
           data-sidebar-entry="account"
           @click="$emit('open-shell-popup', { key: 'account', element: $event.currentTarget })"
         >
-          <span class="sidebar-entry-label">账户</span>
+          <span class="sidebar-entry-label">登录状态</span>
           <strong>{{ shellUserEntryLabel }}</strong>
         </button>
       </div>

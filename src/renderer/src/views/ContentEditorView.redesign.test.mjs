@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const contentEditorPath = new URL("./ContentEditorView.vue", import.meta.url);
+const stylesPath = new URL("../styles.css", import.meta.url);
 const contentWorkflowHeroPath = new URL(
   "../components/content/ContentWorkflowHero.vue",
   import.meta.url,
@@ -96,4 +97,18 @@ test("ContentEditorView redesign extracts hero and existing-content structures i
   assert.match(existingSectionSource, /workflow-compact-block workflow-compact-block--subtle/);
   assert.doesNotMatch(existingSectionSource, /workflow-inline-note/);
   assert.doesNotMatch(existingSectionSource, /<aside/);
+});
+
+test("ContentEditorView uses a balanced secondary grid so lower cards stop stretching oversized across pages", async () => {
+  const source = await readFile(contentEditorPath, "utf8");
+  const styles = await readFile(stylesPath, "utf8");
+
+  assert.equal(
+    source.includes("workflow-balanced-grid"),
+    true,
+    "expected ContentEditorView.vue to adopt the shared balanced secondary-card grid",
+  );
+  assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*align-items:\s*stretch;/);
+  assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(/);
 });

@@ -251,7 +251,7 @@ onMounted(refresh);
       </section>
     </div>
 
-    <div class="page-layer" data-page-layer="explanation">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="explanation">
       <section
         id="rss-export-result"
         class="panel workflow-result-panel"
@@ -282,11 +282,11 @@ onMounted(refresh);
       </section>
     </div>
 
-    <div class="page-layer" data-page-layer="detail">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="detail">
       <section class="panel workflow-section-panel" data-workflow-zone="subscription-list">
-        <div class="rss-subscription-toolbar">
+        <div class="rss-subscription-list-header">
           <h2>订阅列表</h2>
-          <div class="actions actions-tight rss-subscription-toolbar-actions">
+          <div class="rss-subscription-actions actions actions-tight">
             <AsyncActionButton
               kind="secondary"
               label="刷新订阅列表"
@@ -298,13 +298,13 @@ onMounted(refresh);
         </div>
         <div class="list" v-if="list.length">
           <div class="list-item" v-for="item in list" :key="item.id">
-            <div class="rss-subscription-row">
+            <div class="rss-subscription-item-header">
               <div>
                 <strong>{{ item.title }}</strong>
                 <div class="muted">{{ item.url }}</div>
                 <div class="muted">未读：{{ item.unreadCount || 0 }}</div>
               </div>
-              <div class="actions actions-tight rss-subscription-row-actions">
+              <div class="rss-subscription-actions actions actions-tight">
                 <button class="danger" @click="remove(item.id)">取消订阅</button>
               </div>
             </div>

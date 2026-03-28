@@ -1185,59 +1185,21 @@ watch(
   >
     <div class="page-layer" data-page-layer="primary">
       <section class="panel page-hero">
-        <div>
-          <p class="page-kicker">Brand workspace</p>
-          <h2 class="page-title">品牌与外观工作台</h2>
-          <p class="page-lead">
-            主题配置页优先处理品牌、素材与阅读体验，高感知项始终排在前面；高级与原始配置留到后面，避免技术参数压过品牌工作流。
-          </p>
-          <div class="page-link-row">
-            <a href="#" @click.prevent="goTutorialCenter"
-              >打开教程中心：主题个性化完整指南</a
-            >
-            <button class="secondary" type="button" @click="goPreviewPage">
-              前往本地预览页面
-            </button>
-          </div>
-        </div>
-
-        <div class="theme-studio-status-grid theme-studio-status-grid--overview">
-          <div class="page-signal page-signal--accent">
-            <p class="section-eyebrow">当前工作区</p>
-            <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
-            <p class="section-helper">
-              {{
-                selectedWorkspace
-                  ? `${selectedWorkspace.framework.toUpperCase()} · ${selectedWorkspace.projectDir}`
-                  : "先选择或创建博客工程，主题和图片配置才会落到正确目录里。"
-              }}
+        <div class="page-hero-grid page-hero-grid--single">
+          <div>
+            <p class="page-kicker">Brand workspace</p>
+            <h2 class="page-title">品牌与外观工作台</h2>
+            <p class="page-lead">
+              主题配置页优先处理品牌、素材与阅读体验，高感知项始终排在前面；高级与原始配置留到后面，避免技术参数压过品牌工作流。
             </p>
-          </div>
-          <div class="page-signal">
-            <p class="section-eyebrow">当前主题</p>
-            <strong>{{ selectedThemeName }}</strong>
-            <p class="section-helper">
-              先完成标题、背景、图标这类高感知项，再处理主题专属高级参数。
-            </p>
-          </div>
-          <div class="page-signal page-signal--quiet">
-            <p class="section-eyebrow">兼容提示</p>
-            <strong>图片与头像会自动转存</strong>
-            <p class="section-helper">{{ backgroundSupportHint }}</p>
-          </div>
-          <div class="page-signal page-signal--accent">
-            <p class="section-eyebrow">建议下一步</p>
-            <strong>先改品牌与阅读体验，再去预览确认真实页面。</strong>
-            <p class="section-helper">
-              高级与原始配置属于次级区域，等基础外观跑通后再处理。
-            </p>
-          </div>
-          <div class="page-signal page-signal--quiet">
-            <p class="section-eyebrow">品牌主叙事</p>
-            <strong>先让标题、素材与阅读气质讲同一种品牌语言。</strong>
-            <p class="section-helper">
-              先统一首页印象，再处理主题专属参数，能让编辑节奏更稳定。
-            </p>
+            <div class="page-link-row">
+              <a href="#" @click.prevent="goTutorialCenter"
+                >打开教程中心：主题个性化完整指南</a
+              >
+              <button class="secondary" type="button" @click="goPreviewPage">
+                前往本地预览页面
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -1327,6 +1289,35 @@ watch(
     </div>
 
     <div class="page-layer" data-page-layer="explanation">
+      <section
+        class="workflow-balanced-grid theme-studio-summary-grid"
+        data-theme-zone="studio-summary"
+      >
+        <article class="page-signal page-signal--accent">
+          <p class="section-eyebrow">当前工作区</p>
+          <strong>{{ selectedWorkspace?.name || "尚未选择工程" }}</strong>
+          <p class="section-helper">
+            {{
+              selectedWorkspace
+                ? `${selectedWorkspace.framework.toUpperCase()} · ${selectedWorkspace.projectDir}`
+                : "先选择或创建博客工程，主题和图片配置才会落到正确目录里。"
+            }}
+          </p>
+        </article>
+        <article class="page-signal">
+          <p class="section-eyebrow">当前主题</p>
+          <strong>{{ selectedThemeName }}</strong>
+          <p class="section-helper">
+            先完成标题、背景、图标这类高感知项，再处理主题专属高级参数。
+          </p>
+        </article>
+        <article class="page-signal page-signal--quiet">
+          <p class="section-eyebrow">兼容提示</p>
+          <strong>图片与头像会自动转存</strong>
+          <p class="section-helper">{{ backgroundSupportHint }}</p>
+        </article>
+      </section>
+
       <section
         class="panel page-section theme-studio-section theme-studio-section--quiet"
         data-theme-zone="theme-quiet-controls"

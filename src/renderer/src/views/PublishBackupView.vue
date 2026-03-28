@@ -582,7 +582,7 @@ function jumpToZone(zoneId) {
       </section>
     </div>
 
-    <div class="page-layer" data-page-layer="explanation">
+    <div class="page-layer workflow-balanced-grid" data-page-layer="explanation">
       <section
         id="publish-result"
         class="workflow-compact-block workflow-result-block"

@@ -73,3 +73,11 @@ test("PreviewView redesign uses shared compact workflow blocks and keeps hover a
   assert.match(stylesSource, /button:focus-visible/);
   assert.match(stylesSource, /a:focus-visible/);
 });
+
+test("PreviewView uses the shared balanced secondary grid for lower result and support cards", async () => {
+  const source = await readFile(previewViewPath, "utf8");
+  const styles = await readFile(stylesPath, "utf8");
+
+  assert.equal(source.includes("workflow-balanced-grid"), true);
+  assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*display:\s*grid;/);
+});

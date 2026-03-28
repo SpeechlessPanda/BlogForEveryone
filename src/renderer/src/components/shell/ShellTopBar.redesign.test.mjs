@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const topBarPath = new URL("./ShellTopBar.vue", import.meta.url);
+const stylesPath = new URL("../../styles.css", import.meta.url);
 
 test("ShellTopBar exposes the approved top-bar shell regions without a duplicate top-right account trigger", async () => {
   const source = await readFile(topBarPath, "utf8");
@@ -48,10 +49,14 @@ test("ShellTopBar stays focused on page context and popup mounting", async () =>
     false,
     "expected ShellTopBar.vue to stop implying topbar-owned popup navigation",
   );
+  assert.doesNotMatch(source, /shellUserEntryLabel/);
+  assert.doesNotMatch(source, /data-topbar-anchor="user-entry"/);
+  assert.doesNotMatch(source, /class="shell-topbar-user"/);
 });
 
 test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overlay layer instead of inline topbar flow", async () => {
   const source = await readFile(topBarPath, "utf8");
+  const styles = await readFile(stylesPath, "utf8");
 
   assert.match(
     source,
@@ -78,6 +83,9 @@ test("ShellTopBar teleports the account popup into a sidebar-aligned fixed overl
     false,
     "expected ShellTopBar.vue to stop rendering the popup as inline shell content that scrolls with the page",
   );
+  assert.match(source, /shell-popup-overlay--sidebar/);
+  assert.match(styles, /\.layout--editorial \.shell-topbar-actions\s*\{[\s\S]*justify-self:\s*end;/);
+  assert.match(styles, /\.shell-popup-overlay--sidebar\s*\{[\s\S]*padding:\s*0;/);
 });
 
 test("ShellTopBar closes the shared popup from keyboard Escape without changing popup ownership", async () => {

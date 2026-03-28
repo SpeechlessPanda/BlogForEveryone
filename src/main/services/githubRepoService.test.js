@@ -55,6 +55,16 @@ function createJsonResponse({ ok = true, status = 200, body = {} } = {}) {
     };
 }
 
+function createTextResponse({ ok = true, status = 200, text = '' } = {}) {
+    return {
+        ok,
+        status,
+        async text() {
+            return text;
+        }
+    };
+}
+
 test('listUserRepositories returns selectable repositories for authenticated user', async (t) => {
     const fetchCalls = [];
     const harness = loadGithubRepoService({
@@ -90,6 +100,27 @@ test('listUserRepositories returns selectable repositories for authenticated use
         url: 'https://github.com/alice/alice.github.io.git',
         visibility: 'public'
     });
+});
+
+test('requestGithub falls back to raw response text when GitHub returns non-JSON body', async (t) => {
+    const harness = loadGithubRepoService({
+        fetchImpl: async () => createTextResponse({
+            ok: false,
+            status: 502,
+            text: 'upstream gateway exploded'
+        })
+    });
+    t.after(() => harness.restore());
+
+    await assert.rejects(
+        harness.service.listUserRepositories(),
+        (error) => {
+            assert.match(error.message, /upstream gateway exploded/);
+            assert.deepEqual(error.responseBody, { message: 'upstream gateway exploded' });
+            assert.equal(error.status, 502);
+            return true;
+        }
+    );
 });
 
 test('ensureRemoteRepositories optionally creates deploy and backup repos with one-cause failure mapping', async (t) => {

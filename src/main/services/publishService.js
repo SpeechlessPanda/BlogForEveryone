@@ -624,12 +624,16 @@ function publishToGitHub(payload) {
                 backupRepoVisibility: payload.backupRepoVisibility
             });
             deployRepo = ensuredDeploy.deployRepo || deployRepo;
+            const deployRepoReady = Boolean(deployRepo && deployRepo.url);
             result.deployRepoEnsure = toOutcome({
-                ok: Boolean(deployRepo && deployRepo.url),
-                code: RESULT_CODES.ok,
+                ok: deployRepoReady,
+                code: deployRepoReady ? RESULT_CODES.ok : RESULT_CODES.runtimeError,
                 category: RESULT_CATEGORIES.runtime,
-                userMessage: '发布仓库已就绪。'
+                userMessage: deployRepoReady ? '发布仓库已就绪。' : '发布仓库准备失败。'
             });
+            if (!deployRepoReady) {
+                return normalizePublishResult(finalizeCombinedResult(result));
+            }
         } catch (error) {
             result.deployRepoEnsure = outcomeFromOperationError(error, '发布仓库准备失败。', 'deploy_repo_ensure_failed');
             return normalizePublishResult(finalizeCombinedResult(result));
@@ -648,12 +652,16 @@ function publishToGitHub(payload) {
                 backupRepoVisibility: payload.backupRepoVisibility
             });
             backupRepo = ensuredBackup.backupRepo || backupRepo;
+            const backupRepoReady = Boolean(backupRepo && backupRepo.url);
             result.backupRepoEnsure = toOutcome({
-                ok: Boolean(backupRepo && backupRepo.url),
-                code: RESULT_CODES.ok,
+                ok: backupRepoReady,
+                code: backupRepoReady ? RESULT_CODES.ok : RESULT_CODES.runtimeError,
                 category: RESULT_CATEGORIES.runtime,
-                userMessage: '备份仓库已就绪。'
+                userMessage: backupRepoReady ? '备份仓库已就绪。' : '备份仓库准备失败。'
             });
+            if (!backupRepoReady) {
+                return normalizePublishResult(finalizeCombinedResult(result));
+            }
         } catch (error) {
             result.backupRepoEnsure = outcomeFromOperationError(error, '备份仓库准备失败。', 'backup_repo_ensure_failed');
             return normalizePublishResult(finalizeCombinedResult(result));

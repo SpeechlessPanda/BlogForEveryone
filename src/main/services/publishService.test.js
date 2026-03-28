@@ -771,6 +771,108 @@ test('coordinated publish executes deterministic order and preserves child outco
     }
 });
 
+test('coordinated publish marks deploy repo ensure as failure when ensured repo url is missing', async () => {
+    const harness = loadPublishServiceWithMocks({
+        normalizePublishResultImpl: normalizePublishResult,
+        ensureRemoteRepositoriesImpl: async (payload) => {
+            if (payload.createBackupRepo) {
+                return {
+                    deployRepo: payload.deployRepo,
+                    backupRepo: {
+                        owner: 'alice',
+                        name: 'BFE',
+                        url: 'https://github.com/alice/BFE.git'
+                    }
+                };
+            }
+
+            return {
+                deployRepo: {
+                    owner: 'alice',
+                    name: 'docs-site',
+                    url: ''
+                },
+                backupRepo: payload.backupRepo
+            };
+        }
+    });
+
+    try {
+        const result = await harness.loaded.publishToGitHub({
+            projectDir: 'D:/tmp/project',
+            framework: 'hugo',
+            siteType: 'project-pages',
+            login: 'alice',
+            deployRepoName: 'docs-site',
+            backupRepoName: 'BFE',
+            repoUrl: 'https://github.com/alice/docs-site.git',
+            backupRepoUrl: 'https://github.com/alice/BFE.git',
+            createDeployRepo: true,
+            createBackupRepo: true
+        });
+
+        assert.equal(result.ok, false);
+        assert.equal(result.status, 'failed');
+        assert.equal(result.deployRepoEnsure?.ok, false);
+        assert.equal(result.deployRepoEnsure?.code, 'runtime_error');
+        assert.equal(result.deployRepoEnsure?.category, 'runtime');
+        assert.match(result.deployRepoEnsure?.userMessage || '', /发布仓库准备失败/);
+    } finally {
+        harness.cleanup();
+    }
+});
+
+test('coordinated publish marks backup repo ensure as failure when ensured repo url is missing', async () => {
+    const harness = loadPublishServiceWithMocks({
+        normalizePublishResultImpl: normalizePublishResult,
+        ensureRemoteRepositoriesImpl: async (payload) => {
+            if (payload.createBackupRepo) {
+                return {
+                    deployRepo: payload.deployRepo,
+                    backupRepo: {
+                        owner: 'alice',
+                        name: 'BFE',
+                        url: ''
+                    }
+                };
+            }
+
+            return {
+                deployRepo: {
+                    owner: 'alice',
+                    name: 'docs-site',
+                    url: 'https://github.com/alice/docs-site.git'
+                },
+                backupRepo: payload.backupRepo
+            };
+        }
+    });
+
+    try {
+        const result = await harness.loaded.publishToGitHub({
+            projectDir: 'D:/tmp/project',
+            framework: 'hugo',
+            siteType: 'project-pages',
+            login: 'alice',
+            deployRepoName: 'docs-site',
+            backupRepoName: 'BFE',
+            repoUrl: 'https://github.com/alice/docs-site.git',
+            backupRepoUrl: 'https://github.com/alice/BFE.git',
+            createDeployRepo: true,
+            createBackupRepo: true
+        });
+
+        assert.equal(result.ok, false);
+        assert.equal(result.status, 'failed');
+        assert.equal(result.backupRepoEnsure?.ok, false);
+        assert.equal(result.backupRepoEnsure?.code, 'runtime_error');
+        assert.equal(result.backupRepoEnsure?.category, 'runtime');
+        assert.match(result.backupRepoEnsure?.userMessage || '', /备份仓库准备失败/);
+    } finally {
+        harness.cleanup();
+    }
+});
+
 test('coordinated publish returns partial_success when deploy succeeds but backup push fails', async () => {
     const harness = loadPublishServiceWithMocks({
         normalizePublishResultImpl: (payload) => payload,

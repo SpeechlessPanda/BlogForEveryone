@@ -35,7 +35,14 @@ async function requestGithub(url, options = {}) {
     }
 
     const text = await response.text();
-    const data = text ? JSON.parse(text) : {};
+    let data = {};
+    if (text) {
+        try {
+            data = JSON.parse(text);
+        } catch {
+            data = { message: text };
+        }
+    }
 
     if (!response.ok) {
         const error = new Error(data.message || 'GitHub API request failed');

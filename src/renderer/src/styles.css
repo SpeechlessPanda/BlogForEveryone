@@ -2692,6 +2692,27 @@ a:hover {
   box-shadow: 0 24px 48px rgba(var(--shell-shadow-rgb), 0.32);
 }
 
+.layout--editorial[data-shell-appearance="dark"] .page-title,
+.layout--editorial[data-shell-appearance="dark"] .workflow-section-heading h2,
+.layout--editorial[data-shell-appearance="dark"] .workspace-section-heading h2,
+.layout--editorial[data-shell-appearance="dark"] .theme-preview-dialog-copy h3,
+.layout--editorial[data-shell-appearance="dark"] .page-signal strong,
+.layout--editorial[data-shell-appearance="dark"] .workflow-compact-block strong,
+.layout--editorial[data-shell-appearance="dark"] .workspace-theme-header h4,
+.layout--editorial[data-shell-appearance="dark"] .shell-overview h2,
+.layout--editorial[data-shell-appearance="dark"] .system-status-panel h2,
+.layout--editorial[data-shell-appearance="dark"] .system-status-panel h3,
+.layout--editorial[data-shell-appearance="dark"] .shell-summary-chip strong,
+.layout--editorial[data-shell-appearance="dark"] .sidebar-entry strong,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-brand-title,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-hero-title,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-feature-card h3,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-status-card strong,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-recent-card h4,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-theme-card h4 {
+  color: var(--shell-ink);
+}
+
 .layout--editorial[data-shell-appearance="dark"] .page-link-row a,
 .layout--editorial[data-shell-appearance="dark"] .workflow-compact-block a,
 .layout--editorial[data-shell-appearance="dark"] .theme-studio .page-link-row a {
@@ -2932,14 +2953,14 @@ a:hover {
   --shell-panel: #101010;
   --shell-panel-alt: #171717;
   --shell-panel-emphasis: #1d1d1d;
-  --shell-ink: #f3f3f3;
-  --shell-muted: #a3a3a3;
+  --shell-ink: #f5ede6;
+  --shell-muted: #d7c6b8;
   --shell-line: rgba(255, 255, 255, 0.1);
   --shell-line-strong: rgba(255, 255, 255, 0.18);
   --shell-accent: #f3f3f3;
   --shell-accent-strong: #ffffff;
   --shell-accent-soft: #1d1d1d;
-  --shell-highlight: #ffffff;
+  --shell-highlight: #f6e6d5;
   --shell-selected-bg: #1a1a1a;
   --shell-selected-line: rgba(255, 255, 255, 0.22);
 }

@@ -161,3 +161,33 @@ test("App shell styles recalibrate the dark editorial text palette to the approv
     "expected the active dark editorial shell block to use the approved warmer ink, muted, and highlight palette",
   );
 });
+
+test("App shell styles route dark editorial titles and primary text through the shell ink token", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-title,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workflow-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workspace-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-dialog-copy h3,[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected dark editorial page titles, workflow/workspace section titles, and preview dialog titles to use the shell ink token",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-signal strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workflow-compact-block strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workspace-theme-header h4,[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected dark editorial primary emphasis text, compact block titles, and workspace theme card titles to use the shell ink token",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.shell-overview h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.system-status-panel h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.system-status-panel h3,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-summary-chip strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.sidebar-entry strong,[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected dark shell summary, sidebar, and system-status titles to use the shell ink token",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-brand-title,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-theme-card h4 \{[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected dark tutorial titles and key strong text to use the shell ink token",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-theme\[data-shell-appearance="dark"\]\s*\{[\s\S]*--shell-ink:\s*#f5ede6;[\s\S]*--shell-muted:\s*#d7c6b8;[\s\S]*--shell-highlight:\s*#f6e6d5;/,
+    "expected dark popup theme tokens to match the approved warmer shell palette",
+  );
+});

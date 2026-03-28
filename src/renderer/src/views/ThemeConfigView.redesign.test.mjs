@@ -155,3 +155,18 @@ test("ThemeConfigView keeps dark editorial studio support copy and page links on
     "expected theme studio links to use the shell highlight token on dark shell surfaces",
   );
 });
+
+test("ThemeConfigView keeps dark editorial studio titles and primary asset text on explicit shell ink and muted tokens", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-note strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-status-card strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-card h3[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected theme studio titles and status-card primary text to use the shell ink token in dark mode",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-note \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-status-card \.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card span[\s\S]*color:\s*var\(--shell-muted\);/,
+    "expected theme studio supporting copy to use the shell muted token in dark mode",
+  );
+});

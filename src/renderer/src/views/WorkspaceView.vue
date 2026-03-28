@@ -581,14 +581,14 @@ function goTutorialCenter() {
                 <button
                   class="secondary theme-preview-zoom-button"
                   type="button"
-                  @click="zoomThemePreview(-0.2)"
+                  @click="zoomThemePreview(-THEME_PREVIEW_SCALE_STEP)"
                 >
                   缩小
                 </button>
                 <button
                   class="secondary theme-preview-zoom-button"
                   type="button"
-                  @click="zoomThemePreview(0.2)"
+                  @click="zoomThemePreview(THEME_PREVIEW_SCALE_STEP)"
                 >
                   放大
                 </button>

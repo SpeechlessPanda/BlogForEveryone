@@ -242,6 +242,61 @@ test("editorial workbench journey keeps workspace context across core entry poin
 
       return palette;
     };
+    const installPatchBRepoMocks = async () => {
+      const patchResult = await app.electronApp.evaluate(() => {
+        const moduleBuiltin = process.getBuiltinModule?.("module");
+        if (!moduleBuiltin?.createRequire) {
+          return { ok: false, reason: "missing_createRequire" };
+        }
+
+        const require = moduleBuiltin.createRequire(`${process.cwd()}/__patch-b-e2e__.cjs`);
+        const { ipcMain } = require("electron");
+
+        ipcMain.removeHandler("workspace:listGithubRepos");
+        ipcMain.handle("workspace:listGithubRepos", async () => [
+          {
+            owner: "editorial-e2e",
+            name: "editorial-e2e.github.io",
+            url: "https://github.com/editorial-e2e/editorial-e2e.github.io.git",
+          },
+          {
+            owner: "editorial-e2e",
+            name: "BFE",
+            url: "https://github.com/editorial-e2e/BFE.git",
+          },
+        ]);
+
+        ipcMain.removeHandler("githubAuth:getState");
+        ipcMain.handle("githubAuth:getState", async () => ({
+          isLoggedIn: true,
+          permissionSummary: "repo, workflow",
+          reauthRequired: false,
+          account: {
+            login: "editorial-e2e",
+            name: "Editorial E2E",
+          },
+        }));
+
+        return { ok: true };
+      });
+
+      expect(patchResult.ok, JSON.stringify(patchResult)).toBe(true);
+    };
+    const publishLoginInput = publishWorkbenchSurface
+      .locator('label:has-text("GitHub 用户名（登录后自动带入，可手动调整）")')
+      .locator("xpath=following-sibling::input[1]");
+    const importSiteTypeSelect = importGithubWorkbench
+      .locator('label:has-text("站点类型")')
+      .locator("xpath=following-sibling::select[1]");
+    const importDeployRepoSelect = importGithubWorkbench
+      .locator('label:has-text("发布仓库（可选）")')
+      .locator("xpath=following-sibling::select[1]");
+    const importBackupRepoSelect = importGithubWorkbench
+      .locator('label:has-text("BFE 备份仓库")')
+      .locator("xpath=following-sibling::select[1]");
+    const importDestinationInput = importGithubWorkbench
+      .locator('label:has-text("目标恢复目录")')
+      .locator("xpath=following-sibling::div[1]//input[1]");
     const readScrollTop = () =>
       shellScrollRegion.evaluate((element) => Math.round(element.scrollTop));
     const setScrollTop = async (top) => {
@@ -326,6 +381,8 @@ test("editorial workbench journey keeps workspace context across core entry poin
       ).toBe(0);
     };
 
+    await installPatchBRepoMocks();
+
     await expect(tutorialSurface).toBeVisible();
     await expect(page.locator("#tutorial-home")).toBeVisible();
     await expect(page.locator('[data-tutorial-zone="tutorial-workspace-create"]')).toBeVisible();
@@ -383,12 +440,26 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(publishPageLead).toHaveCSS("color", darkTextPalette.mutedColor);
     await expect(publishResultNote).toHaveCSS("color", darkTextPalette.mutedColor);
     await expect(publishPageLink).toHaveCSS("color", darkTextPalette.highlightColor);
+    await expect(publishLoginInput).toHaveValue("editorial-e2e");
+    await expect(publishWorkbenchSurface).toContainText("登录后会自动带入 GitHub 用户名");
+    await expect(publishWorkbenchSurface).not.toContainText("待补充：填写 GitHub 用户名");
 
     await navigateToTab("导入恢复");
     await expect(importGithubWorkbench).toBeVisible();
     await expect(importPageLead).toHaveCSS("color", darkTextPalette.mutedColor);
     await expect(importResultNote).toHaveCSS("color", darkTextPalette.mutedColor);
     await expect(importPageLink).toHaveCSS("color", darkTextPalette.highlightColor);
+    await expect(importDeployRepoSelect).toHaveValue(
+      "https://github.com/editorial-e2e/editorial-e2e.github.io.git",
+    );
+    await expect(importBackupRepoSelect).toHaveValue(
+      "https://github.com/editorial-e2e/BFE.git",
+    );
+    await expect(importSiteTypeSelect).toHaveValue("user-pages");
+    await expect(importGithubWorkbench).toContainText(
+      "已自动识别发布仓库和 BFE 备份仓库，下一步只需选择目标恢复目录。",
+    );
+    await expect(importDestinationInput).toHaveValue("");
 
     await openShellPopupFromEntry({
       entry: shellAppearanceEntry,

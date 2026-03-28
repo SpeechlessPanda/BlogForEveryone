@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, onMounted } from "vue";
+import { computed, reactive, ref, onMounted, watch } from "vue";
 import {
   getSelectedWorkspace,
   workspaceState,
@@ -41,6 +41,9 @@ const logs = ref("");
 const pagesUrl = ref("");
 const publishOutcomeCards = ref([]);
 const publishOutcomeSummary = ref("");
+const publishLoginManuallyEdited = ref(false);
+const authLogin = ref("");
+const lastWorkspaceMetadataId = ref("");
 const { run, isBusy } = useAsyncAction();
 const { events } = useOperationEvents(["publish"]);
 const selectedWorkspace = computed(() => getSelectedWorkspace());
@@ -48,35 +51,41 @@ const shellActions = useShellActions();
 const { publishToGitHub, pickDirectory, getGithubAuthState } =
   usePublishBackupActions();
 
+const normalizedPublishLogin = computed(() =>
+  String(publishForm.login || "").trim(),
+);
+
 const resolvedDeployRepoName = computed(() => {
   if (publishForm.siteType === USER_PAGES) {
-    return publishForm.login ? `${publishForm.login}.github.io` : "";
+    return normalizedPublishLogin.value
+      ? `${normalizedPublishLogin.value}.github.io`
+      : "";
   }
   return String(publishForm.deployRepoName || "").trim();
 });
 
 const deployRepoUrl = computed(() =>
-  buildGithubRepoUrl(publishForm.login, resolvedDeployRepoName.value),
+  buildGithubRepoUrl(normalizedPublishLogin.value, resolvedDeployRepoName.value),
 );
 const backupRepoUrl = computed(() =>
-  buildGithubRepoUrl(publishForm.login, publishForm.backupRepoName),
+  buildGithubRepoUrl(normalizedPublishLogin.value, publishForm.backupRepoName),
 );
 const accessAddress = computed(() => {
-  if (!publishForm.login || !resolvedDeployRepoName.value) {
-    return "等待填写 GitHub 用户名与发布仓库名称。";
+  if (!normalizedPublishLogin.value || !resolvedDeployRepoName.value) {
+    return "等待确认 GitHub 登录信息与发布仓库名称。";
   }
   if (publishForm.siteType === USER_PAGES) {
-    return `https://${publishForm.login}.github.io/`;
+    return `https://${normalizedPublishLogin.value}.github.io/`;
   }
-  return `https://${publishForm.login}.github.io/${resolvedDeployRepoName.value}/`;
+  return `https://${normalizedPublishLogin.value}.github.io/${resolvedDeployRepoName.value}/`;
 });
 
 const publishReadiness = computed(() => {
   if (!selectedWorkspace.value) {
     return "未准备：先选择博客工程。";
   }
-  if (!publishForm.login) {
-    return "待补充：填写 GitHub 用户名。";
+  if (!normalizedPublishLogin.value) {
+    return "待补充：先登录 GitHub 以自动带入用户名。";
   }
   if (!resolvedDeployRepoName.value) {
     return "待补充：填写发布仓库名称。";
@@ -136,10 +145,34 @@ function parseGithubRepo(repoUrl) {
   };
 }
 
-function applyWorkspaceMetadata(workspace) {
-  if (!workspace) {
+function markPublishLoginEdited() {
+  publishLoginManuallyEdited.value = true;
+}
+
+function prefillPublishLogin(login, { force = false } = {}) {
+  if (publishLoginManuallyEdited.value) {
     return;
   }
+  if (!force && publishForm.login) {
+    return;
+  }
+  publishForm.login = String(login || "").trim();
+}
+
+function applyWorkspaceMetadata(workspace, { authLogin = "" } = {}) {
+  if (!workspace) {
+    lastWorkspaceMetadataId.value = "";
+    if (!authLogin && !publishLoginManuallyEdited.value) {
+      publishForm.login = "";
+    }
+    publishForm.deployRepoName = "";
+    publishForm.backupRepoName = FIXED_BACKUP_REPO_NAME;
+    return;
+  }
+
+  const workspaceChanged =
+    lastWorkspaceMetadataId.value && lastWorkspaceMetadataId.value !== workspace.id;
+  lastWorkspaceMetadataId.value = workspace.id || "";
 
   if (workspace.siteType) {
     publishForm.siteType = workspace.siteType;
@@ -148,15 +181,16 @@ function applyWorkspaceMetadata(workspace) {
   const deployRepoMeta = parseGithubRepo(workspace.deployRepo?.url);
   const backupRepoMeta = parseGithubRepo(workspace.backupRepo?.url);
 
-  if (!publishForm.login) {
-    publishForm.login = deployRepoMeta?.owner || backupRepoMeta?.owner || "";
+  if (!authLogin) {
+    if (workspaceChanged && !publishLoginManuallyEdited.value) {
+      publishForm.login = "";
+    }
+    prefillPublishLogin(deployRepoMeta?.owner || backupRepoMeta?.owner || "");
   }
-  if (publishForm.siteType !== USER_PAGES && !publishForm.deployRepoName) {
+  if (publishForm.siteType !== USER_PAGES && (!publishForm.deployRepoName || workspaceChanged)) {
     publishForm.deployRepoName = workspace.deployRepo?.name || "";
   }
-  if (workspace.backupRepo?.name) {
-    publishForm.backupRepoName = workspace.backupRepo.name;
-  }
+  publishForm.backupRepoName = FIXED_BACKUP_REPO_NAME;
 }
 
 function buildPublishSummary(result) {
@@ -203,7 +237,7 @@ async function publish() {
         projectDir: ws.projectDir,
         framework: ws.framework,
         siteType: publishForm.siteType,
-        login: publishForm.login,
+        login: normalizedPublishLogin.value,
         deployRepoName: resolvedDeployRepoName.value,
         backupRepoName: publishForm.backupRepoName,
         repoUrl: deployRepoUrl.value,
@@ -261,22 +295,32 @@ async function pickBackupDirectory() {
 
 onMounted(async () => {
   await refreshWorkspaces();
-  applyWorkspaceMetadata(selectedWorkspace.value);
 
   try {
     const auth = await getGithubAuthState();
-    if (auth?.account?.login && !publishForm.login) {
-      publishForm.login = auth.account.login;
-    }
+    authLogin.value = auth?.account?.login || "";
+    prefillPublishLogin(auth?.account?.login, { force: true });
     if (auth?.account?.login && !publishForm.gitUserName) {
       publishForm.gitUserName = auth.account.login;
     }
     if (auth?.account?.email && !publishForm.gitUserEmail) {
       publishForm.gitUserEmail = auth.account.email;
     }
+
+    applyWorkspaceMetadata(selectedWorkspace.value, {
+      authLogin: auth?.account?.login || ""
+    });
   } catch {
     // Ignore auth prefill failures.
+    authLogin.value = "";
+    applyWorkspaceMetadata(selectedWorkspace.value, {
+      authLogin: authLogin.value
+    });
   }
+});
+
+watch(() => workspaceState.selectedWorkspaceId, () => {
+  applyWorkspaceMetadata(selectedWorkspace.value, { authLogin: authLogin.value });
 });
 
 function goTutorialCenter() {
@@ -411,8 +455,15 @@ function jumpToZone(zoneId) {
             </select>
           </div>
           <div>
-            <label>GitHub 用户名</label>
-            <input v-model="publishForm.login" placeholder="例如 yourname" />
+            <label>GitHub 用户名（登录后自动带入，可手动调整）</label>
+            <input
+              v-model="publishForm.login"
+              placeholder="登录后自动带入，也可手动调整"
+              @input="markPublishLoginEdited"
+            />
+            <p class="muted stack-top">
+              登录后会自动带入 GitHub 用户名；如需发布到其他账号，可手动调整。
+            </p>
           </div>
           <div>
             <label>GitHub Pages 站点类型</label>

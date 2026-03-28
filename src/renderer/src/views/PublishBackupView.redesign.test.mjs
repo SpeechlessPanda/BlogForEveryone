@@ -59,3 +59,30 @@ test("PublishBackupView uses wrap-capable access-address and result surfaces for
   assert.match(stylesSource, /\.workflow-result-block,[\s\S]*min-width:\s*0/);
   assert.match(stylesSource, /\.publish-outcome-list[\s\S]*min-width:\s*0/);
 });
+
+test("PublishBackupView removes manual-friction GitHub username copy while keeping repo naming guidance", async () => {
+  const source = await readFile(publishBackupViewPath, "utf8");
+
+  assert.doesNotMatch(source, /待补充：填写 GitHub 用户名。/);
+  assert.match(source, /待补充：先登录 GitHub 以自动带入用户名。/);
+  assert.match(source, /GitHub 用户名（登录后自动带入，可手动调整）/);
+  assert.match(source, /登录后会自动带入 GitHub 用户名；如需发布到其他账号，可手动调整。/);
+  assert.match(source, /用户站点固定命名为 <code>用户名\.github\.io<\/code>/);
+  assert.match(source, /项目站点访问地址示例：<code>https:\/\/用户名\.github\.io\/仓库名\/<\/code>/);
+  assert.match(source, /当前仓库：\{\{ resolvedDeployRepoName \|\| "等待填写" \}\}/);
+  assert.match(source, /<label>固定备份仓库<\/label>[\s\S]*<input v-model="publishForm\.backupRepoName" disabled \/>/);
+  assert.match(source, /<label>固定备份仓库<\/label>[\s\S]*<p class="muted stack-top">\{\{ backupRepoUrl \|\| "等待填写 GitHub 用户名" \}\}<\/p>/);
+});
+
+test("PublishBackupView trims manual login input before readiness, URL preview, and publish payload use", async () => {
+  const source = await readFile(publishBackupViewPath, "utf8");
+
+  assert.match(source, /const\s+normalizedPublishLogin\s*=\s*computed\(\(\)\s*=>[\s\S]*String\(publishForm\.login\s*\|\|\s*""\)\.trim\(\)[\s\S]*\)/);
+  assert.match(source, /publishReadiness\s*=\s*computed\(\(\)\s*=>\s*\{[\s\S]*if\s*\(!normalizedPublishLogin\.value\)\s*\{/);
+  assert.match(source, /normalizedPublishLogin\.value/);
+  assert.match(source, /\.github\.io/);
+  assert.match(source, /buildGithubRepoUrl\(normalizedPublishLogin\.value,\s*resolvedDeployRepoName\.value\)/);
+  assert.match(source, /buildGithubRepoUrl\(normalizedPublishLogin\.value,\s*publishForm\.backupRepoName\)/);
+  assert.match(source, /https:\/\/\$\{normalizedPublishLogin\.value\}\.github\.io\//);
+  assert.match(source, /login:\s*normalizedPublishLogin\.value,/);
+});

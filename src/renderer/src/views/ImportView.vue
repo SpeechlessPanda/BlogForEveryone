@@ -24,8 +24,20 @@ const resultState = ref({
   cards: [],
   rawText: "",
 });
+const githubAccountLogin = ref("");
 const githubRepos = ref([]);
 const githubRepoSummary = ref("还没有加载 GitHub 仓库列表。");
+const githubRepoLoadFailed = ref(false);
+const githubImportManualState = reactive({
+  siteType: false,
+  deployRepo: false,
+  backupRepo: false,
+  localDestinationPath: false,
+});
+const githubImportAutoSelection = reactive({
+  deployRepoUrl: "",
+  backupRepoUrl: "",
+});
 const shellActions = useShellActions();
 const {
   importWorkspace,
@@ -38,13 +50,38 @@ const {
 const selectedGithubDeployRepo = computed(
   () =>
     githubRepos.value.find((repo) => repo.url === githubImportForm.deployRepoUrl) ||
-    null,
+    parseGithubRepo(githubImportForm.deployRepoUrl),
 );
 const selectedGithubBackupRepo = computed(
   () =>
     githubRepos.value.find((repo) => repo.url === githubImportForm.backupRepoUrl) ||
-    null,
+    parseGithubRepo(githubImportForm.backupRepoUrl),
 );
+const hasExactDeployRepoAutodetect = computed(
+  () => Boolean(githubImportAutoSelection.deployRepoUrl),
+);
+const hasExactBackupRepoAutodetect = computed(
+  () => Boolean(githubImportAutoSelection.backupRepoUrl),
+);
+const githubRecoveryNextStepNote = computed(() => {
+  if (githubRepoLoadFailed.value) {
+    return "如果 GitHub 仓库列表暂时加载失败，可手动填写恢复仓库地址继续操作。";
+  }
+
+  if (hasExactDeployRepoAutodetect.value && hasExactBackupRepoAutodetect.value) {
+    return "已自动识别发布仓库和 BFE 备份仓库，下一步只需选择目标恢复目录。";
+  }
+
+  if (hasExactBackupRepoAutodetect.value) {
+    return "已自动识别 BFE 备份仓库；如果发布仓库没有唯一精确匹配，可继续手动选择。";
+  }
+
+  if (hasExactDeployRepoAutodetect.value) {
+    return "已自动识别用户名站点发布仓库；如果 BFE 没有唯一精确匹配，可继续手动选择。";
+  }
+
+  return "会基于当前 GitHub 登录名精确匹配 `${login}.github.io` 和 `BFE`；未命中或不唯一时可继续手动选择。";
+});
 
 function setResultState(summary, note, cards = [], raw = null) {
   resultState.value = {
@@ -69,20 +106,108 @@ function setStructuredError(prefix, error) {
   );
 }
 
+function markGithubSiteTypeManual() {
+  githubImportManualState.siteType = true;
+}
+
+function markGithubDeployRepoManual() {
+  githubImportManualState.deployRepo = true;
+}
+
+function markGithubBackupRepoManual() {
+  githubImportManualState.backupRepo = true;
+}
+
+function markGithubLocalDestinationManual() {
+  githubImportManualState.localDestinationPath = true;
+}
+
+function parseGithubRepo(repoUrl) {
+  const clean = String(repoUrl || "")
+    .trim()
+    .replace(/\.git$/i, "");
+  const match = clean.match(/github\.com[/:]([^/]+)\/([^/]+)$/i);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    owner: match[1],
+    name: match[2],
+    url: String(repoUrl || "").trim(),
+  };
+}
+
+function syncExactGithubRepoAutodetect() {
+  const githubLogin = githubAccountLogin.value.trim();
+  const deployRepoName = githubLogin ? `${githubLogin}.github.io` : "";
+  const deployRepoMatches = deployRepoName
+    ? githubRepos.value.filter((repo) => repo.name === deployRepoName)
+    : [];
+  const backupRepoMatches = githubRepos.value.filter((repo) => repo.name === "BFE");
+  const uniqueDeployRepo = deployRepoMatches.length === 1 ? deployRepoMatches[0] : null;
+  const uniqueBackupRepo = backupRepoMatches.length === 1 ? backupRepoMatches[0] : null;
+  const previousDeployRepoUrl = githubImportAutoSelection.deployRepoUrl;
+  const previousBackupRepoUrl = githubImportAutoSelection.backupRepoUrl;
+
+  githubImportAutoSelection.deployRepoUrl = uniqueDeployRepo?.url || "";
+  githubImportAutoSelection.backupRepoUrl = uniqueBackupRepo?.url || "";
+
+  if (
+    !githubImportManualState.deployRepo &&
+    (!githubImportForm.deployRepoUrl || githubImportForm.deployRepoUrl === previousDeployRepoUrl)
+  ) {
+    githubImportForm.deployRepoUrl = githubImportAutoSelection.deployRepoUrl;
+  }
+
+  if (
+    !githubImportManualState.backupRepo &&
+    (!githubImportForm.backupRepoUrl || githubImportForm.backupRepoUrl === previousBackupRepoUrl)
+  ) {
+    githubImportForm.backupRepoUrl = githubImportAutoSelection.backupRepoUrl;
+  }
+
+  if (
+    uniqueDeployRepo &&
+    !githubImportManualState.siteType &&
+    !githubImportManualState.deployRepo
+  ) {
+    githubImportForm.siteType = "user-pages";
+  } else if (
+    !uniqueDeployRepo &&
+    !githubImportManualState.siteType &&
+    !githubImportManualState.deployRepo &&
+    githubImportForm.siteType === "user-pages"
+  ) {
+    githubImportForm.siteType = "project-pages";
+  }
+}
+
+async function refreshGithubIdentity() {
+  try {
+    const authState = await shellActions.getGithubAuthState();
+    githubAccountLogin.value = authState?.account?.login?.trim?.() || "";
+  } catch {
+    githubAccountLogin.value = "";
+  }
+}
+
 async function refreshGithubRepoList() {
   try {
     const repos = await listGithubRepos({ visibility: "all" });
+    githubRepoLoadFailed.value = false;
     githubRepos.value = Array.isArray(repos) ? repos : [];
-    const backupRepo = githubRepos.value.find((repo) => repo.name === "BFE");
-    if (backupRepo && !githubImportForm.backupRepoUrl) {
-      githubImportForm.backupRepoUrl = backupRepo.url;
-    }
+    syncExactGithubRepoAutodetect();
     githubRepoSummary.value = githubRepos.value.length
       ? `GitHub 仓库列表已加载，共 ${githubRepos.value.length} 个仓库。`
       : "没有读取到可用仓库，请检查当前账号权限。";
   } catch (error) {
+    githubRepoLoadFailed.value = true;
+    githubRepos.value = [];
+    syncExactGithubRepoAutodetect();
     githubRepoSummary.value =
-      collectOperationMessages(error)[0] || "GitHub 仓库列表加载失败。";
+      collectOperationMessages(error)[0] ||
+      "GitHub 仓库列表加载失败；可手动填写恢复仓库地址继续操作。";
   }
 }
 
@@ -164,6 +289,7 @@ async function pickGithubDestinationDirectory() {
       defaultPath: githubImportForm.localDestinationPath || undefined,
     });
     if (!data.canceled && data.path) {
+      githubImportManualState.localDestinationPath = true;
       githubImportForm.localDestinationPath = data.path;
     }
   } catch (error) {
@@ -211,6 +337,7 @@ function jumpToZone(zoneId) {
 }
 
 onMounted(async () => {
+  await refreshGithubIdentity();
   await refreshGithubRepoList();
 });
 </script>
@@ -333,7 +460,7 @@ onMounted(async () => {
         <div class="workflow-compact-block workflow-compact-block--support">
           <p class="section-eyebrow">GitHub 仓库列表</p>
           <strong>{{ githubRepoSummary }}</strong>
-          <p class="page-result-note">先选择 BFE 备份仓库；如果同时存在发布仓库，也可以一并带回元数据。</p>
+          <p class="page-result-note">{{ githubRecoveryNextStepNote }}</p>
         </div>
 
         <div class="grid-2 stack-top">
@@ -343,28 +470,48 @@ onMounted(async () => {
           </div>
           <div>
             <label>站点类型</label>
-            <select v-model="githubImportForm.siteType">
+            <select v-model="githubImportForm.siteType" @change="markGithubSiteTypeManual">
               <option value="project-pages">project-pages</option>
               <option value="user-pages">user-pages</option>
             </select>
           </div>
           <div>
             <label>发布仓库（可选）</label>
-            <select v-model="githubImportForm.deployRepoUrl">
+            <select
+              v-if="githubRepos.length"
+              v-model="githubImportForm.deployRepoUrl"
+              @change="markGithubDeployRepoManual"
+            >
               <option value="">不附带发布仓库元数据</option>
               <option v-for="repo in githubRepos" :key="`deploy-${repo.url}`" :value="repo.url">
                 {{ repo.owner }}/{{ repo.name }}
               </option>
             </select>
+            <input
+              v-else
+              v-model="githubImportForm.deployRepoUrl"
+              placeholder="https://github.com/用户名/用户名.github.io.git"
+              @input="markGithubDeployRepoManual"
+            />
           </div>
           <div>
             <label>BFE 备份仓库</label>
-            <select v-model="githubImportForm.backupRepoUrl">
+            <select
+              v-if="githubRepos.length"
+              v-model="githubImportForm.backupRepoUrl"
+              @change="markGithubBackupRepoManual"
+            >
               <option value="">请选择 BFE 备份仓库</option>
               <option v-for="repo in githubRepos" :key="repo.url" :value="repo.url">
                 {{ repo.owner }}/{{ repo.name }}
               </option>
             </select>
+            <input
+              v-else
+              v-model="githubImportForm.backupRepoUrl"
+              placeholder="https://github.com/用户名/BFE.git"
+              @input="markGithubBackupRepoManual"
+            />
           </div>
           <div>
             <label>目标恢复目录</label>
@@ -372,6 +519,7 @@ onMounted(async () => {
               <input
                 v-model="githubImportForm.localDestinationPath"
                 placeholder="例如 D:/restored-blog"
+                @input="markGithubLocalDestinationManual"
               />
               <button class="secondary" type="button" @click="pickGithubDestinationDirectory">
                 选择目录

@@ -34,7 +34,19 @@ const themePreviewLightbox = reactive({
   open: false,
   title: "",
   src: "",
+  scale: 1,
+  translateX: 0,
+  translateY: 0,
+  isDragging: false,
 });
+
+const THEME_PREVIEW_SCALE_STEP = 0.2;
+const THEME_PREVIEW_MIN_SCALE = 1;
+const THEME_PREVIEW_MAX_SCALE = 4;
+
+let themePreviewDragPointerId = null;
+let themePreviewDragOffsetX = 0;
+let themePreviewDragOffsetY = 0;
 
 const themePreviewMap = {
   "hexo:landscape": "theme-previews/hexo-landscape.png",
@@ -133,16 +145,93 @@ function selectThemeCard(themeId) {
   form.theme = themeId;
 }
 
+const themePreviewImageStyle = computed(() => {
+  return {
+    transform: `translate(${themePreviewLightbox.translateX}px, ${themePreviewLightbox.translateY}px) scale(${themePreviewLightbox.scale})`,
+  };
+});
+
+function clampThemePreviewScale(scale) {
+  return Math.min(
+    THEME_PREVIEW_MAX_SCALE,
+    Math.max(THEME_PREVIEW_MIN_SCALE, Number(scale.toFixed(2))),
+  );
+}
+
+function resetThemePreviewTransform() {
+  themePreviewLightbox.scale = 1;
+  themePreviewLightbox.translateX = 0;
+  themePreviewLightbox.translateY = 0;
+  themePreviewLightbox.isDragging = false;
+  themePreviewDragPointerId = null;
+  themePreviewDragOffsetX = 0;
+  themePreviewDragOffsetY = 0;
+}
+
+function zoomThemePreview(delta) {
+  const nextScale = clampThemePreviewScale(themePreviewLightbox.scale + delta);
+  themePreviewLightbox.scale = nextScale;
+
+  if (nextScale === THEME_PREVIEW_MIN_SCALE) {
+    themePreviewLightbox.translateX = 0;
+    themePreviewLightbox.translateY = 0;
+  }
+}
+
+function handleThemePreviewWheel(event) {
+  const delta = event.deltaY < 0 ? THEME_PREVIEW_SCALE_STEP : -THEME_PREVIEW_SCALE_STEP;
+  zoomThemePreview(delta);
+}
+
+function handleThemePreviewPointerDown(event) {
+  if (themePreviewLightbox.scale <= THEME_PREVIEW_MIN_SCALE) {
+    return;
+  }
+
+  themePreviewLightbox.isDragging = true;
+  themePreviewDragPointerId = event.pointerId;
+  themePreviewDragOffsetX = event.clientX - themePreviewLightbox.translateX;
+  themePreviewDragOffsetY = event.clientY - themePreviewLightbox.translateY;
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+
+function handleThemePreviewPointerMove(event) {
+  if (
+    !themePreviewLightbox.isDragging ||
+    themePreviewDragPointerId !== event.pointerId
+  ) {
+    return;
+  }
+
+  themePreviewLightbox.translateX = event.clientX - themePreviewDragOffsetX;
+  themePreviewLightbox.translateY = event.clientY - themePreviewDragOffsetY;
+}
+
+function stopThemePreviewDrag(event) {
+  if (themePreviewDragPointerId !== null && themePreviewDragPointerId !== event.pointerId) {
+    return;
+  }
+
+  themePreviewLightbox.isDragging = false;
+  themePreviewDragPointerId = null;
+
+  if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+}
+
 function openThemePreview(theme) {
   if (!theme?.preview) {
     return;
   }
+  resetThemePreviewTransform();
   themePreviewLightbox.open = true;
   themePreviewLightbox.title = `${theme.name} 主题预览`;
   themePreviewLightbox.src = theme.preview;
 }
 
 function closeThemePreview() {
+  resetThemePreviewTransform();
   themePreviewLightbox.open = false;
   themePreviewLightbox.title = "";
   themePreviewLightbox.src = "";
@@ -485,6 +574,32 @@ function goTutorialCenter() {
                 <p class="section-eyebrow">Theme preview</p>
                 <h3>{{ themePreviewLightbox.title }}</h3>
               </div>
+              <div class="theme-preview-dialog-actions">
+                <span class="theme-preview-zoom-status">
+                  {{ Math.round(themePreviewLightbox.scale * 100) }}%
+                </span>
+                <button
+                  class="secondary theme-preview-zoom-button"
+                  type="button"
+                  @click="zoomThemePreview(-0.2)"
+                >
+                  缩小
+                </button>
+                <button
+                  class="secondary theme-preview-zoom-button"
+                  type="button"
+                  @click="zoomThemePreview(0.2)"
+                >
+                  放大
+                </button>
+                <button
+                  class="secondary theme-preview-reset"
+                  type="button"
+                  @click="resetThemePreviewTransform"
+                >
+                  重置
+                </button>
+              </div>
               <button
                 class="secondary theme-preview-close"
                 type="button"
@@ -493,7 +608,25 @@ function goTutorialCenter() {
                 关闭预览
               </button>
             </div>
-            <img :src="themePreviewLightbox.src" :alt="themePreviewLightbox.title" />
+            <div
+              class="theme-preview-stage"
+              :class="{ 'theme-preview-stage--dragging': themePreviewLightbox.isDragging }"
+              @wheel.prevent="handleThemePreviewWheel"
+              @pointerdown="handleThemePreviewPointerDown"
+              @pointermove="handleThemePreviewPointerMove"
+              @pointerup="stopThemePreviewDrag"
+              @pointerleave="stopThemePreviewDrag"
+              @pointercancel="stopThemePreviewDrag"
+            >
+              <img
+                class="theme-preview-image"
+                :src="themePreviewLightbox.src"
+                :alt="themePreviewLightbox.title"
+                :style="themePreviewImageStyle"
+                draggable="false"
+                @dragstart.prevent
+              />
+            </div>
           </div>
         </dialog>
       </section>

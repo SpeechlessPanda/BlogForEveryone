@@ -2712,6 +2712,14 @@ a:hover {
   color: var(--shell-muted);
 }
 
+.layout--editorial[data-shell-appearance="dark"] .page-kicker,
+.layout--editorial[data-shell-appearance="dark"] .section-eyebrow,
+.layout--editorial[data-shell-appearance="dark"] .status-label,
+.layout--editorial[data-shell-appearance="dark"] label,
+.layout--editorial[data-shell-appearance="dark"] .sidebar-entry-label {
+  color: var(--shell-highlight);
+}
+
 .layout--editorial[data-shell-appearance="dark"] .modal-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
@@ -2767,6 +2775,23 @@ a:hover {
 .layout--editorial[data-shell-appearance="dark"] .theme-studio .page-link-row a:focus-visible {
   color: var(--shell-ink);
   text-decoration-color: rgba(245, 234, 223, 0.72);
+}
+
+.layout--editorial[data-shell-appearance="dark"] .context-card,
+.layout--editorial[data-shell-appearance="dark"] .info-card,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-directory-card,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-flow-card,
+.layout--editorial[data-shell-appearance="dark"] .tutorial-action-panel,
+.layout--editorial[data-shell-appearance="dark"] .theme-studio-card,
+.layout--editorial[data-shell-appearance="dark"] .theme-asset-preview-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--shell-panel-alt);
+  border: 1px solid var(--shell-line);
+  color: var(--shell-ink);
+  box-shadow:
+    0 18px 34px rgba(var(--shell-shadow-rgb), 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .layout--editorial .workflow-inline-panel {
@@ -2842,6 +2867,13 @@ a:hover {
 .layout--editorial .shell-popup-log,
 .layout--editorial .tab-note {
   color: var(--shell-muted);
+}
+
+.layout--editorial[data-shell-appearance="dark"] .shell-topbar .page-kicker,
+.layout--editorial[data-shell-appearance="dark"] .shell-summary .status-label,
+.layout--editorial[data-shell-appearance="dark"] .shell-popup-panel .status-label,
+.layout--editorial[data-shell-appearance="dark"] .sidebar-entry-label {
+  color: var(--shell-highlight);
 }
 
 .layout--editorial .sidebar-nav {
@@ -2997,6 +3029,21 @@ a:hover {
   --shell-highlight: #f6e6d5;
   --shell-selected-bg: #1a1a1a;
   --shell-selected-line: rgba(255, 255, 255, 0.22);
+}
+
+.shell-popup-theme[data-shell-appearance="dark"] .status-label {
+  color: var(--shell-highlight);
+}
+
+.shell-popup-theme[data-shell-appearance="dark"] .shell-popup-block {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--shell-panel-alt);
+  border-color: var(--shell-line);
+  color: var(--shell-ink);
+  box-shadow:
+    0 18px 34px rgba(var(--shell-shadow-rgb), 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .shell-popup-overlay {

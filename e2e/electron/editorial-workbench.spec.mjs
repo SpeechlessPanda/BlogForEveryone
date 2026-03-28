@@ -106,6 +106,8 @@ test("editorial workbench journey keeps workspace context across core entry poin
       .locator(".workspace-theme-preview-trigger")
       .first();
     const workspaceThemePreviewOverlay = page.locator("dialog.theme-preview-lightbox");
+    const workspaceThemePreviewImage = workspaceThemePreviewOverlay.locator(".theme-preview-image");
+    const workspaceThemePreviewStage = workspaceThemePreviewOverlay.locator(".theme-preview-stage");
     const previewSurface = page.locator(
       '[data-page-role="preview"][data-workflow-surface="editorial-workflow"]',
     );
@@ -416,10 +418,27 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(workspaceSurface).toBeVisible();
     await workspaceThemePreviewTrigger.click();
     await expect(workspaceThemePreviewOverlay).toBeVisible();
+    await expect(workspaceThemePreviewOverlay.getByText("100%")).toBeVisible();
+    await workspaceThemePreviewOverlay.getByRole("button", { name: "放大" }).click();
+    await expect
+      .poll(async () => workspaceThemePreviewImage.evaluate((element) => element.style.transform))
+      .toContain("scale(1.2)");
+    await workspaceThemePreviewStage.hover();
+    await page.mouse.wheel(0, -240);
+    await expect
+      .poll(async () => workspaceThemePreviewImage.evaluate((element) => element.style.transform))
+      .toContain("scale(1.4)");
+    await workspaceThemePreviewOverlay.getByRole("button", { name: "重置" }).click();
+    await expect
+      .poll(async () => workspaceThemePreviewImage.evaluate((element) => element.style.transform))
+      .toBe("translate(0px, 0px) scale(1)");
     await workspaceThemePreviewOverlay.getByRole("button", { name: "关闭预览" }).click();
     await expect(workspaceThemePreviewOverlay).toBeHidden();
     await workspaceThemePreviewTrigger.click();
     await expect(workspaceThemePreviewOverlay).toBeVisible();
+    await expect
+      .poll(async () => workspaceThemePreviewImage.evaluate((element) => element.style.transform))
+      .toBe("translate(0px, 0px) scale(1)");
     await page.keyboard.press("Escape");
     await expect(workspaceThemePreviewOverlay).toBeHidden();
 

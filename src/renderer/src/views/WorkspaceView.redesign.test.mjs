@@ -158,3 +158,54 @@ test("WorkspaceView lightbox exposes explicit close controls for button, outside
     "expected dedicated app-scaled lightbox styling for preview media",
   );
 });
+
+test("WorkspaceView lightbox adds zoom controls and resets preview transform state on close", async () => {
+  const source = await readFile(workspaceViewPath, "utf8");
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    source,
+    /const themePreviewLightbox = reactive\([\s\S]*scale:\s*1[\s\S]*translateX:\s*0[\s\S]*translateY:\s*0[\s\S]*isDragging:\s*false[\s\S]*\)/,
+    "expected lightbox state to track zoom scale and pan offsets",
+  );
+  assert.match(
+    source,
+    /function resetThemePreviewTransform\(\)[\s\S]*scale\s*=\s*1[\s\S]*translateX\s*=\s*0[\s\S]*translateY\s*=\s*0[\s\S]*isDragging\s*=\s*false/,
+    "expected a dedicated reset helper for preview transform state",
+  );
+  assert.match(
+    source,
+    /function closeThemePreview\(\)[\s\S]*resetThemePreviewTransform\(\)/,
+    "expected closing the lightbox to reset zoom and pan state",
+  );
+  assert.match(
+    source,
+    /class="secondary theme-preview-zoom-button"[\s\S]*@click="zoomThemePreview\(0\.2\)"[\s\S]*放大/,
+    "expected an explicit zoom-in button inside the lightbox header",
+  );
+  assert.match(
+    source,
+    /class="secondary theme-preview-zoom-button"[\s\S]*@click="zoomThemePreview\(-0\.2\)"[\s\S]*缩小/,
+    "expected an explicit zoom-out button inside the lightbox header",
+  );
+  assert.match(
+    source,
+    /class="secondary theme-preview-reset"[\s\S]*@click="resetThemePreviewTransform"[\s\S]*重置/,
+    "expected an explicit reset button for preview transform state",
+  );
+  assert.match(
+    source,
+    /class="theme-preview-stage"[\s\S]*@wheel\.prevent="handleThemePreviewWheel"/,
+    "expected the preview stage to support wheel-based zooming",
+  );
+  assert.match(
+    source,
+    /<img[\s\S]*class="theme-preview-image"[\s\S]*:style="themePreviewImageStyle"/,
+    "expected the lightbox image to use reactive transform styling",
+  );
+  assert.match(
+    stylesSource,
+    /\.theme-preview-stage[\s\S]*cursor:\s*grab[\s\S]*\.theme-preview-image[\s\S]*transform:/,
+    "expected dedicated stage and transformable image styling for zoom interaction",
+  );
+});

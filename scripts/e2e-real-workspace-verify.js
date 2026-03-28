@@ -210,6 +210,7 @@ async function main() {
         rows
     };
 
+    fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
     fs.writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
     console.log(JSON.stringify(report, null, 2));
 

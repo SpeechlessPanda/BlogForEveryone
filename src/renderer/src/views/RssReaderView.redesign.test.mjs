@@ -37,8 +37,9 @@ test("RssReaderView keeps quiet intake actions without a duplicated hero summary
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);
   assert.doesNotMatch(source, /shellActions\.openTutorial\(\)/);
   assert.match(source, /shellActions\.openTutorial\("rss-reading"\)/);
-  assert.match(source, /rss-subscription-toolbar/);
-  assert.match(source, /rss-subscription-row/);
+  assert.match(source, /rss-subscription-list-header/);
+  assert.match(source, /rss-subscription-item-header/);
+  assert.match(source, /rss-subscription-actions/);
   assert.doesNotMatch(
     source,
     /data-workflow-zone="subscription-list"[\s\S]*class="page-hero-grid"/,

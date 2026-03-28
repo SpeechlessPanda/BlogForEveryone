@@ -465,6 +465,22 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(themeSurface).toBeVisible();
     await expect(themeSurface.locator(".page-title")).toHaveCSS("color", darkTextPalette.inkColor);
     await expect(themeStudioHelper).toHaveCSS("color", darkTextPalette.mutedColor);
+    await expect(themeSurface.locator(".theme-studio-heading h2").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(themeSurface.locator(".theme-studio-note strong").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(themeSurface.locator(".theme-studio-status-card strong").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(themeSurface.locator(".theme-studio-status-card .status-detail").first()).toHaveCSS(
+      "color",
+      darkTextPalette.mutedColor,
+    );
 
     await navigateToTab("发布与备份");
     await expect(publishSurface).toBeVisible();
@@ -495,6 +511,32 @@ test("editorial workbench journey keeps workspace context across core entry poin
       "已自动识别发布仓库和 BFE 备份仓库，下一步只需选择目标恢复目录。",
     );
     await expect(importDestinationInput).toHaveValue("");
+
+    await navigateToTab("教程中心");
+    await expect(page.locator("#tutorial-home .tutorial-directory-card h3").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(page.locator("#tutorial-home .tutorial-directory-card .section-helper").first()).toHaveCSS(
+      "color",
+      darkTextPalette.mutedColor,
+    );
+    await expect(page.locator('[data-tutorial-zone="tutorial-workspace-create"] .tutorial-section-heading h2')).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(page.locator('[data-tutorial-zone="tutorial-workspace-create"] .tutorial-flow-card .checklist').first()).toHaveCSS(
+      "color",
+      darkTextPalette.mutedColor,
+    );
+    await expect(page.locator('[data-tutorial-zone="tutorial-workspace-create"] .tutorial-action-panel strong')).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(page.locator('[data-tutorial-zone="tutorial-workspace-create"] .tutorial-action-panel .section-helper')).toHaveCSS(
+      "color",
+      darkTextPalette.mutedColor,
+    );
 
     await openShellPopupFromEntry({
       entry: shellAppearanceEntry,

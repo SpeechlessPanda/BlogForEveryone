@@ -117,3 +117,18 @@ test("TutorialCenterView keeps the hero intro full width and moves guidance card
   assert.match(stylesSource, /\.tutorial-lesson-card,[\s\S]*min-width:\s*0/);
   assert.match(stylesSource, /\.tutorial-callout--warning/);
 });
+
+test("TutorialCenterView keeps dark-mode tutorial titles and body copy on readable shell tokens", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card h3,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card h3,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-callout strong[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected tutorial titles and primary callouts to use the shell ink token in dark mode",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-callout \.section-helper[\s\S]*color:\s*var\(--shell-muted\);/,
+    "expected tutorial body copy and checklist text to use the shell muted token in dark mode",
+  );
+});

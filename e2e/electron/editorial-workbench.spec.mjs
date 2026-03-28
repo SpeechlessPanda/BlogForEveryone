@@ -206,15 +206,17 @@ test("editorial workbench journey keeps workspace context across core entry poin
       };
     };
     const readShellTextPalette = async () => {
-      const { mutedVar, highlightVar } = await shellRoot.evaluate((element) => {
+      const { inkVar, mutedVar, highlightVar } = await shellRoot.evaluate((element) => {
         const styles = getComputedStyle(element);
         return {
+          inkVar: styles.getPropertyValue("--shell-ink").trim(),
           mutedVar: styles.getPropertyValue("--shell-muted").trim(),
           highlightVar: styles.getPropertyValue("--shell-highlight").trim(),
         };
       });
 
       return {
+        inkColor: await resolveCssValue(inkVar, "color"),
         mutedColor: await resolveCssValue(mutedVar, "color"),
         highlightColor: await resolveCssValue(highlightVar, "color"),
       };
@@ -414,13 +416,41 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(shellAppearanceBlock).toContainText("暗色编辑台");
     const darkPalette = await expectRepresentativeSurfacesToMatchAppearance("dark");
     const darkTextPalette = await readShellTextPalette();
+    expect(darkTextPalette.inkColor).toBe("rgb(245, 237, 230)");
+    expect(darkTextPalette.mutedColor).toBe("rgb(215, 198, 184)");
+    expect(darkTextPalette.highlightColor).toBe("rgb(246, 230, 213)");
     expect(darkPalette.panelBackground).not.toBe(lightPalette.panelBackground);
     expect(darkPalette.panelBorder).not.toBe(lightPalette.panelBorder);
+    await expect(page.locator(".shell-topbar-title")).toHaveCSS("color", darkTextPalette.inkColor);
+    await expect(page.locator('[data-summary-item="workspace"] strong')).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(page.locator('[data-sidebar-entry="account"] strong')).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
 
     await navigateToTab("博客创建");
     await expect(workspaceSurface).toBeVisible();
+    await expect(workspaceSurface.locator(".workspace-section-heading h2").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(workspaceSurface.locator(".page-title")).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
+    await expect(workspaceSurface.locator(".page-signal strong").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
     await workspaceThemePreviewTrigger.click();
     await expect(workspaceThemePreviewOverlay).toBeVisible();
+    await expect(workspaceThemePreviewOverlay.locator(".theme-preview-dialog-copy h3")).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
     await expect(
       workspaceThemePreviewOverlay.locator(".theme-preview-dialog-copy .section-eyebrow"),
     ).toHaveCSS("color", darkTextPalette.mutedColor);
@@ -433,10 +463,15 @@ test("editorial workbench journey keeps workspace context across core entry poin
 
     await navigateToTab("主题配置");
     await expect(themeSurface).toBeVisible();
+    await expect(themeSurface.locator(".page-title")).toHaveCSS("color", darkTextPalette.inkColor);
     await expect(themeStudioHelper).toHaveCSS("color", darkTextPalette.mutedColor);
 
     await navigateToTab("发布与备份");
     await expect(publishSurface).toBeVisible();
+    await expect(publishWorkbenchSurface.locator(".workflow-section-heading h2").first()).toHaveCSS(
+      "color",
+      darkTextPalette.inkColor,
+    );
     await expect(publishPageLead).toHaveCSS("color", darkTextPalette.mutedColor);
     await expect(publishResultNote).toHaveCSS("color", darkTextPalette.mutedColor);
     await expect(publishPageLink).toHaveCSS("color", darkTextPalette.highlightColor);

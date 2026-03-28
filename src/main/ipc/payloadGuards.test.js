@@ -116,3 +116,45 @@ test('theme:getConfig and theme:saveConfig reject missing managed workspace cont
     assert.deepEqual(readCalls, []);
     assert.deepEqual(saveCalls, []);
 });
+
+test('theme:uploadImageToGithub rejects missing managed workspace context before upload service runs', async () => {
+    const harness = createIpcMainHarness();
+    const uploadCalls = [];
+
+    registerThemeIpcHandlers({
+        ipcMain: harness.ipcMain,
+        getWorkspacePolicy: () => ({
+            getManagedWorkspace() {
+                throw new Error('缺少受管工作区 ID。');
+            },
+            listManagedWorkspaces() {
+                return [];
+            },
+            normalizePath(inputPath) {
+                return String(inputPath || '').trim();
+            },
+            assertPathWithinWorkspace() {
+                throw new Error('路径越界，拒绝上传主题图片操作。');
+            }
+        }),
+        getThemeCatalog: async () => [],
+        readThemeConfig: async () => ({}),
+        saveThemeConfig: () => {},
+        validateThemeSettings: async () => ({ ok: true }),
+        saveLocalAssetToBlog: async () => ({ ok: true }),
+        applyPreviewOverrides: async () => ({ ok: true }),
+        uploadImageToRepo: async (payload) => {
+            uploadCalls.push(payload);
+            return { ok: true };
+        }
+    });
+
+    const uploadHandler = harness.handlers.get('theme:uploadImageToGithub');
+
+    await assert.rejects(
+        () => uploadHandler({}, undefined),
+        /受管工作区/
+    );
+
+    assert.deepEqual(uploadCalls, []);
+});

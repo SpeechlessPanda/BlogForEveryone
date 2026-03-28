@@ -54,6 +54,23 @@ function registerThemeIpcHandlers({
         };
     }
 
+    function withCanonicalUploadPayload(payload) {
+        const canonicalPayload = withCanonicalWorkspace(payload);
+        const policy = typeof getWorkspacePolicy === 'function' ? getWorkspacePolicy() : null;
+        if (!policy || typeof policy.assertPathWithinWorkspace !== 'function') {
+            throw new Error('缺少受管工作区路径策略，拒绝上传主题图片。');
+        }
+
+        return {
+            ...canonicalPayload,
+            localFilePath: policy.assertPathWithinWorkspace(
+                canonicalPayload.workspaceId,
+                canonicalPayload.localFilePath,
+                '上传主题图片'
+            )
+        };
+    }
+
     ipcMain.handle('theme:catalog', async () => getThemeCatalog());
 
     ipcMain.handle('theme:getConfig', async (_event, payload) => {
@@ -80,7 +97,7 @@ function registerThemeIpcHandlers({
     });
 
     ipcMain.handle('theme:uploadImageToGithub', async (_event, payload) => {
-        return uploadImageToRepo(payload);
+        return uploadImageToRepo(withCanonicalUploadPayload(payload));
     });
 }
 

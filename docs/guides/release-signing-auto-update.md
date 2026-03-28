@@ -3,6 +3,8 @@
 注意：本指南是“桌面应用本身”的发布流程，不是博客内容发布流程。
 博客发布请看：docs/guides/blog-publish-pages-beginner.md
 
+最新发布页：<https://github.com/SpeechlessPanda/BlogForEveryone/releases>
+
 ## 1. 自动更新机制
 
 1. 应用启动后会自动检查 GitHub Release 是否有新版本。

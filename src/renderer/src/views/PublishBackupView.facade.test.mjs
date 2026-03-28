@@ -130,3 +130,11 @@ test("PublishBackupView keeps backup repo name fixed to BFE instead of workspace
   assert.match(source, /publishForm\.backupRepoName\s*=\s*FIXED_BACKUP_REPO_NAME;/);
   assert.doesNotMatch(source, /publishForm\.backupRepoName\s*=\s*workspace\.backupRepo\?\.name/);
 });
+
+test("PublishBackupView keeps the publish payload unchanged while moving user-pages repo naming into derived UI", async () => {
+  const source = await readFile(publishBackupViewPath, "utf8");
+
+  assert.match(source, /publishToGitHub\(\s*\{[\s\S]*login:\s*normalizedPublishLogin\.value,[\s\S]*deployRepoName:\s*resolvedDeployRepoName\.value,[\s\S]*backupRepoName:\s*publishForm\.backupRepoName,/);
+  assert.match(source, /publishForm\.siteType === USER_PAGES[\s\S]*resolvedDeployRepoName/);
+  assert.doesNotMatch(source, /publishToGitHub\(\s*\{[\s\S]*derivedDeployRepoName/);
+});

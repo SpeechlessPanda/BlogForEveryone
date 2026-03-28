@@ -169,4 +169,9 @@ test("ThemeConfigView keeps dark editorial studio titles and primary asset text 
     /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-note \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-status-card \.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card span[\s\S]*color:\s*var\(--shell-muted\);/,
     "expected theme studio supporting copy to use the shell muted token in dark mode",
   );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card[\s\S]*background:[\s\S]*var\(--shell-panel-alt\);[\s\S]*border-color:\s*var\(--shell-line\);[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected theme studio cards and asset preview cards to stop using light card surfaces in dark mode",
+  );
 });

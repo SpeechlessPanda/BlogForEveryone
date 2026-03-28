@@ -131,4 +131,9 @@ test("TutorialCenterView keeps dark-mode tutorial titles and body copy on readab
     /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-callout \.section-helper[\s\S]*color:\s*var\(--shell-muted\);/,
     "expected tutorial body copy and checklist text to use the shell muted token in dark mode",
   );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel[\s\S]*background:[\s\S]*var\(--shell-panel-alt\);[\s\S]*border-color:\s*var\(--shell-line\);[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected tutorial directory and workflow cards to use dark shell card surfaces instead of retaining light card styling",
+  );
 });

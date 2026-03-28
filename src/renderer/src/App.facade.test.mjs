@@ -191,3 +191,33 @@ test("App shell styles route dark editorial titles and primary text through the 
     "expected dark popup theme tokens to match the approved warmer shell palette",
   );
 });
+
+test("App shell styles keep dark metadata labels and mixed card surfaces readable across the workflow shell", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-kicker,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.section-eyebrow,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.sidebar-entry-label[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected dark workflow labels, eyebrows, and field labels to use a brighter shell highlight token",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.context-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.info-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card[\s\S]*background:[\s\S]*var\(--shell-panel-alt\);[\s\S]*(border-color:\s*var\(--shell-line\);|border:\s*1px solid var\(--shell-line\);)[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected mixed workflow cards to switch fully onto dark shell surfaces instead of keeping light-card backgrounds in dark mode",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-theme\[data-shell-appearance="dark"\] \.status-label[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected popup section labels to use the brighter shell highlight token in dark mode",
+  );
+  assert.match(
+    stylesSource,
+    /\.shell-popup-theme\[data-shell-appearance="dark"\] \.shell-popup-block[\s\S]*background:[\s\S]*var\(--shell-panel-alt\);[\s\S]*(border-color:\s*var\(--shell-line\);|border:\s*1px solid var\(--shell-line\);)[\s\S]*color:\s*var\(--shell-ink\);/,
+    "expected popup blocks to use dark shell card surfaces instead of inheriting lighter mixed backgrounds",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.shell-topbar \.page-kicker,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-summary \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-popup-panel \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.sidebar-entry-label[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected shell-specific metadata labels to keep the brighter highlight token instead of falling back to muted dark-shell copy",
+  );
+});

@@ -180,13 +180,13 @@ test("WorkspaceView lightbox adds zoom controls and resets preview transform sta
   );
   assert.match(
     source,
-    /class="secondary theme-preview-zoom-button"[\s\S]*@click="zoomThemePreview\(0\.2\)"[\s\S]*放大/,
-    "expected an explicit zoom-in button inside the lightbox header",
+    /class="secondary theme-preview-zoom-button"[\s\S]*@click="zoomThemePreview\(THEME_PREVIEW_SCALE_STEP\)"[\s\S]*放大/,
+    "expected zoom-in button to reuse THEME_PREVIEW_SCALE_STEP",
   );
   assert.match(
     source,
-    /class="secondary theme-preview-zoom-button"[\s\S]*@click="zoomThemePreview\(-0\.2\)"[\s\S]*缩小/,
-    "expected an explicit zoom-out button inside the lightbox header",
+    /class="secondary theme-preview-zoom-button"[\s\S]*@click="zoomThemePreview\(-THEME_PREVIEW_SCALE_STEP\)"[\s\S]*缩小/,
+    "expected zoom-out button to reuse THEME_PREVIEW_SCALE_STEP",
   );
   assert.match(
     source,
@@ -205,7 +205,7 @@ test("WorkspaceView lightbox adds zoom controls and resets preview transform sta
   );
   assert.match(
     stylesSource,
-    /\.theme-preview-stage[\s\S]*cursor:\s*grab[\s\S]*\.theme-preview-image[\s\S]*transform:/,
-    "expected dedicated stage and transformable image styling for zoom interaction",
+    /\.theme-preview-stage[\s\S]*cursor:\s*grab[\s\S]*touch-action:\s*none[\s\S]*\.theme-preview-image[\s\S]*transform:/,
+    "expected draggable preview stage to disable native touch gestures for pan interaction",
   );
 });

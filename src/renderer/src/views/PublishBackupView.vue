@@ -99,6 +99,13 @@ const publishReadiness = computed(() => {
   return "已具备统一发布与备份条件。";
 });
 
+const publishNamingReadinessNote = computed(() => {
+  if (publishForm.siteType === USER_PAGES) {
+    return "准备度不足时，先确认登录状态、备份目录和 Git 身份；user-pages 会自动推导发布仓库名。";
+  }
+  return "准备度不足时，先补齐仓库命名、备份目录和 Git 身份。";
+});
+
 const publishResultSummary = computed(() => {
   if (publishOutcomeSummary.value) {
     return publishOutcomeSummary.value;
@@ -117,6 +124,9 @@ const publishNextStep = computed(() => {
     return "先打开访问地址确认线上结果，再决定是否继续内容编辑或二次发布。";
   }
   if (publishReadiness.value !== "已具备统一发布与备份条件。") {
+    if (publishForm.siteType === USER_PAGES) {
+      return "先确认登录状态、备份目录和 Git 身份，再执行发布。";
+    }
     return "先补齐站点类型、仓库命名、备份目录和 Git 身份，再执行发布。";
   }
   return "发布成功后，这里会按链路展示仓库准备、线上发布和备份推送结果。";
@@ -406,7 +416,7 @@ function jumpToZone(zoneId) {
           <div class="page-signal page-signal--quiet">
             <p class="section-eyebrow">发布准备度</p>
             <strong>{{ publishReadiness }}</strong>
-            <p class="section-helper">准备度不足时，先补齐仓库命名、备份目录和 Git 身份。</p>
+            <p class="section-helper">{{ publishNamingReadinessNote }}</p>
           </div>
         </div>
       </section>
@@ -472,12 +482,20 @@ function jumpToZone(zoneId) {
               <option value="user-pages">user-pages</option>
             </select>
           </div>
-          <div>
+          <div v-if="publishForm.siteType === USER_PAGES">
+            <label>发布仓库（自动推导）</label>
+            <p class="workflow-access-address">
+              <code>{{ resolvedDeployRepoName || "等待 GitHub 用户名" }}</code>
+            </p>
+            <p class="muted stack-top">
+              用户站点固定使用 <code>{{ normalizedPublishLogin || "用户名" }}.github.io</code>，无需手动填写发布仓库名。
+            </p>
+          </div>
+          <div v-else>
             <label>发布仓库名称</label>
             <input
               v-model="publishForm.deployRepoName"
-              :disabled="publishForm.siteType === USER_PAGES"
-              :placeholder="publishForm.siteType === USER_PAGES ? '会自动固定为 用户名.github.io' : '例如 my-blog'"
+              placeholder="例如 my-blog"
             />
             <p class="muted stack-top">当前仓库：{{ resolvedDeployRepoName || "等待填写" }}</p>
           </div>

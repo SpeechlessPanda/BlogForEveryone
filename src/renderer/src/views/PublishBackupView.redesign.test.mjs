@@ -86,3 +86,22 @@ test("PublishBackupView trims manual login input before readiness, URL preview, 
   assert.match(source, /https:\/\/\$\{normalizedPublishLogin\.value\}\.github\.io\//);
   assert.match(source, /login:\s*normalizedPublishLogin\.value,/);
 });
+
+test("PublishBackupView treats user-pages deploy repo as derived output while keeping project-pages manual", async () => {
+  const source = await readFile(publishBackupViewPath, "utf8");
+
+  assert.match(source, /publishForm\.siteType === USER_PAGES/);
+  assert.match(source, /发布仓库（自动推导）/);
+  assert.match(source, /无需手动填写发布仓库名/);
+  assert.match(source, /\{\{ resolvedDeployRepoName \|\| "等待 GitHub 用户名" \}\}/);
+  assert.match(source, /v-else>[\s\S]*<label>发布仓库名称<\/label>/);
+  assert.match(source, /准备度不足时，先补齐仓库命名、备份目录和 Git 身份。/);
+  assert.doesNotMatch(source, /<label>发布仓库名称<\/label>[\s\S]*:disabled="publishForm\.siteType === USER_PAGES"/);
+});
+
+test("PublishBackupView keeps next-step copy aligned with derived user-pages naming", async () => {
+  const source = await readFile(publishBackupViewPath, "utf8");
+
+  assert.match(source, /if \(publishReadiness\.value !== "已具备统一发布与备份条件。"\) \{[\s\S]*if \(publishForm\.siteType === USER_PAGES\) \{[\s\S]*先确认登录状态、备份目录和 Git 身份，再执行发布。/);
+  assert.match(source, /if \(publishReadiness\.value !== "已具备统一发布与备份条件。"\) \{[\s\S]*return "先补齐站点类型、仓库命名、备份目录和 Git 身份，再执行发布。";/);
+});

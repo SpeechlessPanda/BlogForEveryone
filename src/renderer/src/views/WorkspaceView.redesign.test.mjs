@@ -209,3 +209,13 @@ test("WorkspaceView lightbox adds zoom controls and resets preview transform sta
     "expected draggable preview stage to disable native touch gestures for pan interaction",
   );
 });
+
+test("WorkspaceView lightbox gives dark-shell preview secondary text an explicit readable contrast token", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-dialog-copy \.section-eyebrow,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-zoom-status[\s\S]*color:\s*var\(--shell-muted\);/,
+    "expected dark preview dialog secondary text to use the shell muted token for readability",
+  );
+});

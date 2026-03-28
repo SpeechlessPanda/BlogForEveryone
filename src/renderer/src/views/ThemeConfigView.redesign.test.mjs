@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const themeConfigViewPath = new URL("./ThemeConfigView.vue", import.meta.url);
+const stylesPath = new URL("../styles.css", import.meta.url);
 const themeIdentitySectionPath = new URL(
   "../components/theme-config/ThemeIdentitySection.vue",
   import.meta.url,
@@ -116,4 +117,19 @@ test("ThemeConfigView extracts identity, asset, and advanced sections behind ded
   assert.equal(source.includes("<article class=\"priority-panel theme-studio-card theme-studio-card--emphasis\">"), false);
   assert.equal(source.includes("转存并应用博客图标"), false);
   assert.equal(source.includes("原始配置抽屉"), false);
+});
+
+test("ThemeConfigView keeps dark editorial studio support copy and page links on explicit shell contrast tokens", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial \.theme-studio \.section-eyebrow,[\s\S]*\.layout--editorial \.theme-studio \.section-helper,[\s\S]*\.layout--editorial \.theme-studio \.muted,[\s\S]*\.layout--editorial \.theme-studio \.page-lead,[\s\S]*\.layout--editorial \.theme-studio \.status-detail,[\s\S]*\.layout--editorial \.theme-studio \.page-result-note[\s\S]*color:\s*var\(--shell-muted\);/,
+    "expected theme studio helper and result copy to keep following the shell muted token",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio \.page-link-row a\s*\{[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected theme studio links to use the shell highlight token on dark shell surfaces",
+  );
 });

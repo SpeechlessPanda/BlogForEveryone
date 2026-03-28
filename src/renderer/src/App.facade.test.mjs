@@ -126,3 +126,28 @@ test("App shell styles keep document scroll outside the workflow view container"
     "expected styles.css to stop using hardcoded sidebar padding for popup anchoring",
   );
 });
+
+test("App shell styles make dark editorial helper copy, links, and modal text follow shell contrast tokens", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-lead,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.action-note,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.page-result-note,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.muted,[\s\S]*color:\s*var\(--shell-muted\);/,
+    "expected dark editorial utility copy to resolve to the shell muted token instead of the default muted palette",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.modal-panel\s*\{[\s\S]*background:[\s\S]*var\(--shell-panel\);[\s\S]*color:\s*var\(--shell-ink\);[\s\S]*border-color:\s*var\(--shell-line-strong\);/,
+    "expected dark editorial modals to use shell panel and ink tokens for readable body copy",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.modal-panel p,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.modal-panel \.muted[\s\S]*color:\s*var\(--shell-muted\);/,
+    "expected dark editorial modal body text to move to the shell muted token",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-link-row a,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workflow-compact-block a,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio \.page-link-row a\s*\{[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected dark editorial links on workflow shell surfaces to use the shell highlight token",
+  );
+});

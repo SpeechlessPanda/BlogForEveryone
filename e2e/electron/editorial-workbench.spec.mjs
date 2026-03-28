@@ -125,16 +125,24 @@ test("editorial workbench journey keeps workspace context across core entry poin
     const publishSurface = page.locator(
       '[data-page-role="publish"][data-workflow-surface="editorial-workflow"]',
     );
+    const publishPageLead = publishSurface.locator(".page-lead").first();
     const publishWorkbenchSurface = publishSurface.locator('[data-workflow-zone="publish-workbench"]');
     const publishWorkbenchSupport = publishWorkbenchSurface.locator(
       '.workflow-compact-block--support',
     );
     const publishRecentResult = publishSurface.locator('[data-workflow-zone="recent-result"]');
+    const publishResultNote = publishSurface.locator(".page-result-note").first();
+    const publishPageLink = publishSurface.locator(".page-link-row a").first();
     const publishAccessAddress = publishSurface.locator('[data-workflow-surface="access-address"]');
     const importSurface = page.locator(
       '[data-page-role="import"][data-workflow-surface="editorial-workflow"]',
     );
+    const importPageLead = importSurface.locator(".page-lead").first();
+    const importPageLink = importSurface.locator(".page-link-row a").first();
+    const importResultNote = importSurface.locator(".page-result-note").first();
     const importGithubWorkbench = importSurface.locator('[data-workflow-zone="github-import-workbench"]');
+    const themeSurface = page.locator('[data-theme-surface="editorial-studio"]');
+    const themeStudioHelper = themeSurface.locator(".section-helper").first();
     const shellScrollRegion = page.locator('[data-shell-scroll-region="workflow-view"]');
     const expectedSummary = expectedWorkspaceSummary(fixtureState.workspaces[0]);
     const shellAccountBlock = shellUserPopup.locator('[data-popup-block="account"]');
@@ -195,6 +203,20 @@ test("editorial workbench journey keeps workspace context across core entry poin
       return {
         panelBackground: await resolveCssValue(panelVar, "backgroundColor"),
         panelBorder: await resolveCssValue(lineVar, "borderTopColor"),
+      };
+    };
+    const readShellTextPalette = async () => {
+      const { mutedVar, highlightVar } = await shellRoot.evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return {
+          mutedVar: styles.getPropertyValue("--shell-muted").trim(),
+          highlightVar: styles.getPropertyValue("--shell-highlight").trim(),
+        };
+      });
+
+      return {
+        mutedColor: await resolveCssValue(mutedVar, "color"),
+        highlightColor: await resolveCssValue(highlightVar, "color"),
       };
     };
     const expectSurfacePalette = async (surface, palette) => {
@@ -334,8 +356,39 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(shellAppearanceToggleButton).toBeFocused();
     await expect(shellAppearanceBlock).toContainText("暗色编辑台");
     const darkPalette = await expectRepresentativeSurfacesToMatchAppearance("dark");
+    const darkTextPalette = await readShellTextPalette();
     expect(darkPalette.panelBackground).not.toBe(lightPalette.panelBackground);
     expect(darkPalette.panelBorder).not.toBe(lightPalette.panelBorder);
+
+    await navigateToTab("博客创建");
+    await expect(workspaceSurface).toBeVisible();
+    await workspaceThemePreviewTrigger.click();
+    await expect(workspaceThemePreviewOverlay).toBeVisible();
+    await expect(
+      workspaceThemePreviewOverlay.locator(".theme-preview-dialog-copy .section-eyebrow"),
+    ).toHaveCSS("color", darkTextPalette.mutedColor);
+    await expect(workspaceThemePreviewOverlay.locator(".theme-preview-zoom-status")).toHaveCSS(
+      "color",
+      darkTextPalette.mutedColor,
+    );
+    await workspaceThemePreviewOverlay.getByRole("button", { name: "关闭预览" }).click();
+    await expect(workspaceThemePreviewOverlay).toBeHidden();
+
+    await navigateToTab("主题配置");
+    await expect(themeSurface).toBeVisible();
+    await expect(themeStudioHelper).toHaveCSS("color", darkTextPalette.mutedColor);
+
+    await navigateToTab("发布与备份");
+    await expect(publishSurface).toBeVisible();
+    await expect(publishPageLead).toHaveCSS("color", darkTextPalette.mutedColor);
+    await expect(publishResultNote).toHaveCSS("color", darkTextPalette.mutedColor);
+    await expect(publishPageLink).toHaveCSS("color", darkTextPalette.highlightColor);
+
+    await navigateToTab("导入恢复");
+    await expect(importGithubWorkbench).toBeVisible();
+    await expect(importPageLead).toHaveCSS("color", darkTextPalette.mutedColor);
+    await expect(importResultNote).toHaveCSS("color", darkTextPalette.mutedColor);
+    await expect(importPageLink).toHaveCSS("color", darkTextPalette.highlightColor);
 
     await openShellPopupFromEntry({
       entry: shellAppearanceEntry,

@@ -94,3 +94,49 @@ test("ImportView reads as the secondary entry path with guidance back into the m
   assert.match(source, /建议下一步/);
   assert.match(source, /GitHub 仓库列表/);
 });
+
+test("ImportView derives exact GitHub repo autodetect from auth login without overriding manual recovery choices", async () => {
+  const source = await readFile(importViewPath, "utf8");
+  const syncFunction = source.match(
+    /function syncExactGithubRepoAutodetect\(\) \{[\s\S]*?\n\}/,
+  )?.[0];
+
+  assert.ok(syncFunction, "expected ImportView.vue to define syncExactGithubRepoAutodetect()");
+
+  assert.match(source, /shellActions\.getGithubAuthState\(\)/);
+  assert.match(source, /authState\?\.account\?\.login/);
+  assert.match(source, /repo\.name === deployRepoName/);
+  assert.match(source, /repo\.name === "BFE"/);
+  assert.match(source, /deployRepoMatches\.length === 1/);
+  assert.match(source, /backupRepoMatches\.length === 1/);
+  assert.match(source, /githubImportManualState = reactive\(\{[\s\S]*siteType:\s*false,[\s\S]*deployRepo:\s*false,[\s\S]*backupRepo:\s*false,[\s\S]*localDestinationPath:\s*false,[\s\S]*\}\)/);
+  assert.match(source, /githubImportAutoSelection\.deployRepoUrl = uniqueDeployRepo\?\.url \|\| ""/);
+  assert.match(source, /githubImportAutoSelection\.backupRepoUrl = uniqueBackupRepo\?\.url \|\| ""/);
+  assert.match(source, /!githubImportManualState\.deployRepo[\s\S]*!githubImportForm\.deployRepoUrl \|\| githubImportForm\.deployRepoUrl === previousDeployRepoUrl[\s\S]*githubImportForm\.deployRepoUrl = githubImportAutoSelection\.deployRepoUrl/);
+  assert.match(source, /!githubImportManualState\.backupRepo[\s\S]*!githubImportForm\.backupRepoUrl \|\| githubImportForm\.backupRepoUrl === previousBackupRepoUrl[\s\S]*githubImportForm\.backupRepoUrl = githubImportAutoSelection\.backupRepoUrl/);
+  assert.match(source, /uniqueDeployRepo[\s\S]*!githubImportManualState\.siteType[\s\S]*!githubImportManualState\.deployRepo[\s\S]*githubImportForm\.siteType = "user-pages"/);
+  assert.match(source, /!uniqueDeployRepo[\s\S]*!githubImportManualState\.siteType[\s\S]*!githubImportManualState\.deployRepo[\s\S]*githubImportForm\.siteType === "user-pages"[\s\S]*githubImportForm\.siteType = "project-pages"/);
+  assert.match(source, /@change="markGithubSiteTypeManual"/);
+  assert.match(source, /@change="markGithubDeployRepoManual"/);
+  assert.match(source, /@change="markGithubBackupRepoManual"/);
+  assert.match(source, /@input="markGithubLocalDestinationManual"/);
+  assert.doesNotMatch(source, /githubRepos\.value\.find\(\(repo\) => repo\.name === "BFE"\)/);
+  assert.match(source, /deployRepo:\s*selectedGithubDeployRepo\.value \|\| undefined/);
+  assert.match(source, /backupRepo:\s*selectedGithubBackupRepo\.value/);
+  assert.doesNotMatch(syncFunction, /localDestinationPath/);
+});
+
+test("ImportView keeps manual repo URL fallback usable when repo list cannot be loaded", async () => {
+  const source = await readFile(importViewPath, "utf8");
+
+  assert.match(source, /function\s+parseGithubRepo\(repoUrl\)/);
+  assert.match(source, /selectedGithubDeployRepo\s*=\s*computed\([\s\S]*parseGithubRepo\(githubImportForm\.deployRepoUrl\)/);
+  assert.match(source, /selectedGithubBackupRepo\s*=\s*computed\([\s\S]*parseGithubRepo\(githubImportForm\.backupRepoUrl\)/);
+  assert.match(source, /const githubRepoLoadFailed = ref\(false\)/);
+  assert.match(source, /githubRepoLoadFailed\.value = false[\s\S]*githubRepos\.value = Array\.isArray\(repos\)/);
+  assert.match(source, /catch\s*\(error\)\s*\{[\s\S]*githubRepoLoadFailed\.value = true;[\s\S]*githubRepos\.value = \[\];[\s\S]*syncExactGithubRepoAutodetect\(\);[\s\S]*githubRepoSummary\.value/);
+  assert.match(source, /if \(githubRepoLoadFailed\.value\) \{[\s\S]*可手动填写恢复仓库地址继续操作/);
+  assert.match(source, /hasExactBackupRepoAutodetect\.value[\s\S]*发布仓库没有唯一精确匹配[\s\S]*可继续手动选择/);
+  assert.match(source, /@input="markGithubDeployRepoManual"/);
+  assert.match(source, /@input="markGithubBackupRepoManual"/);
+});

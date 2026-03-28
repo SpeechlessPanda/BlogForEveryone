@@ -2620,14 +2620,14 @@ a:hover {
   --shell-panel: #101010;
   --shell-panel-alt: #171717;
   --shell-panel-emphasis: #1d1d1d;
-  --shell-ink: #f3f3f3;
-  --shell-muted: #a3a3a3;
+  --shell-ink: #f5ede6;
+  --shell-muted: #d7c6b8;
   --shell-line: rgba(255, 255, 255, 0.1);
   --shell-line-strong: rgba(255, 255, 255, 0.18);
   --shell-accent: #f3f3f3;
   --shell-accent-strong: #ffffff;
   --shell-accent-soft: #1d1d1d;
-  --shell-highlight: #ffffff;
+  --shell-highlight: #f6e6d5;
   --shell-selected-bg: #1a1a1a;
   --shell-selected-line: rgba(255, 255, 255, 0.22);
   background: linear-gradient(180deg, var(--shell-bg), var(--shell-bg-strong));

@@ -151,3 +151,13 @@ test("App shell styles make dark editorial helper copy, links, and modal text fo
     "expected dark editorial links on workflow shell surfaces to use the shell highlight token",
   );
 });
+
+test("App shell styles recalibrate the dark editorial text palette to the approved warmer low-light values", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\]\s*\{[\s\S]*--shell-ink:\s*#f5ede6;[\s\S]*--shell-muted:\s*#d7c6b8;[\s\S]*--shell-highlight:\s*#f6e6d5;/,
+    "expected the active dark editorial shell block to use the approved warmer ink, muted, and highlight palette",
+  );
+});

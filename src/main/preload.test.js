@@ -84,5 +84,6 @@ test('exposeBfeApi publishes the generated API on window.bfeApi', () => {
     assert.equal(typeof exposed[0].value.listWorkspaces, 'function');
     assert.equal(typeof exposed[0].value.getThemeCatalog, 'function');
     assert.equal(typeof exposed[0].value.createAndOpenContent, 'function');
+    assert.equal(typeof exposed[0].value.publishSavedContent, 'function');
     assert.equal(typeof exposed[0].value.listSubscriptions, 'function');
 });

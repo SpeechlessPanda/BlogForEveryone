@@ -94,13 +94,15 @@ function registerIpcHandlers() {
         emitOperationEvent
     });
 
-    registerPublishIpcHandlers({
-        ipcMain,
-        emitOperationEvent,
-        validatePublishPayload,
-        publishToGitHub,
-        normalizePublishResult
-    });
+     registerPublishIpcHandlers({
+         ipcMain,
+         emitOperationEvent,
+         validatePublishPayload,
+         publishToGitHub,
+         normalizePublishResult,
+         readStore,
+         updateStore
+     });
 
     registerPreviewIpcHandlers({
         ipcMain,

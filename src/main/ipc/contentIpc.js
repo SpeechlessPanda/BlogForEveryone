@@ -7,6 +7,7 @@ const {
     saveExistingContent,
     openExistingContent,
     watchSaveAndAutoPublish,
+    publishSavedContent,
     getPublishJobStatus
 } = require('../services/contentService');
 
@@ -89,6 +90,20 @@ function registerContentIpcHandlers({ ipcMain, getWorkspacePolicy }) {
         const resolvedPath = resolveContentFilePath(payload, workspace);
         policy.assertContentPathAllowed(workspace.id, resolvedPath, 'watch');
         return watchSaveAndAutoPublish({
+            ...payload,
+            filePath: resolvedPath,
+            projectDir: workspace.projectDir,
+            framework: workspace.framework,
+            allowedRoots: policy.getAllowedContentRoots(workspace.id)
+        });
+    });
+
+    ipcMain.handle('content:publishSavedContent', async (_event, payload) => {
+        const policy = getWorkspacePolicy();
+        const workspace = resolveWorkspace(policy, payload);
+        const resolvedPath = resolveContentFilePath(payload, workspace);
+        policy.assertContentPathAllowed(workspace.id, resolvedPath, 'publish');
+        return publishSavedContent({
             ...payload,
             filePath: resolvedPath,
             projectDir: workspace.projectDir,

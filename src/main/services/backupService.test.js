@@ -366,3 +366,57 @@ test('pushBackupToRepo injects transient GitHub auth for push without leaking to
         delete require.cache[require.resolve('./backupService')];
     }
 });
+
+test('pushBackupToRepo configures git identity before commit when identity is provided', () => {
+    const originalLoad = Module._load;
+    const runCommandCalls = [];
+
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === './env/runCommand') {
+            return {
+                runCommand(command, args, options) {
+                    runCommandCalls.push({ command, args, options });
+                    return {
+                        status: 0,
+                        stdout: '',
+                        stderr: ''
+                    };
+                }
+            };
+        }
+
+        if (request === './githubAuthService') {
+            return {
+                getAccessTokenForPrivilegedUse() {
+                    return 'gho_super_secret_token';
+                }
+            };
+        }
+
+        return originalLoad(request, parent, isMain);
+    };
+
+    try {
+        delete require.cache[require.resolve('./backupService')];
+        const { pushBackupToRepo } = require('./backupService');
+
+        pushBackupToRepo('/tmp/snapshot', 'https://github.com/alice/BFE.git', {
+            name: 'alice',
+            email: 'alice@example.com'
+        });
+
+        assert.deepEqual(runCommandCalls.map((entry) => ({ command: entry.command, args: entry.args })), [
+            { command: 'git', args: ['init'] },
+            { command: 'git', args: ['config', 'user.name', 'alice'] },
+            { command: 'git', args: ['config', 'user.email', 'alice@example.com'] },
+            { command: 'git', args: ['add', '.'] },
+            { command: 'git', args: ['commit', '-m', 'chore: backup blog workspace'] },
+            { command: 'git', args: ['branch', '-M', 'main'] },
+            { command: 'git', args: ['remote', 'add', 'origin', 'https://github.com/alice/BFE.git'] },
+            { command: 'git', args: ['push', '-u', 'origin', 'main'] }
+        ]);
+    } finally {
+        Module._load = originalLoad;
+        delete require.cache[require.resolve('./backupService')];
+    }
+});

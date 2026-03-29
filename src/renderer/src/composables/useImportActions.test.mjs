@@ -104,3 +104,50 @@ test("import actions reject missing required workspace paths", async () => {
     /localDestinationPath/,
   );
 });
+
+test("import actions reject backup repos that are not the fixed BFE repository", async () => {
+  const actions = createImportActions({
+    importWorkspace: async () => ({}),
+    importWorkspaceFromGithub: async () => ({}),
+    listGithubRepos: async () => [],
+    pickDirectory: async () => ({}),
+    importSubscriptions: async () => ({}),
+  });
+
+  await assert.rejects(
+    () =>
+      actions.importWorkspaceFromGithub({
+        localDestinationPath: "D:/restored-blog",
+        backupRepo: {
+          name: "not-bfe",
+          url: "https://github.com/demo/not-bfe.git",
+        },
+      }),
+    /BFE/,
+  );
+});
+
+test("import actions accept case-insensitive BFE backup repo names", async () => {
+  const calls = [];
+  const actions = createImportActions({
+    importWorkspace: async () => ({}),
+    importWorkspaceFromGithub: async (payload) => {
+      calls.push(payload);
+      return { ok: true };
+    },
+    listGithubRepos: async () => [],
+    pickDirectory: async () => ({}),
+    importSubscriptions: async () => ({}),
+  });
+
+  await actions.importWorkspaceFromGithub({
+    localDestinationPath: "D:/restored-blog",
+    backupRepo: {
+      name: "bfe",
+      url: "https://github.com/demo/bfe.git",
+    },
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].backupRepo.name, "bfe");
+});

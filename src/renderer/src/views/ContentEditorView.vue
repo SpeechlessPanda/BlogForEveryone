@@ -13,6 +13,12 @@ import { useShellActions } from "../composables/useShellActions.mjs";
 import { useContentActions } from "../composables/useContentActions";
 
 const ACTION_IDLE_RESET_MS = 1400;
+const SPECIAL_CONTENT_TYPES = ["about", "links", "announcement"];
+const SPECIAL_CONTENT_DEFAULT_TITLES = {
+  about: "关于",
+  links: "友链",
+  announcement: "公告",
+};
 
 const form = reactive({
   type: "post",
@@ -37,6 +43,10 @@ const existingEditor = reactive({
 const { run, isBusy } = useAsyncAction();
 const shellActions = useShellActions();
 const contentActions = useContentActions();
+
+const requiresManualContentIdentity = computed(
+  () => !SPECIAL_CONTENT_TYPES.includes(form.type),
+);
 
 const actionState = reactive({
   create: "idle",
@@ -87,26 +97,54 @@ async function createAndEdit() {
     return;
   }
 
+  const contentTitle = requiresManualContentIdentity.value
+    ? form.title
+    : SPECIAL_CONTENT_DEFAULT_TITLES[form.type] || form.title;
+  const contentSlug = requiresManualContentIdentity.value ? form.slug : "";
+  const autoPublishRepoUrl = ws.deployRepo?.url || "";
+  const autoPublishSiteType = ws.siteType || "project-pages";
+  const autoPublishLogin = ws.deployRepo?.owner || ws.backupRepo?.owner || "";
+  const autoPublishDeployRepoName = ws.deployRepo?.name || "";
+  const autoPublishBackupRepoName = ws.backupRepo?.name || "BFE";
+  const autoPublishBackupRepoUrl = ws.backupRepo?.url || "";
+
   await runActionWithFeedback(
     "create",
     async () => {
       const result = await contentActions.createAndOpenContent({
         workspaceId: ws.id,
         type: form.type,
-        title: form.title,
-        slug: form.slug,
+        title: contentTitle,
+        slug: contentSlug,
       });
 
       state.filePath = result.filePath;
       await refreshExistingContents();
 
       if (form.autoPublish) {
-        const job = await contentActions.watchAndAutoPublish({
-          workspaceId: ws.id,
-          filePath: result.filePath,
-        });
-        state.jobId = job.jobId;
-        state.jobStatus = job.status;
+        if (autoPublishRepoUrl) {
+          if (!autoPublishBackupRepoUrl) {
+            state.jobId = "";
+            state.jobStatus =
+              "自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。";
+            return;
+          }
+          const job = await contentActions.watchAndAutoPublish({
+            workspaceId: ws.id,
+            filePath: result.filePath,
+            repoUrl: autoPublishRepoUrl,
+            siteType: autoPublishSiteType,
+            login: autoPublishLogin,
+            deployRepoName: autoPublishDeployRepoName,
+            backupRepoName: autoPublishBackupRepoName,
+            backupRepoUrl: autoPublishBackupRepoUrl,
+          });
+          state.jobId = job.jobId;
+          state.jobStatus = job.message || job.status;
+        } else {
+          state.jobId = "";
+          state.jobStatus = "未配置发布仓库，已跳过自动发布。";
+        }
       }
     },
     "创建内容失败",
@@ -183,6 +221,13 @@ async function saveExistingContentChanges() {
     return;
   }
 
+  const autoPublishRepoUrl = ws.deployRepo?.url || "";
+  const autoPublishSiteType = ws.siteType || "project-pages";
+  const autoPublishLogin = ws.deployRepo?.owner || ws.backupRepo?.owner || "";
+  const autoPublishDeployRepoName = ws.deployRepo?.name || "";
+  const autoPublishBackupRepoName = ws.backupRepo?.name || "BFE";
+  const autoPublishBackupRepoUrl = ws.backupRepo?.url || "";
+
   await run("save-existing", async () => {
     await contentActions.saveExistingContent({
       workspaceId: ws.id,
@@ -191,6 +236,32 @@ async function saveExistingContentChanges() {
       body: existingEditor.body,
     });
     await refreshExistingContents();
+
+    if (form.autoPublish) {
+      if (autoPublishRepoUrl) {
+        if (!autoPublishBackupRepoUrl) {
+          state.jobId = "";
+          state.jobStatus =
+            "自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。";
+          return;
+        }
+        const job = await contentActions.publishSavedContent({
+          workspaceId: ws.id,
+          filePath: selectedExistingPath.value,
+          repoUrl: autoPublishRepoUrl,
+          siteType: autoPublishSiteType,
+          login: autoPublishLogin,
+          deployRepoName: autoPublishDeployRepoName,
+          backupRepoName: autoPublishBackupRepoName,
+          backupRepoUrl: autoPublishBackupRepoUrl,
+        });
+        state.jobId = job.jobId;
+        state.jobStatus = job.message || job.status;
+      } else {
+        state.jobId = "";
+        state.jobStatus = "未配置发布仓库，已跳过自动发布。";
+      }
+    }
   });
 }
 
@@ -229,7 +300,7 @@ async function refreshPublishJob() {
       if (!job) {
         throw new Error("没有找到自动发布任务。");
       }
-      state.jobStatus = job.status;
+      state.jobStatus = job.message || job.status;
     },
     "刷新发布状态失败",
   );
@@ -357,13 +428,20 @@ watch(
               <option value="announcement">公告页</option>
             </select>
           </div>
-          <div>
+          <div v-if="requiresManualContentIdentity">
             <label>标题</label>
             <input v-model="form.title" placeholder="例如 这是我的第一篇博客" />
           </div>
-          <div>
+          <div v-if="requiresManualContentIdentity">
             <label>slug（可选）</label>
             <input v-model="form.slug" placeholder="例如 first-post" />
+          </div>
+          <div v-else class="workflow-compact-block workflow-compact-block--subtle">
+            <p class="section-eyebrow">固定页面规则</p>
+            <strong>{{ SPECIAL_CONTENT_DEFAULT_TITLES[form.type] || "页面" }}</strong>
+            <p class="section-helper">
+              关于、友链、公告会自动写入固定路径与默认标题，创建后直接进入编辑器。
+            </p>
           </div>
         </div>
 
@@ -415,15 +493,36 @@ watch(
         <summary>自动流程（后置）</summary>
         <div class="advanced-panel-content">
           <p class="section-helper">
-            如果只是先把文章写出来，可以先不配这部分。等发布工作台里的仓库设置跑通后，再打开自动发布。
+            如果只是先把文章写出来，可以先不配这部分。等当前工程已经保存发布仓库地址后，再打开自动发布。
+          </p>
+          <p class="section-helper">
+            如果当前工程还没有已保存的发布仓库地址，自动发布会自动跳过，先完成写作与保存。
+          </p>
+          <p class="section-helper">
+            如果当前工程还没有已保存的 BFE 备份仓库地址，自动发布会自动跳过，先回到发布与备份页补齐备份仓库。
+          </p>
+          <p class="section-helper">
+            如果当前工程是用户主页，但保存的发布仓库不是 用户名.github.io，自动发布会先提示你回到发布与备份页修正仓库绑定。
+          </p>
+          <p class="section-helper">
+            如果当前设备还没有配置 Git 提交用户名和邮箱，自动发布会先提示你回到发布与备份页补齐身份信息。
           </p>
           <div>
-            <label>保存后自动发布（沿用发布工作台里的仓库设置）</label>
+            <label>保存后自动发布（沿用当前工程已保存的发布与备份仓库信息）</label>
             <select v-model="form.autoPublish">
               <option :value="true">true</option>
               <option :value="false">false</option>
             </select>
           </div>
+          <p class="section-helper">
+            会沿用当前工程已保存的站点类型、发布仓库和 BFE 备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。
+          </p>
+          <p class="section-helper">
+            保存后自动发布仍会更新 BFE 备份仓库，确保 GitHub 恢复拿到的是最新内容。
+          </p>
+          <p class="section-helper">
+            已有内容点击“保存标题与正文”后，会直接触发自动发布，不需要再等下一次文件改动。
+          </p>
         </div>
       </details>
 

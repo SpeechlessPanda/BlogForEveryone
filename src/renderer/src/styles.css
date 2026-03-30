@@ -1581,14 +1581,14 @@ a:hover {
   --shell-panel: rgba(35, 24, 22, 0.9);
   --shell-panel-alt: rgba(44, 30, 27, 0.9);
   --shell-panel-emphasis: rgba(54, 37, 33, 0.94);
-  --shell-ink: #f5eadf;
-  --shell-muted: #ceb9aa;
+  --shell-ink: #f3f5f7;
+  --shell-muted: #c8d0da;
   --shell-line: rgba(226, 202, 185, 0.12);
   --shell-line-strong: rgba(229, 194, 169, 0.24);
   --shell-accent: #d39a76;
   --shell-accent-strong: #efc09b;
   --shell-accent-soft: rgba(94, 63, 52, 0.88);
-  --shell-highlight: #f1d4b2;
+  --shell-highlight: #e7edf5;
   --shell-shadow-rgb: 7, 4, 3;
   background:
     radial-gradient(circle at top left, rgba(122, 74, 52, 0.22), transparent 34%),
@@ -2640,14 +2640,14 @@ a:hover {
   --shell-panel: #101010;
   --shell-panel-alt: #171717;
   --shell-panel-emphasis: #1d1d1d;
-  --shell-ink: #f5ede6;
-  --shell-muted: #d7c6b8;
+  --shell-ink: #f3f5f7;
+  --shell-muted: #c8d0da;
   --shell-line: rgba(255, 255, 255, 0.1);
   --shell-line-strong: rgba(255, 255, 255, 0.18);
   --shell-accent: #f3f3f3;
   --shell-accent-strong: #ffffff;
   --shell-accent-soft: #1d1d1d;
-  --shell-highlight: #f6e6d5;
+  --shell-highlight: #e7edf5;
   --shell-selected-bg: #1a1a1a;
   --shell-selected-line: rgba(255, 255, 255, 0.22);
   background: linear-gradient(180deg, var(--shell-bg), var(--shell-bg-strong));
@@ -2720,6 +2720,11 @@ a:hover {
   color: var(--shell-highlight);
 }
 
+.layout--editorial[data-shell-appearance="dark"] .tab-badge {
+  background: var(--shell-panel-emphasis);
+  color: var(--shell-highlight);
+}
+
 .layout--editorial[data-shell-appearance="dark"] .modal-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
@@ -2765,6 +2770,22 @@ a:hover {
 .layout--editorial[data-shell-appearance="dark"] .theme-studio .page-link-row a {
   color: var(--shell-highlight);
   text-decoration-color: rgba(248, 216, 182, 0.58);
+}
+
+.layout--editorial[data-shell-appearance="dark"] .tutorial-link.active {
+  border-color: var(--shell-line-strong);
+  background: var(--shell-panel-emphasis);
+  color: var(--shell-highlight);
+}
+
+.layout--editorial[data-shell-appearance="dark"] .tutorial-tag {
+  background: var(--shell-panel-emphasis);
+  color: var(--shell-highlight);
+  border: 1px solid var(--shell-line-strong);
+}
+
+.layout--editorial[data-shell-appearance="dark"] .tutorial-tag--quiet {
+  color: var(--shell-muted);
 }
 
 .layout--editorial[data-shell-appearance="dark"] .page-link-row a:hover,
@@ -3019,14 +3040,14 @@ a:hover {
   --shell-panel: #101010;
   --shell-panel-alt: #171717;
   --shell-panel-emphasis: #1d1d1d;
-  --shell-ink: #f5ede6;
-  --shell-muted: #d7c6b8;
+  --shell-ink: #f3f5f7;
+  --shell-muted: #c8d0da;
   --shell-line: rgba(255, 255, 255, 0.1);
   --shell-line-strong: rgba(255, 255, 255, 0.18);
   --shell-accent: #f3f3f3;
   --shell-accent-strong: #ffffff;
   --shell-accent-soft: #1d1d1d;
-  --shell-highlight: #f6e6d5;
+  --shell-highlight: #e7edf5;
   --shell-selected-bg: #1a1a1a;
   --shell-selected-line: rgba(255, 255, 255, 0.22);
 }
@@ -3197,8 +3218,8 @@ a:hover {
 }
 
 .shell-popup-theme[data-shell-appearance="dark"] button.danger {
-  color: #ff8d8d;
-  border-color: rgba(255, 141, 141, 0.4);
+  color: var(--shell-highlight);
+  border-color: var(--shell-line-strong);
 }
 
 .shell-popup-theme[data-shell-appearance="dark"] input,

@@ -157,8 +157,8 @@ test("App shell styles recalibrate the dark editorial text palette to the approv
 
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\]\s*\{[\s\S]*--shell-ink:\s*#f5ede6;[\s\S]*--shell-muted:\s*#d7c6b8;[\s\S]*--shell-highlight:\s*#f6e6d5;/,
-    "expected the active dark editorial shell block to use the approved warmer ink, muted, and highlight palette",
+    /\.layout--editorial\[data-shell-appearance="dark"\]\s*\{[\s\S]*--shell-ink:\s*#f3f5f7;[\s\S]*--shell-muted:\s*#c8d0da;[\s\S]*--shell-highlight:\s*#e7edf5;/,
+    "expected the active dark editorial shell block to use the approved neutral high-contrast ink, muted, and highlight palette",
   );
 });
 
@@ -187,8 +187,8 @@ test("App shell styles route dark editorial titles and primary text through the 
   );
   assert.match(
     stylesSource,
-    /\.shell-popup-theme\[data-shell-appearance="dark"\]\s*\{[\s\S]*--shell-ink:\s*#f5ede6;[\s\S]*--shell-muted:\s*#d7c6b8;[\s\S]*--shell-highlight:\s*#f6e6d5;/,
-    "expected dark popup theme tokens to match the approved warmer shell palette",
+    /\.shell-popup-theme\[data-shell-appearance="dark"\]\s*\{[\s\S]*--shell-ink:\s*#f3f5f7;[\s\S]*--shell-muted:\s*#c8d0da;[\s\S]*--shell-highlight:\s*#e7edf5;/,
+    "expected dark popup theme tokens to match the approved neutral shell palette",
   );
 });
 

@@ -137,3 +137,18 @@ test("TutorialCenterView keeps dark-mode tutorial titles and body copy on readab
     "expected tutorial directory and workflow cards to use dark shell card surfaces instead of retaining light card styling",
   );
 });
+
+test("TutorialCenterView keeps dark tutorial active links and state chips off warm brand text", async () => {
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-link\.active\s*\{[\s\S]*border-color:\s*var\(--shell-line-strong\);[\s\S]*background:[\s\S]*var\(--shell-panel-emphasis\);[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected dark tutorial active links to use shell tokens instead of warm brand text",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-tag\s*\{[\s\S]*background:[\s\S]*var\(--shell-panel-emphasis\);[\s\S]*color:\s*var\(--shell-highlight\);[\s\S]*border-color:\s*var\(--shell-line-strong\);/,
+    "expected dark tutorial tags and state chips to use readable shell tokens instead of warm brand text",
+  );
+});

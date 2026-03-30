@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const sidebarPath = new URL("./WorkflowSidebar.vue", import.meta.url);
+const stylesPath = new URL("../../styles.css", import.meta.url);
 
 test("WorkflowSidebar is reduced to minimal nav plus appearance and user entry points", async () => {
   const source = await readFile(sidebarPath, "utf8");
@@ -111,4 +112,16 @@ test("WorkflowSidebar uses the sidebar login-status entry as the popup trigger s
     /data-sidebar-entry="account"[\s\S]*@click="\$emit\('open-shell-popup', \{ key: 'account', element: \$event\.currentTarget \}\)"/,
   );
   assert.doesNotMatch(source, /data-sidebar-entry="user"/);
+});
+
+test("WorkflowSidebar keeps dark unread badges on readable shell tokens instead of warm brand text", async () => {
+  const source = await readFile(sidebarPath, "utf8");
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(source, /class="tab-badge"/);
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tab-badge\s*\{[\s\S]*background:[\s\S]*var\(--shell-panel-emphasis\);[\s\S]*color:\s*var\(--shell-highlight\);/,
+    "expected dark sidebar unread badges to use readable shell emphasis surfaces and highlight text instead of warm brand text",
+  );
 });

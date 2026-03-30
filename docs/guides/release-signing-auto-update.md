@@ -55,8 +55,8 @@ pnpm run release
 1. Release 需要发布在 `SpeechlessPanda/BlogForEveryone`。
 2. 每个版本需要对应 tag（例如 `v0.1.1`）。
 3. Release 资产建议至少包含：
-   - `BlogForEveryone Setup x.y.z.exe`
-   - `BlogForEveryone Setup x.y.z.exe.blockmap`
+   - `BlogForEveryone-Setup x.y.z.exe`
+   - `BlogForEveryone-Setup x.y.z.exe.blockmap`
    - `latest.yml`
 
 ## 5. 与博客发布仓库的区别

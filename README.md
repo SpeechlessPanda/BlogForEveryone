@@ -105,7 +105,7 @@ GitHub 登录配置：[docs/guides/github-oauth-app-setup.md](docs/guides/github
 ### 11. 自动更新与安装包发布链路
 
 1. 启动后可检查更新，支持下载后安装。
-2. Release 流程当前以 Windows NSIS 安装包为准，资产应包含 `BlogForEveryone Setup x.y.z.exe`、对应 `.exe.blockmap` 与 `latest.yml`。
+2. Release 流程当前以 Windows NSIS 安装包为准，资产应包含 `BlogForEveryone-Setup x.y.z.exe`、对应 `BlogForEveryone-Setup x.y.z.exe.blockmap` 与 `latest.yml`。
 3. 支持签名发布链路（证书环境变量已预留）。
 
 ## 开发与验证能力（已实现）

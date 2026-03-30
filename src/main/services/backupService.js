@@ -81,9 +81,15 @@ function backupWorkspace({ projectDir, backupDir, metadata }) {
     return snapshotDir;
 }
 
-function pushBackupToRepo(snapshotDir, repoUrl) {
+function pushBackupToRepo(snapshotDir, repoUrl, gitIdentity = null) {
     const cmds = [
         ['git', ['init']],
+        ...(gitIdentity && gitIdentity.name && gitIdentity.email
+            ? [
+                ['git', ['config', 'user.name', gitIdentity.name]],
+                ['git', ['config', 'user.email', gitIdentity.email]]
+            ]
+            : []),
         ['git', ['add', '.']],
         ['git', ['commit', '-m', 'chore: backup blog workspace']],
         ['git', ['branch', '-M', 'main']],
@@ -107,8 +113,8 @@ function pushBackupToRepo(snapshotDir, repoUrl) {
     return resultLog;
 }
 
-function pushBackupToRepoOutcome(snapshotDir, repoUrl) {
-    const logs = pushBackupToRepo(snapshotDir, repoUrl);
+function pushBackupToRepoOutcome(snapshotDir, repoUrl, gitIdentity = null) {
+    const logs = pushBackupToRepo(snapshotDir, repoUrl, gitIdentity);
     const failedStep = logs.find((entry) => typeof entry.code === 'number' && entry.code !== 0);
 
     if (!failedStep) {

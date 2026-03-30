@@ -4,10 +4,11 @@ const assert = require('node:assert/strict');
 const { registerPublishIpcHandlers } = require('./publishIpc');
 
 function createHarness(overrides = {}) {
-    const handlers = new Map();
-    const events = [];
+  const handlers = new Map();
+  const events = [];
+  const storeState = overrides.storeState || { workspaces: [] };
 
-    registerPublishIpcHandlers({
+  registerPublishIpcHandlers({
         ipcMain: {
             handle(channel, handler) {
                 handlers.set(channel, handler);
@@ -17,16 +18,22 @@ function createHarness(overrides = {}) {
             sender.send('ops:event', payload);
             events.push(payload);
         },
-        validatePublishPayload: () => ({ ok: true, warnings: [] }),
-        publishToGitHub: () => ({ ok: true, status: 'success' }),
-        normalizePublishResult: (result) => result,
-        ...overrides
-    });
+    validatePublishPayload: () => ({ ok: true, warnings: [] }),
+    publishToGitHub: () => ({ ok: true, status: 'success' }),
+    normalizePublishResult: (result) => result,
+    readStore: () => storeState,
+    updateStore(mutator) {
+      const next = mutator(storeState) || storeState;
+      storeState.workspaces = next.workspaces || storeState.workspaces;
+      return storeState;
+    },
+    ...overrides
+  });
 
     return {
         handlers,
         events,
-        invoke(payload) {
+    invoke(payload) {
             const handler = handlers.get('publish:github');
             return handler({
                 sender: {
@@ -35,8 +42,8 @@ function createHarness(overrides = {}) {
                     }
                 }
             }, payload);
-        }
-    };
+    }
+  };
 }
 
 test('publish IPC returns combined envelope and surfaces partial_success explicitly', async () => {
@@ -160,5 +167,49 @@ test('publish IPC awaits async publishToGitHub before normalizing and emitting f
     assert.equal(response.pagesUrl, 'https://alice.github.io/docs-site/');
     const terminalEvent = harness.events.findLast((entry) => entry.scope === 'publish');
     assert.equal(terminalEvent.phase, 'succeeded');
-    assert.equal(terminalEvent.status, 'success');
+  assert.equal(terminalEvent.status, 'success');
+});
+
+test('publish IPC persists workspace remote metadata after successful publish', async () => {
+  const storeState = {
+    workspaces: [
+      {
+        id: 'ws-1',
+        name: 'Demo',
+        projectDir: 'D:/tmp/project',
+        framework: 'hugo',
+      },
+    ],
+  };
+  const harness = createHarness({
+    storeState,
+    publishToGitHub: () => ({
+      ok: true,
+      status: 'success',
+      pagesUrl: 'https://alice.github.io/',
+      deployRepoEnsure: { ok: true },
+      backupRepoEnsure: { ok: true },
+      deployPublish: { ok: true },
+      backupPush: { ok: true },
+    }),
+  });
+
+  await harness.invoke({
+    projectDir: 'D:/tmp/project',
+    framework: 'hugo',
+    siteType: 'user-pages',
+    login: 'alice',
+    deployRepoName: 'alice.github.io',
+    backupRepoName: 'BFE',
+    repoUrl: 'https://github.com/alice/alice.github.io.git',
+    backupRepoUrl: 'https://github.com/alice/BFE.git',
+  });
+
+  assert.deepEqual(storeState.workspaces[0].siteType, 'user-pages');
+  assert.equal(storeState.workspaces[0].deployRepo.owner, 'alice');
+  assert.equal(storeState.workspaces[0].deployRepo.name, 'alice.github.io');
+  assert.equal(storeState.workspaces[0].deployRepo.url, 'https://github.com/alice/alice.github.io.git');
+  assert.equal(storeState.workspaces[0].backupRepo.owner, 'alice');
+  assert.equal(storeState.workspaces[0].backupRepo.name, 'BFE');
+  assert.equal(storeState.workspaces[0].backupRepo.url, 'https://github.com/alice/BFE.git');
 });

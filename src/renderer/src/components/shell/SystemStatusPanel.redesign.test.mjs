@@ -71,3 +71,20 @@ test("SystemStatusPanel keeps popup auth logs wrap-safe for long tokens and JSON
   assert.match(stylesSource, /\.shell-popup-log\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
   assert.match(stylesSource, /\.shell-popup-log\s*\{[\s\S]*word-break:\s*break-word/);
 });
+
+test("SystemStatusPanel keeps dark popup logout actions on readable shell tokens instead of literal red text", async () => {
+  const source = await readFile(panelPath, "utf8");
+  const stylesSource = await readFile(stylesPath, "utf8");
+
+  assert.match(source, /<button v-if="isLoggedIn" class="danger" @click="\$emit\('logout'\)">退出登录<\/button>/);
+  assert.match(
+    stylesSource,
+    /\.shell-popup-theme\[data-shell-appearance="dark"\] button\.danger\s*\{[\s\S]*color:\s*var\(--shell-highlight\);[\s\S]*border-color:\s*var\(--shell-line-strong\);/,
+    "expected dark popup logout actions to stop using literal red text and instead use readable shell tokens",
+  );
+  assert.doesNotMatch(
+    stylesSource,
+    /\.shell-popup-theme\[data-shell-appearance="dark"\] button\.danger\s*\{[\s\S]*color:\s*#ff8d8d;/,
+    "expected dark popup logout actions to stop using literal pink-red text in dark mode",
+  );
+});

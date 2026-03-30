@@ -59,6 +59,24 @@ export function createContentActions(api) {
         workspaceId: payload.workspaceId,
         ...buildTargetPayload(payload),
         repoUrl: payload.repoUrl,
+        siteType: payload.siteType,
+        login: payload.login,
+        deployRepoName: payload.deployRepoName,
+        backupRepoName: payload.backupRepoName,
+        backupRepoUrl: payload.backupRepoUrl,
+      });
+    },
+    async publishSavedContent(payload) {
+      assertWorkspaceId(payload?.workspaceId);
+      return api.publishSavedContent({
+        workspaceId: payload.workspaceId,
+        ...buildTargetPayload(payload),
+        repoUrl: payload.repoUrl,
+        siteType: payload.siteType,
+        login: payload.login,
+        deployRepoName: payload.deployRepoName,
+        backupRepoName: payload.backupRepoName,
+        backupRepoUrl: payload.backupRepoUrl,
       });
     },
     async getPublishJobStatus(payload) {

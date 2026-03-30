@@ -14,6 +14,10 @@ function assertBackupRepo(backupRepo) {
   if (!backupRepo?.name || !backupRepo?.url) {
     throw new Error("缺少 backupRepo，无法从 GitHub 恢复工程。");
   }
+
+  if (String(backupRepo.name).trim().toLowerCase() !== "bfe") {
+    throw new Error("备份仓库必须为 BFE，无法从 GitHub 恢复工程。");
+  }
 }
 
 export function createImportActions(api) {

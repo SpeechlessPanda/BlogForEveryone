@@ -57,6 +57,9 @@ const selectedGithubBackupRepo = computed(
     githubRepos.value.find((repo) => repo.url === githubImportForm.backupRepoUrl) ||
     parseGithubRepo(githubImportForm.backupRepoUrl),
 );
+const githubBackupRepoChoices = computed(() =>
+  githubRepos.value.filter((repo) => repo.name === "BFE"),
+);
 const hasExactDeployRepoAutodetect = computed(
   () => Boolean(githubImportAutoSelection.deployRepoUrl),
 );
@@ -66,6 +69,10 @@ const hasExactBackupRepoAutodetect = computed(
 const githubRecoveryNextStepNote = computed(() => {
   if (githubRepoLoadFailed.value) {
     return "如果 GitHub 仓库列表暂时加载失败，可手动填写恢复仓库地址继续操作。";
+  }
+
+   if (!githubBackupRepoChoices.value.length) {
+    return "未在列表中发现 BFE 时，可直接手动填写仓库地址继续恢复。";
   }
 
   if (hasExactDeployRepoAutodetect.value && hasExactBackupRepoAutodetect.value) {
@@ -238,6 +245,17 @@ async function doImport() {
 
 async function doGithubImport() {
   try {
+    if (
+      selectedGithubBackupRepo.value &&
+      String(selectedGithubBackupRepo.value.name || "").trim().toLowerCase() !== "bfe"
+    ) {
+      setStructuredError(
+        "GitHub 直接恢复失败",
+        new Error(`备份仓库必须为 BFE，当前为 ${selectedGithubBackupRepo.value.name}`),
+      );
+      return;
+    }
+
     const data = await importWorkspaceFromGithub({
       name: githubImportForm.name,
       localDestinationPath: githubImportForm.localDestinationPath,
@@ -497,12 +515,12 @@ onMounted(async () => {
           <div>
             <label>BFE 备份仓库</label>
             <select
-              v-if="githubRepos.length"
+              v-if="githubBackupRepoChoices.length"
               v-model="githubImportForm.backupRepoUrl"
               @change="markGithubBackupRepoManual"
             >
               <option value="">请选择 BFE 备份仓库</option>
-              <option v-for="repo in githubRepos" :key="repo.url" :value="repo.url">
+              <option v-for="repo in githubBackupRepoChoices" :key="repo.url" :value="repo.url">
                 {{ repo.owner }}/{{ repo.name }}
               </option>
             </select>

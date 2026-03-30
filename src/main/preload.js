@@ -63,6 +63,7 @@ function createBfeApi({ ipcRenderer: shellIpcRenderer }) {
         saveExistingContent: (payload) => shellIpcRenderer.invoke('content:saveExisting', payload),
         openExistingContent: (payload) => shellIpcRenderer.invoke('content:openExisting', payload),
         watchAndAutoPublish: (payload) => shellIpcRenderer.invoke('content:watchAndAutoPublish', payload),
+        publishSavedContent: (payload) => shellIpcRenderer.invoke('content:publishSavedContent', payload),
         getPublishJobStatus: (payload) => shellIpcRenderer.invoke('content:getPublishJobStatus', payload),
 
         listSubscriptions: () => shellIpcRenderer.invoke('rss:listSubscriptions'),

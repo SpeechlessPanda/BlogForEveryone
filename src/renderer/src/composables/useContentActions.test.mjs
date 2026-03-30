@@ -44,6 +44,10 @@ test("content actions call workspaceId-based IPC contract", async () => {
       calls.push(["watchAndAutoPublish", payload]);
       return { jobId: "1", status: "watching" };
     },
+    publishSavedContent: async (payload) => {
+      calls.push(["publishSavedContent", payload]);
+      return { jobId: "2", status: "publishing" };
+    },
     getPublishJobStatus: async (payload) => {
       calls.push(["getPublishJobStatus", payload]);
       return { status: "done" };
@@ -76,6 +80,21 @@ test("content actions call workspaceId-based IPC contract", async () => {
     workspaceId: "ws-1",
     filePath: "/tmp/a.md",
     repoUrl: "https://github.com/x/y.git",
+    siteType: "project-pages",
+    login: "demo",
+    deployRepoName: "demo-site",
+    backupRepoName: "BFE",
+    backupRepoUrl: "https://github.com/demo/BFE.git",
+  });
+  await actions.publishSavedContent({
+    workspaceId: "ws-1",
+    filePath: "/tmp/a.md",
+    repoUrl: "https://github.com/x/y.git",
+    siteType: "project-pages",
+    login: "demo",
+    deployRepoName: "demo-site",
+    backupRepoName: "BFE",
+    backupRepoUrl: "https://github.com/demo/BFE.git",
   });
   await actions.getPublishJobStatus({ jobId: "1" });
 
@@ -98,8 +117,23 @@ test("content actions call workspaceId-based IPC contract", async () => {
     workspaceId: "ws-1",
     filePath: "/tmp/a.md",
     repoUrl: "https://github.com/x/y.git",
+    siteType: "project-pages",
+    login: "demo",
+    deployRepoName: "demo-site",
+    backupRepoName: "BFE",
+    backupRepoUrl: "https://github.com/demo/BFE.git",
   });
-  assert.deepEqual(calls[6][1], { jobId: "1" });
+  assert.deepEqual(calls[6][1], {
+    workspaceId: "ws-1",
+    filePath: "/tmp/a.md",
+    repoUrl: "https://github.com/x/y.git",
+    siteType: "project-pages",
+    login: "demo",
+    deployRepoName: "demo-site",
+    backupRepoName: "BFE",
+    backupRepoUrl: "https://github.com/demo/BFE.git",
+  });
+  assert.deepEqual(calls[7][1], { jobId: "1" });
 });
 
 test("content actions reject missing workspaceId for workspace-scoped calls", async () => {
@@ -110,6 +144,7 @@ test("content actions reject missing workspaceId for workspace-scoped calls", as
     saveExistingContent: async () => ({}),
     openExistingContent: async () => ({}),
     watchAndAutoPublish: async () => ({}),
+    publishSavedContent: async () => ({}),
     getPublishJobStatus: async () => ({}),
   });
 
@@ -120,6 +155,10 @@ test("content actions reject missing workspaceId for workspace-scoped calls", as
   await assert.rejects(() => actions.listExistingContents({}), /workspaceId/);
   await assert.rejects(
     () => actions.readExistingContent({ filePath: "/tmp/a.md" }),
+    /workspaceId/,
+  );
+  await assert.rejects(
+    () => actions.publishSavedContent({ filePath: "/tmp/a.md", repoUrl: "https://github.com/x/y.git" }),
     /workspaceId/,
   );
 });

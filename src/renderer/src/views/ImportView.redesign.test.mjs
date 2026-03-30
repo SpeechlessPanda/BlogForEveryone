@@ -88,4 +88,9 @@ test("ImportView keeps a manual recovery path when repo autodetect cannot safely
   assert.match(source, /v-else[\s\S]*placeholder="https:\/\/github.com\/用户名\/用户名\.github\.io\.git"/);
   assert.match(source, /v-else[\s\S]*placeholder="https:\/\/github.com\/用户名\/BFE\.git"/);
   assert.match(source, /已自动识别 BFE 备份仓库；如果发布仓库没有唯一精确匹配，可继续手动选择/);
+  assert.match(source, /githubBackupRepoChoices/);
+  assert.match(source, /v-if="githubBackupRepoChoices.length"/);
+  assert.match(source, /v-for="repo in githubBackupRepoChoices"/);
+  assert.match(source, /未在列表中发现 BFE 时，可直接手动填写仓库地址继续恢复/);
+  assert.match(source, /备份仓库必须为 BFE/);
 });

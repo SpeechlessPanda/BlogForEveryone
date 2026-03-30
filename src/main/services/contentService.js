@@ -28,42 +28,64 @@ function isMarkdownFile(filePath) {
 
 function splitFrontMatter(raw) {
     const text = String(raw || '');
-    if (!text.startsWith('---\n')) {
+    const match = text.match(/^(---|\+\+\+)\r?\n([\s\S]*?)\r?\n\1\r?\n?/);
+    if (!match) {
         return {
             hasFrontMatter: false,
             frontMatter: {},
-            body: text
+            body: text,
+            format: null,
+            frontMatterRaw: ''
         };
     }
 
-    const closingMarker = '\n---\n';
-    const markerIndex = text.indexOf(closingMarker, 4);
-    if (markerIndex < 0) {
-        return {
-            hasFrontMatter: false,
-            frontMatter: {},
-            body: text
-        };
-    }
-
-    const frontMatterRaw = text.slice(4, markerIndex);
-    const body = text.slice(markerIndex + closingMarker.length);
+    const delimiter = match[1];
+    const frontMatterRaw = match[2];
+    const body = text.slice(match[0].length);
     let parsed = {};
-    try {
-        parsed = YAML.parse(frontMatterRaw) || {};
-    } catch {
-        parsed = {};
+    if (delimiter === '+++') {
+        const titleMatch = frontMatterRaw.match(/^title\s*=\s*["']?(.+?)["']?\s*$/m);
+        parsed = titleMatch ? { title: titleMatch[1] } : {};
+    } else {
+        try {
+            parsed = YAML.parse(frontMatterRaw) || {};
+        } catch {
+            parsed = {};
+        }
     }
 
     return {
         hasFrontMatter: true,
         frontMatter: parsed,
-        body
+        body,
+        format: delimiter === '+++' ? 'toml' : 'yaml',
+        frontMatterRaw
     };
 }
 
-function composeFrontMatter(frontMatter, body) {
+function composeTomlFrontMatter(frontMatter, rawFrontMatter) {
+    const normalizedRaw = String(rawFrontMatter || '').replace(/\r\n/g, '\n').trim();
+    const titleValue = JSON.stringify(String(frontMatter?.title || '').trim());
+    const titlePattern = /^title\s*=\s*.+$/m;
+    if (titlePattern.test(normalizedRaw)) {
+        return normalizedRaw.replace(titlePattern, `title = ${titleValue}`);
+    }
+
+    if (!normalizedRaw) {
+        return `title = ${titleValue}`;
+    }
+
+    return `title = ${titleValue}\n${normalizedRaw}`;
+}
+
+function composeFrontMatter(frontMatter, body, options = {}) {
+    const { format = 'yaml', frontMatterRaw = '' } = options;
     const fmText = YAML.stringify(frontMatter || {}).trim();
+    if (format === 'toml') {
+        const tomlText = composeTomlFrontMatter(frontMatter, frontMatterRaw);
+        return `+++\n${tomlText}\n+++\n\n${String(body || '').replace(/^\n+/, '')}`;
+    }
+
     return `---\n${fmText}\n---\n\n${String(body || '').replace(/^\n+/, '')}`;
 }
 
@@ -91,6 +113,36 @@ function collectContentFiles(projectDir, framework) {
 
     if (framework === 'hexo') {
         walkMarkdownFiles(path.join(projectDir, 'source', '_posts'), files);
+        walkMarkdownFiles(path.join(projectDir, 'source'), files);
+
+        const canonicalHexoPagePaths = new Set([
+            path.join(projectDir, 'source', 'about', 'index.md'),
+            path.join(projectDir, 'source', 'links', 'index.md'),
+            path.join(projectDir, 'source', 'announcement', 'index.md')
+        ].map((filePath) => path.resolve(filePath)));
+
+        const dedupedPaths = new Set();
+        const dedupedFiles = files.filter((filePath) => {
+            const resolvedPath = path.resolve(filePath);
+            if (dedupedPaths.has(resolvedPath)) {
+                return false;
+            }
+
+            if (resolvedPath.includes(`${path.sep}source${path.sep}_posts${path.sep}`)) {
+                dedupedPaths.add(resolvedPath);
+                return true;
+            }
+
+            const keepGenericPage = resolvedPath.endsWith(`${path.sep}index.md`) && !canonicalHexoPagePaths.has(resolvedPath);
+            if (keepGenericPage) {
+                dedupedPaths.add(resolvedPath);
+            }
+            return keepGenericPage;
+        });
+
+        files.length = 0;
+        files.push(...dedupedFiles);
+
         for (const pageName of ['about', 'links', 'announcement']) {
             const pagePath = path.join(projectDir, 'source', pageName, 'index.md');
             if (fs.existsSync(pagePath)) {
@@ -215,7 +267,10 @@ function saveExistingContent(payload) {
     }
 
     const nextBody = typeof body === 'string' ? body : parsed.body;
-    const nextText = composeFrontMatter(nextFrontMatter, nextBody);
+    const nextText = composeFrontMatter(nextFrontMatter, nextBody, {
+        format: parsed.format,
+        frontMatterRaw: parsed.frontMatterRaw
+    });
     fs.writeFileSync(filePath, nextText, 'utf-8');
 
     return {
@@ -253,14 +308,40 @@ function pageTemplate(title) {
     return `---\ntitle: ${title}\ndate: ${new Date().toISOString()}\n---\n\n请在这里填写页面内容。\n`;
 }
 
+function resolveContentTitle(type, title) {
+    const trimmedTitle = String(title || '').trim();
+    if (trimmedTitle) {
+        return trimmedTitle;
+    }
+
+    if (type === 'about') {
+        return '关于';
+    }
+
+    if (type === 'links') {
+        return '友链';
+    }
+
+    if (type === 'announcement') {
+        return '公告';
+    }
+
+    return '新内容';
+}
+
+function usesCanonicalSpecialPagePath(type) {
+    return ['about', 'links', 'announcement'].includes(type);
+}
+
 function resolveContentPath({ projectDir, framework, type, title, slug }) {
     const safeSlug = slugify(slug || title || 'new-post');
+    const safePostSlug = safeSlug || 'new-post';
 
     if (type === 'post') {
         if (framework === 'hexo') {
-            return path.join(projectDir, 'source', '_posts', `${safeSlug}.md`);
+            return path.join(projectDir, 'source', '_posts', `${safePostSlug}.md`);
         }
-        return path.join(projectDir, 'content', 'posts', `${safeSlug}.md`);
+        return path.join(projectDir, 'content', 'posts', `${safePostSlug}.md`);
     }
 
     const pageName = ['about', 'links', 'announcement'].includes(type)
@@ -274,10 +355,16 @@ function resolveContentPath({ projectDir, framework, type, title, slug }) {
 
 function createAndOpenContent(payload) {
     const { projectDir, framework, type = 'post', title = '新内容', slug = '', allowedRoots } = payload;
-    const filePath = resolveContentPath({ projectDir, framework, type, title, slug });
-    const content = type === 'post' ? postTemplate(title) : pageTemplate(title);
+    const resolvedTitle = resolveContentTitle(type, title);
+    const resolvedSlug = usesCanonicalSpecialPagePath(type) ? '' : slug;
+    const filePath = resolveContentPath({ projectDir, framework, type, title: resolvedTitle, slug: resolvedSlug });
+    const content = type === 'post' ? postTemplate(resolvedTitle) : pageTemplate(resolvedTitle);
 
     workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'write');
+
+    if (!usesCanonicalSpecialPagePath(type) && fs.existsSync(filePath)) {
+        throw new Error('slug 已存在，请更换标题或 slug 后重试。');
+    }
 
     if (typeof openPathImpl !== 'function') {
         throw new Error('当前环境不支持打开文件。');
@@ -295,6 +382,12 @@ function watchSaveAndAutoPublish(payload) {
     return contentPublishWorkflowService.watchSaveAndAutoPublish(payload);
 }
 
+function publishSavedContent(payload) {
+    const { filePath, allowedRoots } = payload || {};
+    workspacePathPolicy.assertPathWithinRoots(filePath, allowedRoots, 'publish');
+    return contentPublishWorkflowService.publishSavedContent(payload);
+}
+
 function getPublishJobStatus(jobId) {
     return contentPublishWorkflowService.getPublishJobStatus(jobId);
 }
@@ -306,6 +399,7 @@ module.exports = {
     saveExistingContent,
     openExistingContent,
     watchSaveAndAutoPublish,
+    publishSavedContent,
     getPublishJobStatus,
     __test__: {
         setOpenPathForTests(nextImpl) {

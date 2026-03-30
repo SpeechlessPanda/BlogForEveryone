@@ -159,6 +159,33 @@ function buildWorkflowContent({ framework, repoUrl }) {
     ].join('\n');
 }
 
+function inspectGitIdentity(projectDir) {
+    const localName = getGitConfigValue(projectDir, 'user.name', false);
+    const localEmail = getGitConfigValue(projectDir, 'user.email', false);
+
+    if (localName && localEmail) {
+        return {
+            ok: true,
+            identity: { name: localName, email: localEmail, source: 'local' }
+        };
+    }
+
+    const globalName = getGitConfigValue(projectDir, 'user.name', true);
+    const globalEmail = getGitConfigValue(projectDir, 'user.email', true);
+    if (globalName && globalEmail) {
+        return {
+            ok: true,
+            identity: { name: globalName, email: globalEmail, source: 'global' }
+        };
+    }
+
+    return {
+        ok: false,
+        reason: 'GIT_IDENTITY_MISSING',
+        message: '自动发布前需要 Git 提交用户名和邮箱，请先到发布与备份页补齐 Git 身份。'
+    };
+}
+
 function isNoopCommitResult(result) {
     if (!result || result.status === 0) {
         return false;
@@ -693,6 +720,16 @@ function publishToGitHub(payload) {
         }
 
         try {
+            const backupIdentityState = ensureGitIdentity(payload.projectDir, payload);
+            if (!backupIdentityState.ok) {
+                const identityError = new Error(backupIdentityState.message);
+                identityError.code = backupIdentityState.reason;
+                identityError.hint = backupIdentityState.action;
+                identityError.tutorial = backupIdentityState.tutorial;
+                identityError.logs = backupIdentityState.logs;
+                throw identityError;
+            }
+
             const snapshotDir = backupWorkspace({
                 projectDir: payload.projectDir,
                 backupDir: payload.backupDir || resolveDefaultBackupDir(payload.projectDir),
@@ -703,7 +740,7 @@ function publishToGitHub(payload) {
                     createdAt: new Date().toISOString()
                 }
             });
-            const backupPushResult = pushBackupToRepoOutcome(snapshotDir, backupRepoUrl);
+            const backupPushResult = pushBackupToRepoOutcome(snapshotDir, backupRepoUrl, backupIdentityState.identity);
             result.backupPush = {
                 ...backupPushResult,
                 ok: Boolean(backupPushResult.ok),
@@ -750,8 +787,10 @@ function inferPagesUrl(repoUrl) {
 }
 
 module.exports = {
+    inspectGitIdentity,
     publishToGitHub,
     __test__: {
-        buildWorkflowContent
+        buildWorkflowContent,
+        inspectGitIdentity
     }
 };

@@ -112,3 +112,54 @@ test("ContentEditorView uses a balanced secondary grid so lower cards stop stret
   assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*align-items:\s*stretch;/);
   assert.match(styles, /\.workflow-balanced-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(/);
 });
+
+test("ContentEditorView hides manual title and slug inputs for canonical special pages", async () => {
+  const source = await readFile(contentEditorPath, "utf8");
+
+  assert.match(source, /const SPECIAL_CONTENT_TYPES = \["about", "links", "announcement"\];/);
+  assert.match(
+    source,
+    /const requiresManualContentIdentity = computed\([\s\S]*?!SPECIAL_CONTENT_TYPES\.includes\(form\.type\)[\s\S]*?\);/,
+  );
+  assert.match(source, /<div v-if="requiresManualContentIdentity"[\s\S]*?<label>标题<\/label>/);
+  assert.match(source, /<div v-if="requiresManualContentIdentity"[\s\S]*?<label>slug（可选）<\/label>/);
+  assert.match(source, /<div v-else class="workflow-compact-block workflow-compact-block--subtle">/);
+  assert.match(source, /关于、友链、公告会自动写入固定路径与默认标题，创建后直接进入编辑器。/);
+});
+
+test("ContentEditorView explains that auto-publish reuses publish settings and skips safely when the workspace repo is missing", async () => {
+  const source = await readFile(contentEditorPath, "utf8");
+
+  assert.match(source, /保存后自动发布（沿用当前工程已保存的发布与备份仓库信息）/);
+  assert.match(source, /会沿用当前工程已保存的站点类型、发布仓库和 BFE 备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。/);
+  assert.match(source, /如果当前工程还没有已保存的发布仓库地址，自动发布会自动跳过，先完成写作与保存。/);
+  assert.match(source, /如果当前工程还没有已保存的 BFE 备份仓库地址，自动发布会自动跳过，先回到发布与备份页补齐备份仓库。/);
+  assert.match(source, /如果当前工程是用户主页，但保存的发布仓库不是 用户名\.github\.io，自动发布会先提示你回到发布与备份页修正仓库绑定。/);
+  assert.match(source, /已有内容点击“保存标题与正文”后，会直接触发自动发布，不需要再等下一次文件改动。/);
+  assert.match(source, /保存后自动发布仍会更新 BFE 备份仓库，确保 GitHub 恢复拿到的是最新内容。/);
+  assert.match(source, /未配置发布仓库，已跳过自动发布。/);
+});
+
+test("ContentEditorView surfaces actionable auto-publish messages instead of raw job status codes", async () => {
+  const source = await readFile(contentEditorPath, "utf8");
+
+  assert.match(source, /state\.jobStatus = job\.message \|\| job\.status;/);
+  assert.match(source, /<p class="muted">任务状态：{{ state\.jobStatus \|\| "-" }}<\/p>/);
+});
+
+test("ContentEditorView keeps existing-content saves on the same auto-publish contract as new content", async () => {
+  const source = await readFile(contentEditorPath, "utf8");
+
+  const saveExistingBlock = source.match(
+    /async function saveExistingContentChanges\(\) \{([\s\S]*?)^\}/m,
+  );
+  assert.ok(saveExistingBlock, "expected saveExistingContentChanges block");
+  const block = saveExistingBlock[1];
+
+  assert.match(block, /await contentActions\.saveExistingContent\(/);
+  assert.match(block, /if \(form\.autoPublish\) \{/);
+  assert.match(block, /selectedExistingPath\.value/);
+  assert.match(block, /publishSavedContent/);
+  assert.match(block, /自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。/);
+  assert.match(block, /未配置发布仓库，已跳过自动发布。/);
+});

@@ -135,7 +135,8 @@ function loadContentServiceWithPublishResult(publishResult) {
     const workflowServicePath = path.join(__dirname, 'contentPublishWorkflowService.js');
     const mocks = {
         './publishService': {
-            publishToGitHub: () => publishResult
+            publishToGitHub: () => publishResult,
+            inspectGitIdentity: () => ({ ok: true })
         }
     };
 
@@ -264,6 +265,9 @@ test('watchSaveAndAutoPublish does not mark job done when publish returns failed
         projectDir: fixture.workspaceRoot,
         framework: 'hexo',
         repoUrl: 'https://github.com/example/example.github.io.git',
+        siteType: 'project-pages',
+        backupRepoName: 'BFE',
+        backupRepoUrl: 'https://github.com/example/BFE.git',
         allowedRoots: fixture.allowedRoots,
         timeoutMs: 30000
     });
@@ -333,6 +337,9 @@ test('watchSaveAndAutoPublish delegates publish lifecycle orchestration to conte
         projectDir: fixture.workspaceRoot,
         framework: 'hexo',
         repoUrl: 'https://github.com/example/example.github.io.git',
+        siteType: 'project-pages',
+        backupRepoName: 'BFE',
+        backupRepoUrl: 'https://github.com/example/BFE.git',
         allowedRoots: fixture.allowedRoots,
         timeoutMs: 30000
     };
@@ -359,6 +366,9 @@ test('watchSaveAndAutoPublish execution path does not call publishToGitHub direc
             projectDir: fixture.workspaceRoot,
             framework: 'hexo',
             repoUrl: 'https://github.com/example/example.github.io.git',
+            siteType: 'project-pages',
+            backupRepoName: 'BFE',
+            backupRepoUrl: 'https://github.com/example/BFE.git',
             allowedRoots: fixture.allowedRoots,
             timeoutMs: 30000
         });
@@ -409,8 +419,8 @@ test('Hexo about page uses canonical path and remains listable', () => {
 });
 
 test('Hugo links page uses canonical path and keeps special-page type', () => {
-    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-hugo-links-'));
-    const allowedRoots = [path.join(projectDir, 'content')];
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-hugo-links-'));
+  const allowedRoots = [path.join(projectDir, 'content')];
 
     fs.writeFileSync(path.join(projectDir, 'hugo.toml'), 'theme = "stack"\n', 'utf-8');
 
@@ -430,6 +440,235 @@ test('Hugo links page uses canonical path and keeps special-page type', () => {
 
     const listed = service.listExistingContents({ projectDir, framework: 'hugo' });
     assert.equal(listed.some((item) => item.filePath === expectedPath && item.type === 'links'), true);
+
+    fs.rmSync(projectDir, { recursive: true, force: true });
+});
+
+test('post creation rejects duplicate slug instead of silently reopening an existing file', () => {
+    const fixture = setupHexoWorkspace();
+    const duplicatePath = path.join(fixture.workspaceRoot, 'source', '_posts', 'duplicate-post.md');
+
+    fs.writeFileSync(duplicatePath, '---\ntitle: Existing\n---\n\n旧内容', 'utf-8');
+
+    const { service, shellCalls } = loadContentServiceWithShellSpy();
+
+    assert.throws(
+        () => service.createAndOpenContent({
+            projectDir: fixture.workspaceRoot,
+            framework: 'hexo',
+            type: 'post',
+            title: 'Duplicate Post',
+            slug: 'duplicate-post',
+            allowedRoots: fixture.allowedRoots
+        }),
+        /slug 已存在，请更换标题或 slug 后重试/
+    );
+
+    assert.deepEqual(shellCalls, []);
+    assert.match(fs.readFileSync(duplicatePath, 'utf-8'), /旧内容/);
+
+    fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
+});
+
+test('canonical special pages can still reopen their fixed path when the file already exists', () => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-special-reopen-'));
+    const allowedRoots = [path.join(projectDir, 'source')];
+    const aboutPath = path.join(projectDir, 'source', 'about', 'index.md');
+
+    fs.mkdirSync(path.dirname(aboutPath), { recursive: true });
+    fs.writeFileSync(path.join(projectDir, '_config.yml'), 'theme: next\n', 'utf-8');
+    fs.writeFileSync(aboutPath, '---\ntitle: 旧关于页\n---\n\n保留原内容', 'utf-8');
+
+    const { service, shellCalls } = loadContentServiceWithShellSpy();
+    const result = service.createAndOpenContent({
+        projectDir,
+        framework: 'hexo',
+        type: 'about',
+        title: '',
+        slug: 'ignored-special-slug',
+        allowedRoots
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.filePath, aboutPath);
+    assert.deepEqual(shellCalls, [aboutPath]);
+    assert.match(fs.readFileSync(aboutPath, 'utf-8'), /旧关于页/);
+    assert.match(fs.readFileSync(aboutPath, 'utf-8'), /保留原内容/);
+
+    fs.rmSync(projectDir, { recursive: true, force: true });
+});
+
+test('special canonical pages ignore slug and fall back to built-in default titles when title is empty', () => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-special-pages-'));
+    const allowedRoots = [path.join(projectDir, 'source')];
+
+    fs.writeFileSync(path.join(projectDir, '_config.yml'), 'theme: next\n', 'utf-8');
+
+    const { service, shellCalls } = loadContentServiceWithShellSpy();
+    const aboutResult = service.createAndOpenContent({
+        projectDir,
+        framework: 'hexo',
+        type: 'about',
+        title: '',
+        slug: 'should-be-ignored',
+        allowedRoots
+    });
+    const linksResult = service.createAndOpenContent({
+        projectDir,
+        framework: 'hexo',
+        type: 'links',
+        title: '',
+        slug: 'also-ignored',
+        allowedRoots
+    });
+    const announcementResult = service.createAndOpenContent({
+        projectDir,
+        framework: 'hexo',
+        type: 'announcement',
+        title: '',
+        slug: 'still-ignored',
+        allowedRoots
+    });
+
+    const aboutPath = path.join(projectDir, 'source', 'about', 'index.md');
+    const linksPath = path.join(projectDir, 'source', 'links', 'index.md');
+    const announcementPath = path.join(projectDir, 'source', 'announcement', 'index.md');
+
+    assert.deepEqual(shellCalls, [aboutPath, linksPath, announcementPath]);
+    assert.equal(aboutResult.filePath, aboutPath);
+    assert.equal(linksResult.filePath, linksPath);
+    assert.equal(announcementResult.filePath, announcementPath);
+
+    assert.match(fs.readFileSync(aboutPath, 'utf-8'), /title:\s*关于/);
+    assert.match(fs.readFileSync(linksPath, 'utf-8'), /title:\s*友链/);
+    assert.match(fs.readFileSync(announcementPath, 'utf-8'), /title:\s*公告/);
+    assert.doesNotMatch(fs.readFileSync(aboutPath, 'utf-8'), /should-be-ignored/);
+    assert.doesNotMatch(fs.readFileSync(linksPath, 'utf-8'), /also-ignored/);
+    assert.doesNotMatch(fs.readFileSync(announcementPath, 'utf-8'), /still-ignored/);
+
+    fs.rmSync(projectDir, { recursive: true, force: true });
+});
+
+test('Hexo listExistingContents includes custom pages outside canonical about/links/announcement paths', () => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-hexo-custom-page-'));
+    const sourceRoot = path.join(projectDir, 'source');
+    const allowedRoots = [sourceRoot];
+    const customPagePath = path.join(sourceRoot, 'projects', 'index.md');
+
+    fs.mkdirSync(path.dirname(customPagePath), { recursive: true });
+    fs.writeFileSync(path.join(projectDir, '_config.yml'), 'theme: next\n', 'utf-8');
+    fs.writeFileSync(customPagePath, '---\ntitle: 项目页\n---\n\n项目内容', 'utf-8');
+
+    const listed = listExistingContents({ projectDir, framework: 'hexo' });
+    const matched = listed.find((item) => item.filePath === customPagePath);
+
+    assert.ok(matched, 'expected custom Hexo page to be listed');
+    assert.equal(matched.type, 'page');
+    assert.equal(matched.title, '项目页');
+
+    fs.rmSync(projectDir, { recursive: true, force: true });
+});
+
+test('saveExistingContent preserves CRLF front matter structure before immediate publish can reuse the file', () => {
+    const fixture = setupHexoWorkspace();
+    const crlfFile = path.join(fixture.workspaceRoot, 'source', '_posts', 'windows-frontmatter.md');
+    const original = [
+        '---',
+        'title: Windows Title',
+        'tags:',
+        '  - demo',
+        '---',
+        '',
+        'Windows body line 1',
+        'Windows body line 2'
+    ].join('\r\n');
+
+    fs.writeFileSync(crlfFile, original, 'utf-8');
+
+    const result = saveExistingContent({
+        filePath: crlfFile,
+        title: '更新后的 Windows 标题',
+        body: '更新后的正文',
+        allowedRoots: fixture.allowedRoots
+    });
+
+    const updated = fs.readFileSync(crlfFile, 'utf-8');
+
+    assert.equal(result.ok, true);
+    assert.equal(result.title, '更新后的 Windows 标题');
+    assert.match(updated, /title:\s*更新后的 Windows 标题/);
+    assert.match(updated, /tags:\s*[\r\n]+\s*-\s*demo/);
+    assert.match(updated, /---\n\n更新后的正文$/);
+    assert.doesNotMatch(updated, /title:\s*Windows Title[\s\S]*title:\s*更新后的 Windows 标题/);
+    assert.doesNotMatch(updated, /---\r\n[\s\S]*---\r\n[\s\S]*---\n/);
+
+    fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
+});
+
+test('saveExistingContent preserves Hugo TOML front matter structure before immediate publish can reuse the file', () => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-hugo-toml-'));
+    const contentRoot = path.join(projectDir, 'content');
+    const allowedRoots = [contentRoot];
+    const pagePath = path.join(contentRoot, 'about', 'index.md');
+
+    fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+    fs.writeFileSync(path.join(projectDir, 'hugo.toml'), 'theme = "stack"\n', 'utf-8');
+    fs.writeFileSync(
+        pagePath,
+        [
+            '+++',
+            'title = "关于旧版"',
+            'draft = true',
+            '+++',
+            '',
+            '原始正文'
+        ].join('\r\n'),
+        'utf-8'
+    );
+
+    const before = readExistingContent({ filePath: pagePath, allowedRoots });
+    assert.equal(before.title, '关于旧版');
+
+    const result = saveExistingContent({
+        filePath: pagePath,
+        title: '关于新版',
+        body: '更新后的页面正文',
+        allowedRoots
+    });
+
+    const updated = fs.readFileSync(pagePath, 'utf-8');
+
+    assert.equal(result.ok, true);
+    assert.equal(result.title, '关于新版');
+    assert.match(updated, /^\+\+\+/);
+    assert.match(updated, /title = "关于新版"/);
+    assert.match(updated, /draft = true/);
+    assert.match(updated, /\+\+\+\n\n更新后的页面正文$/);
+    assert.doesNotMatch(updated, /title = "关于旧版"[\s\S]*title = "关于新版"/);
+
+    fs.rmSync(projectDir, { recursive: true, force: true });
+});
+
+test('post content falls back to a non-empty slug when title characters are fully stripped', () => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-post-slug-fallback-'));
+    const allowedRoots = [path.join(projectDir, 'source')];
+
+    fs.writeFileSync(path.join(projectDir, '_config.yml'), 'theme: next\n', 'utf-8');
+
+    const { service, shellCalls } = loadContentServiceWithShellSpy();
+    const result = service.createAndOpenContent({
+        projectDir,
+        framework: 'hexo',
+        type: 'post',
+        title: '😀😀!!!',
+        slug: '',
+        allowedRoots
+    });
+
+    const expectedPath = path.join(projectDir, 'source', '_posts', 'new-post.md');
+    assert.equal(result.filePath, expectedPath);
+    assert.deepEqual(shellCalls, [expectedPath]);
+    assert.equal(fs.existsSync(expectedPath), true);
 
     fs.rmSync(projectDir, { recursive: true, force: true });
 });

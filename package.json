@@ -53,6 +53,7 @@
     "build": {
         "appId": "com.blogforeveryone.app",
         "productName": "BlogForEveryone",
+        "artifactName": "BlogForEveryone-Setup-${version}.${ext}",
         "copyright": "Copyright (c) BlogForEveryone",
         "afterPack": "scripts/after-pack-set-win-icon.js",
         "files": [

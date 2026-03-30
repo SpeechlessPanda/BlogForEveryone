@@ -34,6 +34,18 @@ test('release guide links release page and keeps app release distinct from blog 
     assert.match(guide, /博客发布请看：docs\/guides\/blog-publish-pages-beginner\.md/);
 });
 
+test('release artifact naming stays explicit and consistent across package metadata and docs', () => {
+    const readme = readText('README.md');
+    const guide = readText('docs/guides/release-signing-auto-update.md');
+
+    assert.equal(packageJson.build?.artifactName, 'BlogForEveryone-Setup-${version}.${ext}');
+    assert.match(readme, /BlogForEveryone-Setup x\.y\.z\.exe/);
+    assert.match(readme, /BlogForEveryone-Setup x\.y\.z\.exe\.blockmap/);
+    assert.match(guide, /BlogForEveryone-Setup x\.y\.z\.exe/);
+    assert.match(guide, /BlogForEveryone-Setup x\.y\.z\.exe\.blockmap/);
+    assert.match(guide, /latest\.yml/);
+});
+
 test('package privacy verification script exists and reports structured checks', async () => {
     const modulePath = path.join(repoRoot, 'scripts', 'verify-package-privacy.js');
     const privacyModule = require(modulePath);

@@ -416,9 +416,9 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(shellAppearanceBlock).toContainText("暗色编辑台");
     const darkPalette = await expectRepresentativeSurfacesToMatchAppearance("dark");
     const darkTextPalette = await readShellTextPalette();
-    expect(darkTextPalette.inkColor).toBe("rgb(245, 237, 230)");
-    expect(darkTextPalette.mutedColor).toBe("rgb(215, 198, 184)");
-    expect(darkTextPalette.highlightColor).toBe("rgb(246, 230, 213)");
+    expect(darkTextPalette.inkColor).toBe("rgb(243, 245, 247)");
+    expect(darkTextPalette.mutedColor).toBe("rgb(200, 208, 218)");
+    expect(darkTextPalette.highlightColor).toBe("rgb(231, 237, 245)");
     expect(darkPalette.panelBackground).not.toBe(lightPalette.panelBackground);
     expect(darkPalette.panelBorder).not.toBe(lightPalette.panelBorder);
     await expect(page.locator(".shell-topbar-title")).toHaveCSS("color", darkTextPalette.inkColor);

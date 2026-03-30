@@ -100,7 +100,11 @@ test("ContentEditorView reuses workspace publish repo for auto-publish and skips
   assert.match(source, /const autoPublishDeployRepoName = ws\.deployRepo\?\.name \|\| "";/);
   assert.match(source, /const autoPublishBackupRepoName = ws\.backupRepo\?\.name \|\| "BFE";/);
   assert.match(source, /const autoPublishBackupRepoUrl = ws\.backupRepo\?\.url \|\| "";/);
+  assert.match(source, /const autoPublishGitUserName = autoPublishIdentity\.value\.name;/);
+  assert.match(source, /const autoPublishGitUserEmail = autoPublishIdentity\.value\.email;/);
   assert.match(source, /if \(form\.autoPublish\) \{[\s\S]*?if \(autoPublishRepoUrl\) \{[\s\S]*?repoUrl:\s*autoPublishRepoUrl,[\s\S]*?siteType:\s*autoPublishSiteType,[\s\S]*?login:\s*autoPublishLogin,[\s\S]*?deployRepoName:\s*autoPublishDeployRepoName,[\s\S]*?backupRepoName:\s*autoPublishBackupRepoName,[\s\S]*?backupRepoUrl:\s*autoPublishBackupRepoUrl,[\s\S]*?\}[\s\S]*?else \{[\s\S]*?state\.jobId = "";[\s\S]*?state\.jobStatus = "未配置发布仓库，已跳过自动发布。";[\s\S]*?\}[\s\S]*?\}/);
+  assert.match(source, /gitUserName:\s*autoPublishGitUserName,/);
+  assert.match(source, /gitUserEmail:\s*autoPublishGitUserEmail,/);
   assert.match(source, /siteType:\s*autoPublishSiteType,/);
   assert.doesNotMatch(source, /watchAndAutoPublish\(\{[\s\S]*?repoUrl:\s*ws\.repoUrl/);
   assert.match(source, /保存后自动发布（沿用当前工程已保存的发布与备份仓库信息）/);
@@ -125,6 +129,8 @@ test("ContentEditorView reuses workspace publish repo for saving existing conten
   assert.match(block, /const autoPublishDeployRepoName = ws\.deployRepo\?\.name \|\| "";/);
   assert.match(block, /const autoPublishBackupRepoName = ws\.backupRepo\?\.name \|\| "BFE";/);
   assert.match(block, /const autoPublishBackupRepoUrl = ws\.backupRepo\?\.url \|\| "";/);
+  assert.match(block, /const autoPublishGitUserName = autoPublishIdentity\.value\.name;/);
+  assert.match(block, /const autoPublishGitUserEmail = autoPublishIdentity\.value\.email;/);
   assert.match(block, /await contentActions\.saveExistingContent\(/);
   assert.match(block, /if \(form\.autoPublish\) \{/);
   assert.match(block, /if \(autoPublishRepoUrl\) \{/);
@@ -136,6 +142,8 @@ test("ContentEditorView reuses workspace publish repo for saving existing conten
   assert.match(block, /deployRepoName:\s*autoPublishDeployRepoName,/);
   assert.match(block, /backupRepoName:\s*autoPublishBackupRepoName,/);
   assert.match(block, /backupRepoUrl:\s*autoPublishBackupRepoUrl,/);
+  assert.match(block, /gitUserName:\s*autoPublishGitUserName,/);
+  assert.match(block, /gitUserEmail:\s*autoPublishGitUserEmail,/);
   assert.match(block, /state\.jobStatus = "未配置发布仓库，已跳过自动发布。";/);
 });
 

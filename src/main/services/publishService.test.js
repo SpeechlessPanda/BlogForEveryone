@@ -771,6 +771,59 @@ test('coordinated publish executes deterministic order and preserves child outco
     }
 });
 
+test('coordinated publish reuses resolved git identity for backup snapshot commit', async () => {
+    let backupIdentity = null;
+    const harness = loadPublishServiceWithMocks({
+        normalizePublishResultImpl: normalizePublishResult,
+        ensureRemoteRepositoriesImpl: async (payload) => ({
+            deployRepo: payload.deployRepo || {
+                owner: 'alice',
+                name: 'docs-site',
+                url: 'https://github.com/alice/docs-site.git'
+            },
+            backupRepo: payload.backupRepo || {
+                owner: 'alice',
+                name: 'BFE',
+                url: 'https://github.com/alice/BFE.git'
+            }
+        }),
+        spawnSyncImpl(command, args) {
+            if (args[0] === 'init') return { status: 0, stdout: '', stderr: '' };
+            if (args[0] === 'config' && args[1] === '--get' && args[2] === 'user.name') return { status: 0, stdout: '', stderr: '' };
+            if (args[0] === 'config' && args[1] === '--get' && args[2] === 'user.email') return { status: 0, stdout: '', stderr: '' };
+            if (args[0] === 'config' && args[2] === 'payload-name') return { status: 0, stdout: '', stderr: '' };
+            if (args[0] === 'config' && args[2] === 'payload@example.com') return { status: 0, stdout: '', stderr: '' };
+            return { status: 0, stdout: '', stderr: '' };
+        },
+        backupWorkspaceImpl: () => '/tmp/snapshot',
+        pushBackupToRepoOutcomeImpl: (_snapshotDir, _repoUrl, gitIdentity) => {
+            backupIdentity = gitIdentity;
+            return { ok: true, logs: [] };
+        }
+    });
+
+    try {
+        const result = await harness.loaded.publishToGitHub({
+            projectDir: 'D:/tmp/project',
+            framework: 'hugo',
+            siteType: 'project-pages',
+            login: 'alice',
+            deployRepoName: 'docs-site',
+            backupRepoName: 'BFE',
+            repoUrl: 'https://github.com/alice/docs-site.git',
+            backupRepoUrl: 'https://github.com/alice/BFE.git',
+            gitUserName: 'payload-name',
+            gitUserEmail: 'payload@example.com'
+        });
+
+        assert.equal(result.status, 'success');
+        assert.equal(backupIdentity?.name, 'payload-name');
+        assert.equal(backupIdentity?.email, 'payload@example.com');
+    } finally {
+        harness.cleanup();
+    }
+});
+
 test('coordinated publish marks deploy repo ensure as failure when ensured repo url is missing', async () => {
     const harness = loadPublishServiceWithMocks({
         normalizePublishResultImpl: normalizePublishResult,

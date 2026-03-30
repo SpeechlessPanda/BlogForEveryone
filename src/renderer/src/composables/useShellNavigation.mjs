@@ -1,4 +1,6 @@
-import { computed, ref } from "vue";
+import { computed, ref, watchEffect } from "vue";
+
+const AUTH_REQUIRED_TAB_KEYS = new Set(["publish", "import"]);
 
 const tabs = [
   {
@@ -93,15 +95,54 @@ const workflowSections = [
 export function useShellNavigation(options = {}) {
   const activeTab = ref(options.initialTab || "tutorial");
 
+  function resolveIsLoggedIn() {
+    const source = options.isLoggedIn;
+    if (typeof source === "function") {
+      return source() === true;
+    }
+    if (source && typeof source === "object" && "value" in source) {
+      return source.value === true;
+    }
+    if (source === undefined) {
+      return true;
+    }
+    return source === true;
+  }
+
+  function isTabAllowed(tabKey) {
+    if (!AUTH_REQUIRED_TAB_KEYS.has(tabKey)) {
+      return true;
+    }
+    return resolveIsLoggedIn();
+  }
+
+  const availableTabs = computed(() => {
+    return tabs.filter((tab) => isTabAllowed(tab.key));
+  });
+
+  function getFallbackTabKey() {
+    return availableTabs.value[0]?.key || tabs[0].key;
+  }
+
+  watchEffect(() => {
+    if (!isTabAllowed(activeTab.value)) {
+      activeTab.value = getFallbackTabKey();
+    }
+  });
+
   const groupedWorkflowSections = computed(() => {
     return workflowSections.map((section) => ({
       ...section,
-      tabs: tabs.filter((tab) => tab.section === section.key),
+      tabs: availableTabs.value.filter((tab) => tab.section === section.key),
     }));
   });
 
   const activeTabMeta = computed(() => {
-    return tabs.find((item) => item.key === activeTab.value) || tabs[0];
+    return (
+      availableTabs.value.find((item) => item.key === activeTab.value) ||
+      availableTabs.value[0] ||
+      tabs[0]
+    );
   });
 
   const activeSectionMeta = computed(() => {
@@ -112,8 +153,13 @@ export function useShellNavigation(options = {}) {
   });
 
   function setActiveTab(tabKey) {
-    if (tabs.some((item) => item.key === tabKey)) {
+    if (tabs.some((item) => item.key === tabKey) && isTabAllowed(tabKey)) {
       activeTab.value = tabKey;
+      return;
+    }
+
+    if (tabs.some((item) => item.key === tabKey) && !isTabAllowed(tabKey)) {
+      activeTab.value = getFallbackTabKey();
     }
   }
 

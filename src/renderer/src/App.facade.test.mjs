@@ -132,7 +132,7 @@ test("App shell styles make dark editorial helper copy, links, and modal text fo
 
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-lead,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.action-note,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.page-result-note,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.muted,[\s\S]*color:\s*var\(--shell-muted\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-lead,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.action-note,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.page-result-note,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.muted,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.page-guidance-list,[\s\S]*color:\s*var\(--shell-muted\);/,
     "expected dark editorial utility copy to resolve to the shell muted token instead of the default muted palette",
   );
   assert.match(
@@ -167,7 +167,7 @@ test("App shell styles route dark editorial titles and primary text through the 
 
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-title,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workflow-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workspace-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-dialog-copy h3,[\s\S]*color:\s*var\(--shell-ink\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-title,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.advanced-panel summary,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workflow-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workspace-section-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-dialog-copy h3,[\s\S]*color:\s*var\(--shell-ink\);/,
     "expected dark editorial page titles, workflow/workspace section titles, and preview dialog titles to use the shell ink token",
   );
   assert.match(
@@ -182,7 +182,7 @@ test("App shell styles route dark editorial titles and primary text through the 
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-brand-title,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-theme-card h4 \{[\s\S]*color:\s*var\(--shell-ink\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-brand-title,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-theme-card h4,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.priority-panel h3,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.priority-panel strong \{[\s\S]*color:\s*var\(--shell-ink\);/,
     "expected dark tutorial titles and key strong text to use the shell ink token",
   );
   assert.match(
@@ -202,7 +202,7 @@ test("App shell styles keep dark metadata labels and mixed card surfaces readabl
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.context-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.info-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card[\s\S]*background:[\s\S]*var\(--shell-panel-alt\);[\s\S]*(border-color:\s*var\(--shell-line\);|border:\s*1px solid var\(--shell-line\);)[\s\S]*color:\s*var\(--shell-ink\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\] \.context-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.advanced-panel,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.info-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-card,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card[\s\S]*background:[\s\S]*var\(--shell-panel-alt\);[\s\S]*(border-color:\s*var\(--shell-line\);|border:\s*1px solid var\(--shell-line\);)[\s\S]*color:\s*var\(--shell-ink\);/,
     "expected mixed workflow cards to switch fully onto dark shell surfaces instead of keeping light-card backgrounds in dark mode",
   );
   assert.match(
@@ -219,5 +219,10 @@ test("App shell styles keep dark metadata labels and mixed card surfaces readabl
     stylesSource,
     /\.layout--editorial\[data-shell-appearance="dark"\] \.shell-topbar \.page-kicker,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-summary \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-popup-panel \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.sidebar-entry-label[\s\S]*color:\s*var\(--shell-highlight\);/,
     "expected shell-specific metadata labels to keep the brighter highlight token instead of falling back to muted dark-shell copy",
+  );
+  assert.match(
+    stylesSource,
+    /\.layout--editorial\[data-shell-appearance="dark"\] input,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] textarea,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] select \{[\s\S]*background:\s*var\(--shell-panel-alt\);[\s\S]*color:\s*var\(--shell-ink\);[\s\S]*border-color:\s*var\(--shell-line-strong\);/,
+    "expected dark editorial form controls to move onto shell panel and line tokens instead of reusing light form surfaces",
   );
 });

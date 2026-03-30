@@ -23,6 +23,38 @@ const HUGO_THEME_INSTALLERS = {
     anatole: { repo: 'github.com/lxndrblz/anatole', dirName: 'anatole', themeName: 'anatole' }
 };
 
+const HUGO_CONFIG_FILE_CANDIDATES = [
+    { fileName: 'hugo.toml', format: 'toml' },
+    { fileName: 'config.toml', format: 'toml' },
+    { fileName: 'config.yaml', format: 'yaml' },
+    { fileName: 'config.yml', format: 'yaml' },
+    { fileName: 'config.json', format: 'json' }
+];
+
+function resolveHugoConfigFile(projectDir) {
+    return HUGO_CONFIG_FILE_CANDIDATES.find(({ fileName }) => fs.existsSync(path.join(projectDir, fileName))) || null;
+}
+
+function parseHugoConfig(content, format) {
+    if (format === 'json') {
+        return JSON.parse(content || '{}') || {};
+    }
+    if (format === 'yaml') {
+        return YAML.parse(content) || {};
+    }
+    return TOML.parse(content) || {};
+}
+
+function stringifyHugoConfig(nextConfig, format) {
+    if (format === 'json') {
+        return `${JSON.stringify(nextConfig, null, 2)}\n`;
+    }
+    if (format === 'yaml') {
+        return YAML.stringify(nextConfig);
+    }
+    return TOML.stringify(nextConfig);
+}
+
 function buildRecognizedThemeLookup(framework) {
     const installers = framework === 'hexo' ? HEXO_THEME_INSTALLERS : framework === 'hugo' ? HUGO_THEME_INSTALLERS : null;
     if (!installers) {
@@ -347,12 +379,12 @@ function readThemeConfig(projectDir, framework) {
     }
 
     if (framework === 'hugo') {
-        const fileCandidates = ['hugo.toml', 'config.toml'];
-        const fileName = fileCandidates.find((name) => fs.existsSync(path.join(projectDir, name)));
-        if (!fileName) {
+        const configFile = resolveHugoConfigFile(projectDir);
+        if (!configFile) {
             return {};
         }
-        return TOML.parse(fs.readFileSync(path.join(projectDir, fileName), 'utf-8')) || {};
+        const filePath = path.join(projectDir, configFile.fileName);
+        return parseHugoConfig(fs.readFileSync(filePath, 'utf-8'), configFile.format);
     }
 
     return {};
@@ -366,10 +398,9 @@ function saveThemeConfig(projectDir, framework, nextConfig) {
     }
 
     if (framework === 'hugo') {
-        const filePath = fs.existsSync(path.join(projectDir, 'hugo.toml'))
-            ? path.join(projectDir, 'hugo.toml')
-            : path.join(projectDir, 'config.toml');
-        fs.writeFileSync(filePath, TOML.stringify(nextConfig), 'utf-8');
+        const configFile = resolveHugoConfigFile(projectDir) || { fileName: 'config.toml', format: 'toml' };
+        const filePath = path.join(projectDir, configFile.fileName);
+        fs.writeFileSync(filePath, stringifyHugoConfig(nextConfig, configFile.format), 'utf-8');
     }
 }
 

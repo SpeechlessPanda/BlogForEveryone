@@ -71,6 +71,43 @@ test("Structured operation helpers keep child outcomes and root causes visible",
   );
 });
 
+test("buildChildOutcomeCards supports normalized top-level combined outcomes", () => {
+  assert.deepEqual(
+    buildChildOutcomeCards(
+      {
+        deployRepoEnsure: { ok: true, userMessage: "发布仓库已就绪。" },
+        backupPush: {
+          ok: false,
+          userMessage: "备份推送失败。",
+          operationResult: {
+            causes: [{ key: "push_denied", userMessage: "GitHub 拒绝了这次备份推送。" }],
+          },
+        },
+      },
+      {
+        deployRepoEnsure: "发布仓库准备",
+        backupPush: "备份推送",
+      },
+    ),
+    [
+      {
+        key: "deployRepoEnsure",
+        label: "发布仓库准备",
+        ok: true,
+        message: "发布仓库已就绪。",
+        causes: [],
+      },
+      {
+        key: "backupPush",
+        label: "备份推送",
+        ok: false,
+        message: "备份推送失败。",
+        causes: ["GitHub 拒绝了这次备份推送。"],
+      },
+    ],
+  );
+});
+
 test("Theme preview paths honor relative Vite base path", () => {
   assert.equal(
     resolveThemePreviewPath("./", "/theme-previews/hexo-fluid.png"),

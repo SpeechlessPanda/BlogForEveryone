@@ -39,15 +39,15 @@ export function buildChildOutcomeCards(result, labels = {}) {
       : {};
 
   return Object.entries(labels)
-    .filter(([key]) => childOutcomes[key])
+    .filter(([key]) => childOutcomes[key] || (result?.[key] && typeof result[key] === "object"))
     .map(([key, label]) => {
-      const outcome = childOutcomes[key];
+      const outcome = childOutcomes[key] || result[key];
       return {
         key,
         label,
         ok: outcome?.ok !== false,
         message: String(
-          outcome?.message || (outcome?.ok === false ? `${label}失败。` : `${label}已完成。`),
+          outcome?.message || outcome?.userMessage || (outcome?.ok === false ? `${label}失败。` : `${label}已完成。`),
         ).trim(),
         causes: outcome?.ok === false ? collectOperationMessages(outcome) : [],
       };

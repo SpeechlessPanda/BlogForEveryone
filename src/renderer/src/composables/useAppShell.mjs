@@ -71,7 +71,13 @@ export function useAppShell() {
   });
   const shellScrollRegion = ref(null);
   const tutorialTarget = ref("tutorial-home");
-  const shellNavigation = useShellNavigation({ initialTab: "tutorial" });
+  const authState = ref(null);
+  const authLog = ref("");
+  const deviceFlow = ref(null);
+  const shellNavigation = useShellNavigation({
+    initialTab: "tutorial",
+    isLoggedIn: () => authState.value?.isLoggedIn === true,
+  });
   const {
     activeTab,
     activeTabMeta,
@@ -85,9 +91,6 @@ export function useAppShell() {
     error: null,
   });
   const authClientId = ref("");
-  const authState = ref(null);
-  const authLog = ref("");
-  const deviceFlow = ref(null);
   const rssUnreadTotal = ref(0);
   const preferences = ref({ launchAtStartup: false });
   const infoModal = ref({ visible: false, key: "about" });

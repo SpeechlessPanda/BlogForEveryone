@@ -292,68 +292,100 @@ test('publishSavedContent cancels an active watcher job for the same file before
     }
 });
 
-test('watchSaveAndAutoPublish blocks early with actionable guidance when Git identity is missing', () => {
+test('watchSaveAndAutoPublish does not block on inspect-only identity checks and forwards payload identity to publish', async () => {
     const fixture = setupHexoWorkspace();
+    const originalSetInterval = global.setInterval;
+    const originalClearInterval = global.clearInterval;
+    const publishCalls = [];
+    let scheduledTick = null;
+
+    global.setInterval = (handler) => {
+        scheduledTick = handler;
+        return 1;
+    };
+    global.clearInterval = () => {};
 
     try {
         const workflowService = loadWorkflowServiceWithPublishImpl({
-            publishImpl: async () => ({ ok: true, mode: 'actions', message: 'ok', logs: [] }),
+            publishImpl: async (payload) => {
+                publishCalls.push(payload);
+                return { ok: true, mode: 'actions', message: 'ok', logs: [] };
+            },
             inspectGitIdentityImpl: () => ({
                 ok: false,
                 message: '自动发布前需要 Git 提交用户名和邮箱，请先到发布与备份页补齐 Git 身份。'
             })
         });
 
-        const blocked = workflowService.watchSaveAndAutoPublish({
+        const watchResult = workflowService.watchSaveAndAutoPublish({
             filePath: fixture.allowedFile,
             projectDir: fixture.workspaceRoot,
             framework: 'hexo',
             repoUrl: 'https://github.com/example/example.github.io.git',
             siteType: 'project-pages',
+            gitUserName: 'Demo Bot',
+            gitUserEmail: 'demo@example.com',
             backupRepoName: 'BFE',
             backupRepoUrl: 'https://github.com/example/BFE.git',
             allowedRoots: fixture.allowedRoots,
             timeoutMs: 30000
         });
 
-        assert.deepEqual(blocked, {
-            jobId: '',
-            status: 'blocked',
-            message: '自动发布前需要 Git 提交用户名和邮箱，请先到发布与备份页补齐 Git 身份。'
-        });
+        assert.equal(watchResult.status, 'watching');
+
+        const previousMtime = fs.statSync(fixture.allowedFile).mtimeMs;
+        fs.writeFileSync(fixture.allowedFile, '---\ntitle: Allowed\n---\n\nUpdated body', 'utf-8');
+        const boostedMtime = new Date(previousMtime + 5000);
+        fs.utimesSync(fixture.allowedFile, boostedMtime, boostedMtime);
+
+        await scheduledTick();
+
+        assert.equal(publishCalls.length, 1);
+        assert.equal(publishCalls[0].gitUserName, 'Demo Bot');
+        assert.equal(publishCalls[0].gitUserEmail, 'demo@example.com');
     } finally {
+        global.setInterval = originalSetInterval;
+        global.clearInterval = originalClearInterval;
         fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
     }
 });
 
-test('publishSavedContent blocks early with actionable guidance when Git identity is missing', () => {
+test('publishSavedContent does not block on inspect-only identity checks and forwards payload identity to publish', async () => {
     const fixture = setupHexoWorkspace();
+    const publishCalls = [];
 
     try {
         const workflowService = loadWorkflowServiceWithPublishImpl({
-            publishImpl: async () => ({ ok: true, mode: 'actions', message: 'ok', logs: [] }),
+            publishImpl: async (payload) => {
+                publishCalls.push(payload);
+                return { ok: true, mode: 'actions', message: 'ok', logs: [] };
+            },
             inspectGitIdentityImpl: () => ({
                 ok: false,
                 message: '自动发布前需要 Git 提交用户名和邮箱，请先到发布与备份页补齐 Git 身份。'
             })
         });
 
-        const blocked = workflowService.publishSavedContent({
+        const publishResult = workflowService.publishSavedContent({
             filePath: fixture.allowedFile,
             projectDir: fixture.workspaceRoot,
             framework: 'hexo',
             repoUrl: 'https://github.com/example/example.github.io.git',
             siteType: 'project-pages',
+            gitUserName: 'Demo Bot',
+            gitUserEmail: 'demo@example.com',
             backupRepoName: 'BFE',
             backupRepoUrl: 'https://github.com/example/BFE.git',
             allowedRoots: fixture.allowedRoots
         });
 
-        assert.deepEqual(blocked, {
-            jobId: '',
-            status: 'blocked',
-            message: '自动发布前需要 Git 提交用户名和邮箱，请先到发布与备份页补齐 Git 身份。'
-        });
+        assert.equal(publishResult.status, 'publishing');
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        assert.equal(publishCalls.length, 1);
+        assert.equal(publishCalls[0].gitUserName, 'Demo Bot');
+        assert.equal(publishCalls[0].gitUserEmail, 'demo@example.com');
     } finally {
         fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
     }

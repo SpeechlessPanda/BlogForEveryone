@@ -1918,6 +1918,14 @@ a:hover {
   border-color: #7f372e;
 }
 
+.layout--editorial[data-shell-appearance="dark"] input,
+.layout--editorial[data-shell-appearance="dark"] textarea,
+.layout--editorial[data-shell-appearance="dark"] select {
+  background: var(--shell-panel-alt);
+  color: var(--shell-ink);
+  border-color: var(--shell-line-strong);
+}
+
 .layout--editorial[data-shell-appearance="dark"] button:focus-visible,
 .layout--editorial[data-shell-appearance="dark"] input:focus-visible,
 .layout--editorial[data-shell-appearance="dark"] textarea:focus-visible,
@@ -2701,12 +2709,14 @@ a:hover {
 .layout--editorial[data-shell-appearance="dark"] .theme-studio-note .section-helper,
 .layout--editorial[data-shell-appearance="dark"] .theme-studio-status-card .status-detail,
 .layout--editorial[data-shell-appearance="dark"] .theme-asset-preview-card span,
+.layout--editorial[data-shell-appearance="dark"] .checklist,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-directory-card .section-helper,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-flow-card .checklist,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-action-panel .section-helper,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-lesson-card .section-helper,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-lesson-card .checklist,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-callout .section-helper,
+.layout--editorial[data-shell-appearance="dark"] .page-guidance-list,
 .layout--editorial[data-shell-appearance="dark"] .modal-panel p,
 .layout--editorial[data-shell-appearance="dark"] .modal-panel .muted {
   color: var(--shell-muted);
@@ -2735,6 +2745,7 @@ a:hover {
 }
 
 .layout--editorial[data-shell-appearance="dark"] .page-title,
+.layout--editorial[data-shell-appearance="dark"] .advanced-panel summary,
 .layout--editorial[data-shell-appearance="dark"] .workflow-section-heading h2,
 .layout--editorial[data-shell-appearance="dark"] .workspace-section-heading h2,
 .layout--editorial[data-shell-appearance="dark"] .theme-preview-dialog-copy h3,
@@ -2761,7 +2772,9 @@ a:hover {
 .layout--editorial[data-shell-appearance="dark"] .tutorial-feature-card h3,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-status-card strong,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-recent-card h4,
-.layout--editorial[data-shell-appearance="dark"] .tutorial-theme-card h4 {
+.layout--editorial[data-shell-appearance="dark"] .tutorial-theme-card h4,
+.layout--editorial[data-shell-appearance="dark"] .priority-panel h3,
+.layout--editorial[data-shell-appearance="dark"] .priority-panel strong {
   color: var(--shell-ink);
 }
 
@@ -2799,6 +2812,7 @@ a:hover {
 }
 
 .layout--editorial[data-shell-appearance="dark"] .context-card,
+.layout--editorial[data-shell-appearance="dark"] .advanced-panel,
 .layout--editorial[data-shell-appearance="dark"] .info-card,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-directory-card,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-flow-card,

@@ -40,6 +40,10 @@ const existingEditor = reactive({
   title: "",
   body: "",
 });
+const autoPublishIdentity = ref({
+  name: "",
+  email: "",
+});
 const { run, isBusy } = useAsyncAction();
 const shellActions = useShellActions();
 const contentActions = useContentActions();
@@ -90,6 +94,33 @@ function jumpToZone(zoneId) {
   });
 }
 
+function buildFallbackGitEmail(login) {
+  const normalizedLogin = String(login || "").trim();
+  if (!normalizedLogin) {
+    return "";
+  }
+  return `${normalizedLogin}@users.noreply.github.com`;
+}
+
+function normalizeAutoPublishIdentity(authState, fallbackLogin = "") {
+  const authLogin = String(authState?.account?.login || "").trim();
+  const normalizedLogin = authLogin || String(fallbackLogin || "").trim();
+  const normalizedEmail = String(authState?.account?.email || "").trim();
+  return {
+    name: normalizedLogin,
+    email: normalizedEmail || buildFallbackGitEmail(normalizedLogin),
+  };
+}
+
+async function refreshAutoPublishIdentity(fallbackLogin = "") {
+  try {
+    const auth = await shellActions.getGithubAuthState();
+    autoPublishIdentity.value = normalizeAutoPublishIdentity(auth, fallbackLogin);
+  } catch {
+    autoPublishIdentity.value = normalizeAutoPublishIdentity(null, fallbackLogin);
+  }
+}
+
 async function createAndEdit() {
   const ws = getSelectedWorkspace();
   if (!ws) {
@@ -107,6 +138,9 @@ async function createAndEdit() {
   const autoPublishDeployRepoName = ws.deployRepo?.name || "";
   const autoPublishBackupRepoName = ws.backupRepo?.name || "BFE";
   const autoPublishBackupRepoUrl = ws.backupRepo?.url || "";
+  await refreshAutoPublishIdentity(autoPublishLogin);
+  const autoPublishGitUserName = autoPublishIdentity.value.name;
+  const autoPublishGitUserEmail = autoPublishIdentity.value.email;
 
   await runActionWithFeedback(
     "create",
@@ -135,6 +169,8 @@ async function createAndEdit() {
             repoUrl: autoPublishRepoUrl,
             siteType: autoPublishSiteType,
             login: autoPublishLogin,
+            gitUserName: autoPublishGitUserName,
+            gitUserEmail: autoPublishGitUserEmail,
             deployRepoName: autoPublishDeployRepoName,
             backupRepoName: autoPublishBackupRepoName,
             backupRepoUrl: autoPublishBackupRepoUrl,
@@ -227,6 +263,9 @@ async function saveExistingContentChanges() {
   const autoPublishDeployRepoName = ws.deployRepo?.name || "";
   const autoPublishBackupRepoName = ws.backupRepo?.name || "BFE";
   const autoPublishBackupRepoUrl = ws.backupRepo?.url || "";
+  await refreshAutoPublishIdentity(autoPublishLogin);
+  const autoPublishGitUserName = autoPublishIdentity.value.name;
+  const autoPublishGitUserEmail = autoPublishIdentity.value.email;
 
   await run("save-existing", async () => {
     await contentActions.saveExistingContent({
@@ -251,6 +290,8 @@ async function saveExistingContentChanges() {
           repoUrl: autoPublishRepoUrl,
           siteType: autoPublishSiteType,
           login: autoPublishLogin,
+          gitUserName: autoPublishGitUserName,
+          gitUserEmail: autoPublishGitUserEmail,
           deployRepoName: autoPublishDeployRepoName,
           backupRepoName: autoPublishBackupRepoName,
           backupRepoUrl: autoPublishBackupRepoUrl,
@@ -349,6 +390,7 @@ function getActionLabel(key, idleLabel) {
 
 onMounted(async () => {
   await refreshWorkspaces();
+  await refreshAutoPublishIdentity();
   await refreshExistingContents();
 });
 

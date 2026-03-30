@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { publishToGitHub, inspectGitIdentity } = require('./publishService');
+const { publishToGitHub } = require('./publishService');
 
 const publishJobs = new Map();
 const publishJobTimers = new Map();
@@ -130,21 +130,14 @@ function watchSaveAndAutoPublish(payload) {
         allowedRoots,
         siteType,
         login,
+        gitUserName,
+        gitUserEmail,
         deployRepoName,
         backupRepoName,
         backupRepoUrl
     } = payload;
     if (!filePath || !repoUrl) {
         throw new Error('自动发布需要 filePath 与 repoUrl');
-    }
-
-    const identityState = inspectGitIdentity(projectDir);
-    if (!identityState.ok) {
-        return {
-            jobId: '',
-            status: 'blocked',
-            message: identityState.message
-        };
     }
 
     const bindingState = inspectAutoPublishRepoBinding(payload);
@@ -217,6 +210,8 @@ function watchSaveAndAutoPublish(payload) {
                 repoUrl,
                 siteType,
                 login,
+                gitUserName,
+                gitUserEmail,
                 deployRepoName,
                 backupRepoName,
                 backupRepoUrl
@@ -249,21 +244,14 @@ function publishSavedContent(payload) {
         allowedRoots,
         siteType,
         login,
+        gitUserName,
+        gitUserEmail,
         deployRepoName,
         backupRepoName,
         backupRepoUrl
     } = payload || {};
     if (!filePath || !repoUrl) {
         throw new Error('自动发布需要 filePath 与 repoUrl');
-    }
-
-    const identityState = inspectGitIdentity(projectDir);
-    if (!identityState.ok) {
-        return {
-            jobId: '',
-            status: 'blocked',
-            message: identityState.message
-        };
     }
 
     const bindingState = inspectAutoPublishRepoBinding(payload);
@@ -306,6 +294,8 @@ function publishSavedContent(payload) {
             repoUrl,
             siteType,
             login,
+            gitUserName,
+            gitUserEmail,
             deployRepoName,
             backupRepoName,
             backupRepoUrl

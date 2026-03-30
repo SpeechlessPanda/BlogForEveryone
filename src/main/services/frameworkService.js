@@ -5,7 +5,8 @@ const { ensureFrameworkEnvironment, runPnpmDlxWithRetry, resolveExecutable, inst
 
 function detectFramework(projectDir) {
     const hasHexoConfig = fs.existsSync(path.join(projectDir, '_config.yml'));
-    const hasHugoConfig = fs.existsSync(path.join(projectDir, 'hugo.toml')) || fs.existsSync(path.join(projectDir, 'config.toml'));
+    const hasHugoConfig = ['hugo.toml', 'config.toml', 'config.yaml', 'config.yml', 'config.json']
+        .some((fileName) => fs.existsSync(path.join(projectDir, fileName)));
 
     if (hasHexoConfig) {
         return 'hexo';
@@ -76,7 +77,7 @@ async function initProject({ framework, projectDir }) {
     }
 
     if (framework === 'hexo') {
-        const execute = runPnpmDlxWithRetry(['hexo', 'init', projectDir], {
+        const execute = await runPnpmDlxWithRetry(['hexo', 'init', projectDir], {
             cwd: process.cwd()
         });
 

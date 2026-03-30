@@ -93,6 +93,29 @@ test('returns unknown for unrecognized imported theme', (t) => {
     assert.equal(inferred, 'unknown');
 });
 
+test('infers recognized Hugo themes from yaml/yml/json config files', (t) => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-theme-hugo-config-formats-'));
+    t.after(() => {
+        fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    const yamlDir = path.join(projectDir, 'yaml');
+    fs.mkdirSync(yamlDir, { recursive: true });
+    fs.writeFileSync(path.join(yamlDir, 'config.yaml'), 'theme: Mainroad\n', 'utf-8');
+
+    const ymlDir = path.join(projectDir, 'yml');
+    fs.mkdirSync(ymlDir, { recursive: true });
+    fs.writeFileSync(path.join(ymlDir, 'config.yml'), 'theme: anatole\n', 'utf-8');
+
+    const jsonDir = path.join(projectDir, 'json');
+    fs.mkdirSync(jsonDir, { recursive: true });
+    fs.writeFileSync(path.join(jsonDir, 'config.json'), JSON.stringify({ theme: 'PaperMod' }), 'utf-8');
+
+    assert.equal(themeService.inferRecognizedThemeIdFromProject(yamlDir, 'hugo'), 'mainroad');
+    assert.equal(themeService.inferRecognizedThemeIdFromProject(ymlDir, 'hugo'), 'anatole');
+    assert.equal(themeService.inferRecognizedThemeIdFromProject(jsonDir, 'hugo'), 'papermod');
+});
+
 test('installAndApplyTheme uses Windows-safe runner and env-based mirror fallback for Hexo theme install', async (t) => {
     const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-theme-install-hexo-'));
     t.after(() => {
@@ -292,6 +315,37 @@ test('readThemeConfig and saveThemeConfig cover file selection branches', (t) =>
     assert.equal(hugoReadFromHugoToml.theme, 'hugo-theme-stack');
 
     assert.deepEqual(themeService.readThemeConfig(projectDir, 'other'), {});
+});
+
+test('saveThemeConfig preserves existing Hugo yaml/yml/json config formats', (t) => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bfe-theme-hugo-save-formats-'));
+    t.after(() => {
+        fs.rmSync(rootDir, { recursive: true, force: true });
+    });
+
+    const yamlDir = path.join(rootDir, 'yaml');
+    fs.mkdirSync(yamlDir, { recursive: true });
+    fs.writeFileSync(path.join(yamlDir, 'config.yaml'), 'theme: old-theme\ntitle: demo\n', 'utf-8');
+    themeService.saveThemeConfig(yamlDir, 'hugo', { theme: 'Mainroad', title: 'demo' });
+    const yamlConfig = themeService.readThemeConfig(yamlDir, 'hugo');
+    assert.equal(yamlConfig.theme, 'Mainroad');
+    assert.equal(fs.existsSync(path.join(yamlDir, 'config.toml')), false);
+
+    const ymlDir = path.join(rootDir, 'yml');
+    fs.mkdirSync(ymlDir, { recursive: true });
+    fs.writeFileSync(path.join(ymlDir, 'config.yml'), 'theme: old-theme\ntitle: demo\n', 'utf-8');
+    themeService.saveThemeConfig(ymlDir, 'hugo', { theme: 'anatole', title: 'demo' });
+    const ymlConfig = themeService.readThemeConfig(ymlDir, 'hugo');
+    assert.equal(ymlConfig.theme, 'anatole');
+    assert.equal(fs.existsSync(path.join(ymlDir, 'config.toml')), false);
+
+    const jsonDir = path.join(rootDir, 'json');
+    fs.mkdirSync(jsonDir, { recursive: true });
+    fs.writeFileSync(path.join(jsonDir, 'config.json'), JSON.stringify({ theme: 'old-theme', title: 'demo' }), 'utf-8');
+    themeService.saveThemeConfig(jsonDir, 'hugo', { theme: 'PaperMod', title: 'demo' });
+    const jsonConfig = themeService.readThemeConfig(jsonDir, 'hugo');
+    assert.equal(jsonConfig.theme, 'PaperMod');
+    assert.equal(fs.existsSync(path.join(jsonDir, 'config.toml')), false);
 });
 
 test('saveLocalAssetToBlog throws when local file is missing', () => {

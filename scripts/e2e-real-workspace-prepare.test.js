@@ -42,7 +42,7 @@ function loadPrepareModuleForTests() {
     const original = fs.readFileSync(filePath, 'utf8');
     const instrumented = original.replace(
         /main\(\)\.catch\([\s\S]*?\);\s*$/,
-        'module.exports = { applyThemeSpecificConfig };\n'
+        'module.exports = { applyThemeSpecificConfig, hasLocalHexoExecutable, ensureHexoDependenciesReady };\n'
     );
 
     const mod = new Module(filePath, module);
@@ -70,6 +70,43 @@ test('landscape prepare config uses theme-specific banner and favicon keys', () 
     assert.equal(config.theme_config?.favicon, '/img/e2e-favicon.jpg');
     assert.equal(config.theme_config?.background_image, undefined);
     assert.equal(config.favicon, undefined);
+});
+
+test('ensureHexoDependenciesReady skips install when local hexo exists', () => {
+    const { ensureHexoDependenciesReady } = loadPrepareModuleForTests();
+    let installCalls = 0;
+
+    const result = ensureHexoDependenciesReady('D:/tmp/hexo-project', {
+        platform: 'win32',
+        existsSync: (filePath) => /node_modules[\\/]+\.bin[\\/]+hexo\.cmd$/i.test(filePath),
+        installDependencies: () => {
+            installCalls += 1;
+            return { ok: true, logs: [] };
+        }
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.repaired, false);
+    assert.equal(installCalls, 0);
+});
+
+test('ensureHexoDependenciesReady repairs missing local hexo via installDependencies', () => {
+    const { ensureHexoDependenciesReady } = loadPrepareModuleForTests();
+    let installCalls = 0;
+
+    const result = ensureHexoDependenciesReady('D:/tmp/hexo-project', {
+        platform: 'win32',
+        existsSync: () => false,
+        installDependencies: () => {
+            installCalls += 1;
+            return { ok: true, logs: [{ command: 'pnpm install', status: 0 }] };
+        }
+    });
+
+    assert.equal(installCalls, 1);
+    assert.equal(result.ok, true);
+    assert.equal(result.repaired, true);
+    assert.deepEqual(result.logs, [{ command: 'pnpm install', status: 0 }]);
 });
 
 test('package script contracts include Task 1 gate scripts', () => {

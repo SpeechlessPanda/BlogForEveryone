@@ -20,10 +20,18 @@ function readText(filePath) {
 
 function run(cwd, command, args, options = {}) {
     return new Promise((resolve) => {
+        const resolveWindowsCmd = () => {
+            const comspec = String(process.env.ComSpec || '').trim();
+            if (comspec && fs.existsSync(comspec)) {
+                return comspec;
+            }
+            return 'cmd.exe';
+        };
+
         const useWindowsPnpmWrapper = process.platform === 'win32'
             && Boolean(options.shell)
             && String(command || '').toLowerCase() === 'pnpm';
-        const actualCommand = useWindowsPnpmWrapper ? (process.env.ComSpec || 'cmd.exe') : command;
+        const actualCommand = useWindowsPnpmWrapper ? resolveWindowsCmd() : command;
         const actualArgs = useWindowsPnpmWrapper ? ['/d', '/s', '/c', 'pnpm.cmd', ...args] : args;
 
         const child = spawn(actualCommand, actualArgs, {
@@ -40,6 +48,9 @@ function run(cwd, command, args, options = {}) {
         });
         child.stderr.on('data', (d) => {
             stderr += d.toString();
+        });
+        child.on('error', (error) => {
+            resolve({ ok: false, code: 1, stdout, stderr: `${stderr}${stderr ? '\n' : ''}${String(error && error.message ? error.message : error)}` });
         });
         child.on('close', (code) => {
             resolve({ ok: code === 0, code: code ?? 1, stdout, stderr });

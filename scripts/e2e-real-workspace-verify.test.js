@@ -185,6 +185,44 @@ test('verify runner uses Windows-safe cmd wrapper for pnpm build publish path', 
     assert.equal(calls[0][2].windowsHide, true);
 });
 
+test('verify runner falls back to cmd.exe when ComSpec is invalid', async (t) => {
+    const calls = [];
+    const mocked = loadVerifyModuleForTests({
+        spawnImpl: (...args) => {
+            calls.push(args);
+            return createMockChildProcess({ code: 0, stdout: 'ok', stderr: '' });
+        },
+        comspec: 'Z:/__missing__/cmd.exe'
+    });
+    t.after(() => mocked.restore());
+
+    const result = await mocked.verifyModule.run('C:/tmp/project', 'pnpm', ['build'], { shell: true });
+
+    assert.equal(result.ok, true);
+    assert.equal(path.basename(calls[0][0]).toLowerCase(), 'cmd.exe');
+    assert.deepEqual(calls[0][1], ['/d', '/s', '/c', 'pnpm.cmd', 'build']);
+});
+
+test('verify runner captures spawn error instead of crashing', async (t) => {
+    const mocked = loadVerifyModuleForTests({
+        spawnImpl: () => {
+            const child = new EventEmitter();
+            child.stdout = new EventEmitter();
+            child.stderr = new EventEmitter();
+            queueMicrotask(() => {
+                child.emit('error', new Error('spawn failed test'));
+            });
+            return child;
+        }
+    });
+    t.after(() => mocked.restore());
+
+    const result = await mocked.verifyModule.run('C:/tmp/project', 'pnpm', ['build'], { shell: true });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /spawn failed test/i);
+});
+
 test('verify-real-workspace wrapper runs prepare then verify and fails fast', async () => {
     const calls = [];
     const manifestPath = path.resolve(__dirname, '..', 'e2e-real-workspaces', 'manifest.json');

@@ -4,6 +4,7 @@ const path = require('path');
 const { initProject } = require('../src/main/services/frameworkService');
 const { installAndApplyTheme, readThemeConfig, saveThemeConfig, saveLocalAssetToBlog, applyPreviewOverrides } = require('../src/main/services/themeService');
 const { ensureFrameworkPublishPackages } = require('../src/main/services/frameworkToolingService');
+const { installDependenciesWithRetry } = require('../src/main/services/envService');
 
 const ROOT = path.resolve(__dirname, '..');
 const E2E_ROOT = path.join(ROOT, 'e2e-real-workspaces');
@@ -198,6 +199,34 @@ function applyThemeSpecificConfig(config, row, assets) {
     }
 }
 
+function hasLocalHexoExecutable(projectDir, options = {}) {
+    const platform = options.platform || process.platform;
+    const existsSync = options.existsSync || fs.existsSync;
+    const binName = platform === 'win32' ? 'hexo.cmd' : 'hexo';
+    return existsSync(path.join(projectDir, 'node_modules', '.bin', binName));
+}
+
+function ensureHexoDependenciesReady(projectDir, options = {}) {
+    const existsSync = options.existsSync || fs.existsSync;
+    const installDependencies = options.installDependencies || installDependenciesWithRetry;
+    const platform = options.platform || process.platform;
+
+    if (hasLocalHexoExecutable(projectDir, { existsSync, platform })) {
+        return {
+            ok: true,
+            repaired: false,
+            logs: []
+        };
+    }
+
+    const installResult = installDependencies(projectDir);
+    return {
+        ok: Boolean(installResult && installResult.ok),
+        repaired: true,
+        logs: Array.isArray(installResult && installResult.logs) ? installResult.logs : []
+    };
+}
+
 async function prepareTheme(row) {
     const projectDir = path.join(E2E_ROOT, 'runs', RUN_ID, row.dir);
     fs.mkdirSync(projectDir, { recursive: true });
@@ -221,6 +250,13 @@ async function prepareTheme(row) {
         framework: row.framework,
         themeId: row.themeId
     });
+
+    if (row.framework === 'hexo') {
+        const dependencyReady = ensureHexoDependenciesReady(projectDir);
+        if (!dependencyReady.ok) {
+            throw new Error(`hexo dependencies install failed: ${row.framework}/${row.themeId}`);
+        }
+    }
 
     const background = saveLocalAssetToBlog({
         projectDir,

@@ -211,8 +211,35 @@ function createInstallToolingService(options = {}) {
     function ensureHugoSassShim() {
         const logs = [];
 
+        const normalizeSassRunner = (candidatePath) => {
+            if (!candidatePath) {
+                return '';
+            }
+
+            const normalized = String(candidatePath);
+            if (processImpl.platform !== 'win32') {
+                return normalized;
+            }
+
+            if (/\.ps1$/i.test(normalized)) {
+                const cmdCandidate = normalized.replace(/\.ps1$/i, '.cmd');
+                if (fsImpl.existsSync(cmdCandidate)) {
+                    return cmdCandidate;
+                }
+
+                const batCandidate = normalized.replace(/\.ps1$/i, '.bat');
+                if (fsImpl.existsSync(batCandidate)) {
+                    return batCandidate;
+                }
+
+                return '';
+            }
+
+            return normalized;
+        };
+
         if (processImpl.platform !== 'win32') {
-            const sassExecutable = resolveExecutableImpl('sass');
+            const sassExecutable = normalizeSassRunner(resolveExecutableImpl('sass'));
             if (!sassExecutable) {
                 return {
                     ok: false,
@@ -229,7 +256,7 @@ function createInstallToolingService(options = {}) {
             };
         }
 
-        const sassRunner = findSassRunner();
+        const sassRunner = normalizeSassRunner(resolveExecutableImpl('sass')) || findSassRunner();
 
         if (!sassRunner) {
             return {

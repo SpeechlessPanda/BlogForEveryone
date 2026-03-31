@@ -432,3 +432,37 @@ test('getHugoExecutionEnv returns windows shim prepare failure when runner is mi
     assert.equal(result.ok, false);
     assert.equal(result.reason, 'SASS_SHIM_PREPARE_FAILED');
 });
+
+test('getHugoExecutionEnv on windows falls back from sass.ps1 to sass.cmd when available', () => {
+    const writes = [];
+    const sassPs1 = 'C:\\Users\\runneradmin\\setup-pnpm\\node_modules\\.bin\\sass.ps1';
+    const sassCmd = 'C:\\Users\\runneradmin\\setup-pnpm\\node_modules\\.bin\\sass.cmd';
+    const svc = createInstallToolingService({
+        processImpl: {
+            platform: 'win32',
+            env: {
+                PATH: 'C:\\Windows\\System32',
+                LOCALAPPDATA: 'C:\\Users\\runneradmin\\AppData\\Local',
+                APPDATA: 'C:\\Users\\runneradmin\\AppData\\Roaming',
+                USERPROFILE: 'C:\\Users\\runneradmin'
+            },
+            cwd: () => 'C:\\repo'
+        },
+        resolveExecutableImpl: (name) => (name === 'sass' ? sassPs1 : ''),
+        fsImpl: {
+            existsSync(target) {
+                return target === sassCmd;
+            },
+            mkdirSync() {},
+            writeFileSync(target, content) {
+                writes.push({ target, content });
+            }
+        },
+        shellImpl: { openExternal: () => {} }
+    });
+
+    const result = svc.getHugoExecutionEnv();
+    assert.equal(result.ok, true);
+    assert.equal(writes.length >= 2, true);
+    assert.ok(writes.some((entry) => entry.content.includes(`\"${sassCmd}\"`) || entry.content.includes(`"${sassCmd}"`)));
+});

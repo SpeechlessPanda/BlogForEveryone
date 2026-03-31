@@ -10,6 +10,26 @@ function normalizePath(inputPath) {
             return fs.realpathSync(resolved);
         }
     }
+
+    const parsed = path.parse(resolved);
+    const tailSegments = [];
+    let cursor = resolved;
+
+    while (cursor && cursor !== parsed.root && !fs.existsSync(cursor)) {
+        tailSegments.unshift(path.basename(cursor));
+        cursor = path.dirname(cursor);
+    }
+
+    if (cursor && fs.existsSync(cursor)) {
+        let canonicalBase;
+        try {
+            canonicalBase = fs.realpathSync.native(cursor);
+        } catch {
+            canonicalBase = fs.realpathSync(cursor);
+        }
+        return path.join(canonicalBase, ...tailSegments);
+    }
+
     return resolved;
 }
 

@@ -231,7 +231,8 @@ test('workspace import delegates orchestration to workspace workflow service bou
 
     const result = await handler({}, { projectDir, name: 'Imported Blog' });
     assert.equal(moduleRef.workflowImportCalls.length, 1);
-    assert.deepEqual(moduleRef.workflowImportCalls[0], { projectDir, name: 'Imported Blog' });
+    const normalizedProjectDir = fs.realpathSync.native(projectDir);
+    assert.deepEqual(moduleRef.workflowImportCalls[0], { projectDir: normalizedProjectDir, name: 'Imported Blog' });
     assert.deepEqual(result, workflowImportResult);
 });
 

@@ -23,7 +23,7 @@ function createEnvironmentDetector(options = {}) {
         const version = String(result.stdout || '').trim();
         return {
             ok: result.status === 0,
-            isExtended: /\+extended\b/i.test(version),
+            isExtended: /(?:\+|\b)extended\b/i.test(version),
             version,
             status: result.status ?? 1
         };

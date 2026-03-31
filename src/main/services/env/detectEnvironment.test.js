@@ -73,6 +73,37 @@ test('getHugoVersionInfo handles missing executable and extended build detection
     }
 });
 
+test('getHugoVersionInfo recognizes extended marker without plus sign', () => {
+    const originalLoad = Module._load;
+    const modulePath = require.resolve('./detectEnvironment');
+
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === 'child_process') {
+            return {
+                spawnSync() {
+                    return {
+                        status: 0,
+                        stdout: 'hugo v0.147.0 windows/amd64 BuildDate=2026-03-29 extended',
+                        stderr: ''
+                    };
+                }
+            };
+        }
+        return originalLoad.call(this, request, parent, isMain);
+    };
+
+    try {
+        delete require.cache[modulePath];
+        const mod = require('./detectEnvironment');
+        const info = mod.createEnvironmentDetector().getHugoVersionInfo('hugo');
+        assert.equal(info.ok, true);
+        assert.equal(info.isExtended, true);
+    } finally {
+        Module._load = originalLoad;
+        delete require.cache[modulePath];
+    }
+});
+
 test('resolveHugoExecutable prefers extended candidates and checks version when required', () => {
     const localAppData = 'C:\\Users\\ming\\AppData\\Local';
     const linksDir = `${localAppData}\\Microsoft\\WinGet\\Links`;

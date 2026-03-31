@@ -64,25 +64,77 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if (Get-Command hugo -ErrorAction SilentlyContinue) {
-            $version = & hugo version
-            if ($version -match 'extended') {
-              Write-Host "Hugo Extended already available: $version"
-              exit 0
+
+          function Test-HugoExtended {
+            if (-not (Get-Command hugo -ErrorAction SilentlyContinue)) {
+              return $false
             }
+            $versionText = & hugo version
+            if ($versionText -match 'extended') {
+              Write-Host "Hugo Extended ready: $versionText"
+              return $true
+            }
+            return $false
           }
-          if (Get-Command choco -ErrorAction SilentlyContinue) {
+
+          function Try-ChocoInstall {
+            if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+              return $false
+            }
+            Write-Host 'Attempting Hugo Extended install via Chocolatey...'
             choco install hugo-extended -y --no-progress
-          } elseif (Get-Command winget -ErrorAction SilentlyContinue) {
+            return $LASTEXITCODE -eq 0
+          }
+
+          function Try-WingetInstall {
+            if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+              return $false
+            }
+            Write-Host 'Attempting Hugo Extended install via Winget...'
             winget install --id Hugo.Hugo.Extended --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-          } else {
-            throw "Neither choco nor winget is available to install Hugo Extended."
+            return $LASTEXITCODE -eq 0
           }
-          $version = & hugo version
-          if ($version -notmatch 'extended') {
-            throw "Installed Hugo is not an extended build: $version"
+
+          function Try-DirectZipInstall {
+            Write-Host 'Attempting Hugo Extended direct download install...'
+            $apiUrl = 'https://api.github.com/repos/gohugoio/hugo/releases/latest'
+            $release = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'BlogForEveryone-CI' }
+            $asset = $release.assets | Where-Object { $_.name -match '^hugo_extended_.*_windows-amd64\.zip$' } | Select-Object -First 1
+            if (-not $asset) {
+              return $false
+            }
+            $zipPath = Join-Path $env:RUNNER_TEMP 'hugo-extended.zip'
+            $extractDir = Join-Path $env:RUNNER_TEMP 'hugo-extended-bin'
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
+            if (Test-Path $extractDir) {
+              Remove-Item -Recurse -Force $extractDir
+            }
+            Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+            $envPath = $env:GITHUB_PATH
+            if (-not $envPath) {
+              return $false
+            }
+            Add-Content -Path $envPath -Value $extractDir
+            $env:PATH = "$extractDir;$env:PATH"
+            return $true
           }
-          Write-Host "Hugo Extended ready: $version"
+
+          if (Test-HugoExtended) {
+            exit 0
+          }
+
+          $installed = $false
+          try { if (Try-ChocoInstall) { $installed = Test-HugoExtended } } catch { Write-Warning "Chocolatey install failed: $($_.Exception.Message)" }
+          if (-not $installed) {
+            try { if (Try-WingetInstall) { $installed = Test-HugoExtended } } catch { Write-Warning "Winget install failed: $($_.Exception.Message)" }
+          }
+          if (-not $installed) {
+            try { if (Try-DirectZipInstall) { $installed = Test-HugoExtended } } catch { Write-Warning "Direct ZIP install failed: $($_.Exception.Message)" }
+          }
+
+          if (-not $installed) {
+            throw 'Failed to install Hugo Extended via Chocolatey, Winget, or direct ZIP download.'
+          }
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

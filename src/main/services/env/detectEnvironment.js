@@ -120,6 +120,12 @@ function createEnvironmentDetector(options = {}) {
             return resolveExecutableImpl(command);
         }
 
+        const envOverrideKey = `${String(command || '').toUpperCase()}_EXECUTABLE`;
+        const envOverridePath = processImpl.env?.[envOverrideKey];
+        if (envOverridePath && fsImpl.existsSync(envOverridePath)) {
+            return envOverridePath;
+        }
+
         if (command === 'hugo') {
             return resolveHugoExecutable({ requireExtended: false });
         }

@@ -143,6 +143,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Dart Sass
+        shell: pwsh
+        run: |
+          pnpm add -g sass
+          $sassCommand = Get-Command sass -ErrorAction Stop
+          "SASS_EXECUTABLE=$($sassCommand.Source)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Pinned SASS_EXECUTABLE to $($sassCommand.Source)"
+
       - name: Restore signing certificate into temp file
         shell: pwsh
         run: |

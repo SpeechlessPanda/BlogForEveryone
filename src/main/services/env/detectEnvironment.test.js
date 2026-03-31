@@ -37,6 +37,26 @@ test('resolveExecutable returns command itself when commandExists is true', () =
     assert.equal(detector.resolveExecutable('git'), 'git');
 });
 
+test('resolveExecutable honors explicit env executable override', () => {
+    const detector = createEnvironmentDetector({
+        fsImpl: {
+            existsSync: (target) => target === 'C:\\tools\\sass\\sass.cmd',
+            readdirSync: () => []
+        },
+        pathImpl: require('path'),
+        processImpl: {
+            platform: 'win32',
+            env: {
+                SASS_EXECUTABLE: 'C:\\tools\\sass\\sass.cmd',
+                LOCALAPPDATA: 'C:\\Users\\ming\\AppData\\Local'
+            }
+        },
+        commandExistsImpl: () => false
+    });
+
+    assert.equal(detector.resolveExecutable('sass'), 'C:\\tools\\sass\\sass.cmd');
+});
+
 test('getHugoVersionInfo handles missing executable and extended build detection', () => {
     const missing = createEnvironmentDetector().getHugoVersionInfo('');
     assert.equal(missing.ok, false);

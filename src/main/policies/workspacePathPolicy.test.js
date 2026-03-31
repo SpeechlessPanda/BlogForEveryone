@@ -145,6 +145,21 @@ test('normalizePath resolves junction-backed real paths before comparison', () =
     fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('isSubPath accepts non-existing child path under junction-backed root', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-policy-realpath-child-'));
+    const targetRoot = path.join(tmpDir, 'target');
+    const linkRoot = path.join(tmpDir, 'linked-workspace');
+    const sourceRoot = path.join(targetRoot, 'source');
+    const futureFile = path.join(linkRoot, 'source', 'about', 'index.md');
+
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    fs.symlinkSync(targetRoot, linkRoot, 'junction');
+
+    assert.equal(isSubPath(targetRoot, futureFile), true);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('workspaceIpc and contentService reuse shared workspace path policy helpers instead of local duplicates', () => {
     const workspaceIpcSource = fs.readFileSync(path.join(__dirname, '../ipc/workspaceIpc.js'), 'utf-8');
     const contentServiceSource = fs.readFileSync(path.join(__dirname, '../services/contentService.js'), 'utf-8');

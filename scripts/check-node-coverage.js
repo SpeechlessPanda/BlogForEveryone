@@ -2,7 +2,7 @@ const THRESHOLD = 75;
 
 function parseAllFilesCoverage(rawText) {
     const text = String(rawText || '');
-    const allFilesLine = text.split(/\r?\n/).find((line) => /^\s*all files\b/i.test(line));
+    const allFilesLine = text.split(/\r?\n/).find((line) => /^\s*#?\s*all files\b/i.test(line));
     if (!allFilesLine) {
         return null;
     }

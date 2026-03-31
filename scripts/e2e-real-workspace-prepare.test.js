@@ -110,6 +110,25 @@ test('check-node-coverage parser enforces all files 75/75/75 thresholds', () => 
     assert.match(failureText, /^NODE_COVERAGE_THRESHOLD_FAILED\s+metric=lines\s+required=75\s+actual=74.99$/m);
 });
 
+test('check-node-coverage parser accepts GitHub log comment-prefixed all files rows', () => {
+    const checkCoveragePath = path.join(__dirname, 'check-node-coverage.js');
+    // eslint-disable-next-line global-require
+    const checkCoverage = require(checkCoveragePath);
+
+    const coverageText = [
+        '# -------------------------------------------------------------------',
+        '# all files                |  94.42 |    84.59 |   80.16 |',
+        '# -------------------------------------------------------------------'
+    ].join('\n');
+
+    const summary = checkCoverage.parseAllFilesCoverage(coverageText);
+    assert.deepEqual(summary, {
+        lines: 94.42,
+        branches: 84.59,
+        functions: 80.16
+    });
+});
+
 test('run-node-coverage preserves node test failure while still checking thresholds', async () => {
     const spawnCalls = [];
     const loaded = loadRunNodeCoverageModuleForTests({

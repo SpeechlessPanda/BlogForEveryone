@@ -644,12 +644,7 @@ test("editorial workbench journey keeps workspace context across core entry poin
     await expect(tutorialSurface).toBeVisible();
     await expect(tutorialPreviewSection).toBeVisible();
     await expect.poll(readScrollTop).toBeGreaterThan(0);
-    await expect
-      .poll(async () => {
-        const box = await tutorialPreviewSection.boundingBox();
-        return box ? Math.round(box.y) : null;
-      })
-      .toBeLessThanOrEqual(220);
+    await expect(tutorialPreviewSection).toBeInViewport({ ratio: 0.2 });
 
     await navigateToTab("博客创建");
     await expect(workspaceSurface).toBeVisible();

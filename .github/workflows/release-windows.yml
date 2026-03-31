@@ -1,0 +1,108 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.5)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish signed Windows release
+    runs-on: windows-2022
+    environment: production-release
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout tag/ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Verify tag matches package version
+        shell: pwsh
+        run: |
+          $pkgVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $expectedTag = "v$pkgVersion"
+          $actualTag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.tag }}' } else { '${{ github.ref_name }}' }
+          if ($actualTag -ne $expectedTag) {
+            throw "Tag/package mismatch: got '$actualTag' but package.json version expects '$expectedTag'."
+          }
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore signing certificate into temp file
+        shell: pwsh
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String('${{ secrets.BFE_CODESIGN_PFX_B64 }}'))
+          "CSC_LINK=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CSC_KEY_PASSWORD=${{ secrets.BFE_CODESIGN_PFX_PASSWORD }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify signing env
+        run: pnpm run verify:windows-signing-env
+
+      - name: Run full release pipeline
+        run: pnpm run release
+
+      - name: Verify installer signature
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist -Filter "*Setup-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $exe) { throw "No installer found in dist/." }
+          $signTool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signTool) { throw "signtool.exe not found" }
+          & $signTool.FullName verify /pa /v $exe.FullName
+
+      - name: Upload release artifacts for audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-assets-${{ github.ref_name }}
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+
+      - name: Cleanup certificate file
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item (Join-Path $env:RUNNER_TEMP "codesign.pfx") -ErrorAction SilentlyContinue

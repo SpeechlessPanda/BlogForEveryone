@@ -1,5 +1,6 @@
 function registerRssIpcHandlers({
     ipcMain,
+    getWorkspacePolicy,
     listSubscriptions,
     addSubscription,
     removeSubscription,
@@ -15,8 +16,19 @@ function registerRssIpcHandlers({
     ipcMain.handle('rss:syncSubscriptions', async () => syncSubscriptions());
     ipcMain.handle('rss:markItemRead', async (_event, payload) => markItemRead(payload));
     ipcMain.handle('rss:getUnreadSummary', async () => getUnreadSummary());
-    ipcMain.handle('rss:exportSubscriptions', async (_event, payload) => exportSubscriptions(payload));
-    ipcMain.handle('rss:importSubscriptions', async (_event, payload) => importSubscriptions(payload));
+    ipcMain.handle('rss:exportSubscriptions', async (_event, payload) => {
+        const policy = getWorkspacePolicy();
+        const workspace = policy.getManagedWorkspace(payload?.workspaceId);
+        return exportSubscriptions({ projectDir: workspace.projectDir });
+    });
+    ipcMain.handle('rss:importSubscriptions', async (_event, payload) => {
+        const policy = getWorkspacePolicy();
+        const workspace = policy.getManagedWorkspace(payload?.workspaceId);
+        return importSubscriptions({
+            projectDir: workspace.projectDir,
+            strategy: payload?.strategy
+        });
+    });
 }
 
 module.exports = {

@@ -38,11 +38,18 @@ pnpm run release
 2. `CSC_KEY_PASSWORD`：证书密码。
 3. `GH_TOKEN`：用于发布 Release（当使用 `pnpm run release` 时）。
 
-### 3.2 签名打包
+### 3.2 签名打包（已强制校验）
 
 ```bash
 pnpm run package:signed
 ```
+
+`package:signed` 与 `release` 现在都会先执行 `verify:windows-signing-env`：
+
+- 必须提供 `CSC_LINK`
+- 必须提供 `CSC_KEY_PASSWORD`
+
+缺少任一变量会直接失败，避免误发未签名安装包。
 
 ### 3.3 签名发布
 
@@ -71,3 +78,10 @@ pnpm run release
 2. 发布更高版本到 Release。
 3. 在旧版本中点击“立即检查更新”。
 4. 确认看到下载进度并可“立即重启并安装”。
+
+## 7. Windows 警告最小化建议（SmartScreen）
+
+1. 使用同一发行者证书持续签名（避免频繁切换证书主体）。
+2. 保持稳定下载渠道（优先 GitHub Release 官方资产链接）。
+3. 证书签名时启用时间戳（RFC3161）以保证证书过期后签名仍可验证。
+4. 只发布签名构建（`package:signed` / `release`），不要把本地未签名包用于正式分发。

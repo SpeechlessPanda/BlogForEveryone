@@ -14,6 +14,7 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /WorkflowSummary/);
   assert.match(source, /SystemStatusPanel/);
   assert.match(source, /ShellModalLayer/);
+  assert.match(source, /LoginView/);
   assert.match(source, /:data-shell-appearance="shellAppearance"/);
   assert.match(source, /:is-shell-popup-open="isShellPopupOpen"/);
   assert.match(source, /:shell-appearance="shellAppearance"/);
@@ -24,6 +25,7 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /@open-shell-popup="openShellPopup"/);
   assert.match(source, /@close-shell-popup="closeShellPopup"/);
   assert.match(source, /@toggle-shell-appearance="toggleShellAppearance"/);
+  assert.match(source, /<LoginView[\s\S]*v-if="!isLoggedIn && activeTab === 'login'"/);
 
   const forbiddenInlineShellPresentation = [
     "GitHub 登录（OAuth 设备码）",
@@ -107,7 +109,7 @@ test("App shell styles keep document scroll outside the workflow view container"
   );
   assert.match(
     stylesSource,
-    /\.shell-popup-panel-wrap\s*\{[\s\S]*position:\s*fixed;[\s\S]*top:\s*var\(--shell-popup-top[\s\S]*left:\s*calc\(var\(--shell-popup-left[\s\S]*var\(--shell-popup-width/,
+    /\.shell-popup-panel-wrap\s*\{[\s\S]*position:\s*fixed;[\s\S]*top:\s*var\(--shell-popup-top[\s\S]*left:\s*calc\(\s*var\(--shell-popup-left[\s\S]*var\(--shell-popup-width/,
     "expected styles.css to position the shell popup from sidebar anchor CSS variables instead of fixed sidebar padding",
   );
   assert.match(
@@ -147,7 +149,7 @@ test("App shell styles make dark editorial helper copy, links, and modal text fo
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.page-link-row a,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.workflow-compact-block a,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio \.page-link-row a\s*\{[\s\S]*color:\s*var\(--shell-highlight\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\]\s+\.page-link-row\s+a,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\]\s+\.workflow-compact-block\s+a,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio[\s\S]*\.page-link-row[\s\S]*a\s*\{[\s\S]*color:\s*var\(--shell-highlight\);/,
     "expected dark editorial links on workflow shell surfaces to use the shell highlight token",
   );
 });
@@ -217,7 +219,7 @@ test("App shell styles keep dark metadata labels and mixed card surfaces readabl
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.shell-topbar \.page-kicker,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-summary \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.shell-popup-panel \.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.sidebar-entry-label[\s\S]*color:\s*var\(--shell-highlight\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\]\s+\.shell-topbar\s+\.page-kicker,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\]\s+\.shell-summary\s+\.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.shell-popup-panel[\s\S]*\.status-label,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\]\s+\.sidebar-entry-label[\s\S]*color:\s*var\(--shell-highlight\);/,
     "expected shell-specific metadata labels to keep the brighter highlight token instead of falling back to muted dark-shell copy",
   );
   assert.match(

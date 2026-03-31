@@ -54,6 +54,11 @@ test('env handlers do not crash when payload is missing', async () => {
         openInstaller: (tool) => ({ ok: true, tool }),
         autoInstallToolWithWinget: (tool) => ({ ok: true, tool }),
         ensurePnpm: () => ({ ok: true }),
+        getWorkspacePolicy: () => ({
+            getManagedWorkspace() {
+                throw new Error('缺少受管工作区 ID。');
+            }
+        }),
         installDependenciesWithRetry: (projectDir) => {
             installDependenciesCallCount += 1;
             return { ok: true, projectDir };
@@ -66,16 +71,46 @@ test('env handlers do not crash when payload is missing', async () => {
 
     const openResult = await openInstallerHandler({}, undefined);
     const installResult = await autoInstallHandler({}, undefined);
-    const depsResult = await installDepsHandler({}, undefined);
+    await assert.rejects(() => installDepsHandler({}, undefined), /受管工作区/);
 
     assert.deepEqual(openResult, { ok: true, tool: undefined });
     assert.deepEqual(installResult, { ok: true, tool: undefined });
-    assert.deepEqual(depsResult, {
-        ok: false,
-        reason: 'PROJECT_DIR_MISSING',
-        message: '缺少项目目录，无法安装依赖。'
-    });
     assert.equal(installDependenciesCallCount, 0);
+});
+
+test('project:installDependencies resolves canonical managed workspace path before installer runs', async () => {
+    const harness = createIpcMainHarness();
+    const installCalls = [];
+
+    registerEnvIpcHandlers({
+        ipcMain: harness.ipcMain,
+        checkEnvironment: () => ({ ready: true }),
+        openInstaller: () => ({ ok: true }),
+        autoInstallToolWithWinget: () => ({ ok: true }),
+        ensurePnpm: () => ({ ok: true }),
+        getWorkspacePolicy: () => ({
+            getManagedWorkspace(workspaceId) {
+                assert.equal(workspaceId, 'ws-1');
+                return {
+                    id: 'ws-1',
+                    projectDir: 'D:/managed/workspace'
+                };
+            }
+        }),
+        installDependenciesWithRetry: (projectDir) => {
+            installCalls.push(projectDir);
+            return { ok: true, projectDir };
+        }
+    });
+
+    const handler = harness.handlers.get('project:installDependencies');
+    const result = await handler({}, {
+        workspaceId: 'ws-1',
+        projectDir: 'D:/untrusted/path'
+    });
+
+    assert.deepEqual(installCalls, ['D:/managed/workspace']);
+    assert.deepEqual(result, { ok: true, projectDir: 'D:/managed/workspace' });
 });
 
 test('theme:getConfig and theme:saveConfig reject missing managed workspace context', async () => {

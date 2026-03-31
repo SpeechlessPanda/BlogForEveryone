@@ -3,7 +3,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { getAccessTokenForPrivilegedUse } = require('./githubAuthService');
 const {
-    FIXED_BACKUP_REPO_NAME,
     REMOTE_REPO_VISIBILITY,
     REMOTE_SITE_TYPES,
     REMOTE_REPO_SOURCE_TYPES
@@ -183,6 +182,7 @@ async function ensureRemoteRepositories(payload = {}) {
         siteType,
         deployRepoName: payload.deployRepoName
     });
+    const backupRepoName = String(payload.backupRepoName || payload.backupRepo?.name || '').trim();
 
     let deployRepo = payload.deployRepo || null;
     let backupRepo = payload.backupRepo || null;
@@ -204,10 +204,10 @@ async function ensureRemoteRepositories(payload = {}) {
             failedCreateTarget = 'backup';
             backupRepo = {
                 ...(await createRepository({
-                    name: FIXED_BACKUP_REPO_NAME,
+                    name: backupRepoName,
                     visibility: payload.backupRepoVisibility || REMOTE_REPO_VISIBILITY.private
                 })),
-                name: FIXED_BACKUP_REPO_NAME,
+                name: backupRepoName,
                 sourceType: REMOTE_REPO_SOURCE_TYPES.autoCreated
             };
         }

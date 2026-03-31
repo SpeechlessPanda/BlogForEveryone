@@ -136,7 +136,7 @@ async function createAndEdit() {
   const autoPublishSiteType = ws.siteType || "project-pages";
   const autoPublishLogin = ws.deployRepo?.owner || ws.backupRepo?.owner || "";
   const autoPublishDeployRepoName = ws.deployRepo?.name || "";
-  const autoPublishBackupRepoName = ws.backupRepo?.name || "BFE";
+  const autoPublishBackupRepoName = ws.backupRepo?.name || "";
   const autoPublishBackupRepoUrl = ws.backupRepo?.url || "";
   await refreshAutoPublishIdentity(autoPublishLogin);
   const autoPublishGitUserName = autoPublishIdentity.value.name;
@@ -160,7 +160,7 @@ async function createAndEdit() {
           if (!autoPublishBackupRepoUrl) {
             state.jobId = "";
             state.jobStatus =
-              "自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。";
+              "自动发布前需要先在发布与备份页保存备份仓库地址。";
             return;
           }
           const job = await contentActions.watchAndAutoPublish({
@@ -261,7 +261,7 @@ async function saveExistingContentChanges() {
   const autoPublishSiteType = ws.siteType || "project-pages";
   const autoPublishLogin = ws.deployRepo?.owner || ws.backupRepo?.owner || "";
   const autoPublishDeployRepoName = ws.deployRepo?.name || "";
-  const autoPublishBackupRepoName = ws.backupRepo?.name || "BFE";
+  const autoPublishBackupRepoName = ws.backupRepo?.name || "";
   const autoPublishBackupRepoUrl = ws.backupRepo?.url || "";
   await refreshAutoPublishIdentity(autoPublishLogin);
   const autoPublishGitUserName = autoPublishIdentity.value.name;
@@ -281,7 +281,7 @@ async function saveExistingContentChanges() {
         if (!autoPublishBackupRepoUrl) {
           state.jobId = "";
           state.jobStatus =
-            "自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。";
+            "自动发布前需要先在发布与备份页保存备份仓库地址。";
           return;
         }
         const job = await contentActions.publishSavedContent({
@@ -541,7 +541,7 @@ watch(
             如果当前工程还没有已保存的发布仓库地址，自动发布会自动跳过，先完成写作与保存。
           </p>
           <p class="section-helper">
-            如果当前工程还没有已保存的 BFE 备份仓库地址，自动发布会自动跳过，先回到发布与备份页补齐备份仓库。
+            如果当前工程还没有已保存的备份仓库地址，自动发布会自动跳过，先回到发布与备份页补齐备份仓库。
           </p>
           <p class="section-helper">
             如果当前工程是用户主页，但保存的发布仓库不是 用户名.github.io，自动发布会先提示你回到发布与备份页修正仓库绑定。
@@ -557,10 +557,10 @@ watch(
             </select>
           </div>
           <p class="section-helper">
-            会沿用当前工程已保存的站点类型、发布仓库和 BFE 备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。
+            会沿用当前工程已保存的站点类型、发布仓库和备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。
           </p>
           <p class="section-helper">
-            保存后自动发布仍会更新 BFE 备份仓库，确保 GitHub 恢复拿到的是最新内容。
+            保存后自动发布仍会更新备份仓库，确保 GitHub 恢复拿到的是最新内容。
           </p>
           <p class="section-helper">
             已有内容点击“保存标题与正文”后，会直接触发自动发布，不需要再等下一次文件改动。

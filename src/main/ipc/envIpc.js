@@ -4,6 +4,7 @@ function registerEnvIpcHandlers({
     openInstaller,
     autoInstallToolWithWinget,
     ensurePnpm,
+    getWorkspacePolicy,
     installDependenciesWithRetry
 }) {
     ipcMain.handle('env:status', async () => checkEnvironment());
@@ -21,15 +22,9 @@ function registerEnvIpcHandlers({
     });
 
     ipcMain.handle('project:installDependencies', async (_event, payload) => {
-        const projectDir = payload?.projectDir;
-        if (!projectDir) {
-            return {
-                ok: false,
-                reason: 'PROJECT_DIR_MISSING',
-                message: '缺少项目目录，无法安装依赖。'
-            };
-        }
-        return installDependenciesWithRetry(projectDir);
+        const policy = getWorkspacePolicy();
+        const workspace = policy.getManagedWorkspace(payload?.workspaceId);
+        return installDependenciesWithRetry(workspace.projectDir);
     });
 }
 

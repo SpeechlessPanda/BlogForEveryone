@@ -57,9 +57,7 @@ const selectedGithubBackupRepo = computed(
     githubRepos.value.find((repo) => repo.url === githubImportForm.backupRepoUrl) ||
     parseGithubRepo(githubImportForm.backupRepoUrl),
 );
-const githubBackupRepoChoices = computed(() =>
-  githubRepos.value.filter((repo) => repo.name === "BFE"),
-);
+const githubBackupRepoChoices = computed(() => githubRepos.value);
 const hasExactDeployRepoAutodetect = computed(
   () => Boolean(githubImportAutoSelection.deployRepoUrl),
 );
@@ -71,23 +69,23 @@ const githubRecoveryNextStepNote = computed(() => {
     return "如果 GitHub 仓库列表暂时加载失败，可手动填写恢复仓库地址继续操作。";
   }
 
-   if (!githubBackupRepoChoices.value.length) {
-    return "未在列表中发现 BFE 时，可直接手动填写仓库地址继续恢复。";
+  if (!githubBackupRepoChoices.value.length) {
+    return "未读取到仓库列表时，可直接手动填写恢复源仓库地址继续恢复。";
   }
 
   if (hasExactDeployRepoAutodetect.value && hasExactBackupRepoAutodetect.value) {
-    return "已自动识别发布仓库和 BFE 备份仓库，下一步只需选择目标恢复目录。";
+    return "已自动识别发布仓库和恢复源仓库，下一步只需选择目标恢复目录。";
   }
 
   if (hasExactBackupRepoAutodetect.value) {
-    return "已自动识别 BFE 备份仓库；如果发布仓库没有唯一精确匹配，可继续手动选择。";
+    return "已自动识别恢复源仓库；如果发布仓库没有唯一精确匹配，可继续手动选择。";
   }
 
   if (hasExactDeployRepoAutodetect.value) {
-    return "已自动识别用户名站点发布仓库；如果 BFE 没有唯一精确匹配，可继续手动选择。";
+    return "已自动识别用户名站点发布仓库；如果恢复源仓库未自动识别，可继续手动选择。";
   }
 
-  return "会基于当前 GitHub 登录名精确匹配 `${login}.github.io` 和 `BFE`；未命中或不唯一时可继续手动选择。";
+  return "会基于当前 GitHub 登录名精确匹配 `${login}.github.io`；恢复源仓库支持从任意仓库中手动选择。";
 });
 
 function setResultState(summary, note, cards = [], raw = null) {
@@ -245,17 +243,6 @@ async function doImport() {
 
 async function doGithubImport() {
   try {
-    if (
-      selectedGithubBackupRepo.value &&
-      String(selectedGithubBackupRepo.value.name || "").trim().toLowerCase() !== "bfe"
-    ) {
-      setStructuredError(
-        "GitHub 直接恢复失败",
-        new Error(`备份仓库必须为 BFE，当前为 ${selectedGithubBackupRepo.value.name}`),
-      );
-      return;
-    }
-
     const data = await importWorkspaceFromGithub({
       name: githubImportForm.name,
       localDestinationPath: githubImportForm.localDestinationPath,
@@ -271,7 +258,7 @@ async function doGithubImport() {
         {
           key: "github-backup",
           label: "恢复来源",
-          message: selectedGithubBackupRepo.value?.url || "已选择 BFE 备份仓库。",
+          message: selectedGithubBackupRepo.value?.url || "已选择恢复源仓库。",
         },
         {
           key: "github-destination",
@@ -470,7 +457,7 @@ onMounted(async () => {
             <p class="section-eyebrow">Step 02 · GitHub 直接恢复</p>
             <h2>GitHub 直接恢复</h2>
             <p class="section-helper">
-              从 GitHub 里的 BFE 备份仓库恢复博客工程，并落到你选择的目标恢复目录。
+              从 GitHub 仓库恢复博客工程，并落到你选择的目标恢复目录。
             </p>
           </div>
         </div>
@@ -513,13 +500,13 @@ onMounted(async () => {
             />
           </div>
           <div>
-            <label>BFE 备份仓库</label>
+            <label>恢复源仓库</label>
             <select
               v-if="githubBackupRepoChoices.length"
               v-model="githubImportForm.backupRepoUrl"
               @change="markGithubBackupRepoManual"
             >
-              <option value="">请选择 BFE 备份仓库</option>
+              <option value="">请选择恢复源仓库</option>
               <option v-for="repo in githubBackupRepoChoices" :key="repo.url" :value="repo.url">
                 {{ repo.owner }}/{{ repo.name }}
               </option>
@@ -527,7 +514,7 @@ onMounted(async () => {
             <input
               v-else
               v-model="githubImportForm.backupRepoUrl"
-              placeholder="https://github.com/用户名/BFE.git"
+              placeholder="https://github.com/用户名/任意仓库.git"
               @input="markGithubBackupRepoManual"
             />
           </div>

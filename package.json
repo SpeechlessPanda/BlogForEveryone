@@ -1,6 +1,6 @@
 {
     "name": "blog-for-everyone",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "Beginner-friendly blog builder platform for Hexo and Hugo",
     "main": "src/main/main.js",
     "author": "BlogForEveryone",
@@ -14,16 +14,18 @@
         "test:coverage": "node scripts/run-node-coverage.js",
         "test:e2e:workspace": "node scripts/verify-real-workspace.js",
         "verify:premerge": "pnpm run test:coverage && pnpm exec node --test && pnpm run build:renderer && pnpm run test:e2e:ui",
-        "verify:release": "pnpm run verify:premerge && pnpm run test:e2e:workspace && pnpm run package:signed",
+        "verify:git-clean": "node scripts/verify-git-clean.js",
+        "verify:release": "pnpm run verify:git-clean && pnpm run verify:premerge && pnpm run test:e2e:workspace && pnpm run package:signed",
         "test:e2e:ui": "playwright test e2e/electron/editorial-workbench.spec.mjs",
         "build:renderer": "vite build --config vite.config.mjs",
         "generate:icon": "node scripts/generate-win-icon.js",
         "sanitize:release": "node scripts/sanitize-release.js",
+        "verify:windows-signing-env": "node scripts/verify-windows-signing-env.js",
         "start": "cross-env NODE_ENV=production electron .",
         "lint": "eslint .",
         "package": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win",
-        "package:signed": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win --publish never",
-        "release": "pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win --publish always"
+        "package:signed": "pnpm run verify:windows-signing-env && pnpm run generate:icon && pnpm run sanitize:release && pnpm run build:renderer && electron-builder --win --publish never",
+        "release": "pnpm run verify:release && electron-builder --win --publish always"
     },
     "packageManager": "pnpm@9.15.0",
     "dependencies": {
@@ -75,7 +77,7 @@
         ],
         "win": {
             "icon": "build/icon.ico",
-            "signAndEditExecutable": false,
+            "signAndEditExecutable": true,
             "verifyUpdateCodeSignature": true,
             "target": "nsis"
         },

@@ -205,7 +205,11 @@ body::before {
 .info-card {
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(249, 242, 232, 0.82));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    rgba(249, 242, 232, 0.82)
+  );
   padding: 14px;
   box-shadow: 0 10px 24px rgba(var(--shadow-tint), 0.08);
 }
@@ -272,7 +276,11 @@ body::before {
 }
 
 .shell-summary-lead {
-  background: linear-gradient(180deg, rgba(223, 236, 228, 0.88), rgba(247, 241, 232, 0.84));
+  background: linear-gradient(
+    180deg,
+    rgba(223, 236, 228, 0.88),
+    rgba(247, 241, 232, 0.84)
+  );
 }
 
 .shell-summary h2,
@@ -323,7 +331,11 @@ body::before {
   margin-top: 12px;
   border: 1px solid rgba(131, 110, 85, 0.28);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(252, 247, 239, 0.95), rgba(244, 235, 223, 0.88));
+  background: linear-gradient(
+    180deg,
+    rgba(252, 247, 239, 0.95),
+    rgba(244, 235, 223, 0.88)
+  );
   overflow: hidden;
 }
 
@@ -421,7 +433,11 @@ body::before {
   overflow: hidden;
   border-color: rgba(131, 110, 85, 0.36);
   background:
-    radial-gradient(circle at top right, rgba(47, 109, 91, 0.12), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(47, 109, 91, 0.12),
+      transparent 34%
+    ),
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 240, 230, 0.9)),
     var(--panel);
 }
@@ -430,7 +446,12 @@ body::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.18), transparent 72%);
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.18),
+    transparent 72%
+  );
   pointer-events: none;
 }
 
@@ -442,7 +463,11 @@ body::before {
 .page-shell--rss .page-hero,
 .page-shell--tutorial .page-hero {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(243, 236, 225, 0.86)),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.82),
+      rgba(243, 236, 225, 0.86)
+    ),
     var(--panel);
 }
 
@@ -486,7 +511,11 @@ body::before {
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 12px;
   padding: 12px 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(243, 236, 225, 0.76));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.78),
+    rgba(243, 236, 225, 0.76)
+  );
   box-shadow: 0 8px 18px rgba(var(--shadow-tint), 0.06);
 }
 
@@ -499,11 +528,19 @@ body::before {
 
 .page-signal--accent {
   border-color: rgba(47, 109, 91, 0.3);
-  background: linear-gradient(180deg, rgba(220, 235, 227, 0.92), rgba(247, 240, 230, 0.86));
+  background: linear-gradient(
+    180deg,
+    rgba(220, 235, 227, 0.92),
+    rgba(247, 240, 230, 0.86)
+  );
 }
 
 .page-signal--quiet {
-  background: linear-gradient(180deg, rgba(250, 245, 237, 0.92), rgba(241, 233, 221, 0.82));
+  background: linear-gradient(
+    180deg,
+    rgba(250, 245, 237, 0.92),
+    rgba(241, 233, 221, 0.82)
+  );
 }
 
 .page-status-grid {
@@ -517,17 +554,29 @@ body::before {
   border: 1px solid rgba(131, 110, 85, 0.28);
   border-radius: 12px;
   padding: 12px 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(245, 237, 226, 0.8));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.74),
+    rgba(245, 237, 226, 0.8)
+  );
   box-shadow: none;
 }
 
 .priority-panel--support {
-  background: linear-gradient(180deg, rgba(247, 240, 230, 0.88), rgba(240, 231, 218, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(247, 240, 230, 0.88),
+    rgba(240, 231, 218, 0.9)
+  );
 }
 
 .priority-panel--subtle {
   border-style: dashed;
-  background: linear-gradient(180deg, rgba(248, 243, 235, 0.86), rgba(238, 230, 217, 0.86));
+  background: linear-gradient(
+    180deg,
+    rgba(248, 243, 235, 0.86),
+    rgba(238, 230, 217, 0.86)
+  );
 }
 
 .page-guidance-list {
@@ -645,7 +694,11 @@ body::before {
   padding: 12px 14px;
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 237, 228, 0.78));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72),
+    rgba(244, 237, 228, 0.78)
+  );
 }
 
 .workflow-result-block {
@@ -686,12 +739,20 @@ body::before {
 }
 
 .workflow-compact-block--support {
-  background: linear-gradient(180deg, rgba(247, 240, 230, 0.84), rgba(240, 231, 218, 0.88));
+  background: linear-gradient(
+    180deg,
+    rgba(247, 240, 230, 0.84),
+    rgba(240, 231, 218, 0.88)
+  );
 }
 
 .workflow-compact-block--subtle {
   border-style: dashed;
-  background: linear-gradient(180deg, rgba(248, 243, 235, 0.84), rgba(238, 230, 217, 0.84));
+  background: linear-gradient(
+    180deg,
+    rgba(248, 243, 235, 0.84),
+    rgba(238, 230, 217, 0.84)
+  );
 }
 
 .workflow-result-block {
@@ -890,7 +951,11 @@ body::before {
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 16px;
   padding: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(243, 236, 225, 0.8));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.76),
+    rgba(243, 236, 225, 0.8)
+  );
   box-shadow: 0 12px 24px rgba(var(--shadow-tint), 0.08);
 }
 
@@ -950,7 +1015,11 @@ body::before {
 }
 
 .tutorial-callout--warning {
-  background: linear-gradient(180deg, rgba(255, 246, 232, 0.96), rgba(248, 232, 222, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 246, 232, 0.96),
+    rgba(248, 232, 222, 0.92)
+  );
   border-color: rgba(178, 75, 65, 0.36);
   box-shadow: 0 10px 22px rgba(var(--shadow-tint), 0.08);
 }
@@ -1010,7 +1079,11 @@ body::before {
 .tutorial-theme-card {
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(243, 236, 225, 0.76));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72),
+    rgba(243, 236, 225, 0.76)
+  );
   box-shadow: 0 12px 24px rgba(var(--shadow-tint), 0.08);
 }
 
@@ -1067,8 +1140,16 @@ body::before {
 .tutorial-feature-card {
   padding: 18px;
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(243, 236, 225, 0.82));
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.18),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.78),
+      rgba(243, 236, 225, 0.82)
+    );
 }
 
 .tutorial-feature-card h3,
@@ -1197,13 +1278,21 @@ body::before {
 
 .layout--editorial .tutorial-feature-card {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.16), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.16),
+      transparent 34%
+    ),
     var(--shell-panel-emphasis);
 }
 
 .layout--editorial .tutorial-callout--warning {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.16), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.16),
+      transparent 34%
+    ),
     var(--shell-panel-emphasis);
   border-color: var(--shell-line-strong);
 }
@@ -1570,8 +1659,16 @@ a:hover {
   --shell-highlight: #c79a66;
   --shell-shadow-rgb: 78, 49, 35;
   background:
-    radial-gradient(circle at top left, rgba(255, 248, 240, 0.9), transparent 34%),
-    radial-gradient(circle at top right, rgba(224, 202, 184, 0.5), transparent 36%),
+    radial-gradient(
+      circle at top left,
+      rgba(255, 248, 240, 0.9),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(224, 202, 184, 0.5),
+      transparent 36%
+    ),
     linear-gradient(160deg, var(--shell-bg) 0%, var(--shell-bg-strong) 100%);
 }
 
@@ -1591,8 +1688,16 @@ a:hover {
   --shell-highlight: #e7edf5;
   --shell-shadow-rgb: 7, 4, 3;
   background:
-    radial-gradient(circle at top left, rgba(122, 74, 52, 0.22), transparent 34%),
-    radial-gradient(circle at top right, rgba(207, 152, 117, 0.12), transparent 36%),
+    radial-gradient(
+      circle at top left,
+      rgba(122, 74, 52, 0.22),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(207, 152, 117, 0.12),
+      transparent 36%
+    ),
     linear-gradient(160deg, var(--shell-bg) 0%, var(--shell-bg-strong) 100%);
 }
 
@@ -1710,7 +1815,11 @@ a:hover {
 .layout--editorial .sidebar-focus-card {
   padding: 18px;
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.22), transparent 32%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.22),
+      transparent 32%
+    ),
     var(--shell-panel-emphasis);
 }
 
@@ -1816,7 +1925,11 @@ a:hover {
   grid-template-columns: minmax(0, 1.28fr) repeat(3, minmax(0, 1fr));
   border-radius: 24px;
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.14), transparent 32%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.14),
+      transparent 32%
+    ),
     var(--shell-panel);
 }
 
@@ -1829,7 +1942,11 @@ a:hover {
 
 .layout--editorial .shell-summary-lead {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.18), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.18),
+      transparent 34%
+    ),
     var(--shell-panel-emphasis);
 }
 
@@ -1901,7 +2018,11 @@ a:hover {
 }
 
 .layout--editorial[data-shell-appearance="dark"] .secondary {
-  background: linear-gradient(180deg, rgba(68, 49, 44, 0.94), rgba(42, 29, 27, 0.96));
+  background: linear-gradient(
+    180deg,
+    rgba(68, 49, 44, 0.94),
+    rgba(42, 29, 27, 0.96)
+  );
   color: var(--shell-ink);
   border-color: rgba(239, 192, 155, 0.18);
   box-shadow: 0 10px 20px rgba(var(--shell-shadow-rgb), 0.24);
@@ -1924,6 +2045,11 @@ a:hover {
   background: var(--shell-panel-alt);
   color: var(--shell-ink);
   border-color: var(--shell-line-strong);
+}
+
+.layout--editorial[data-shell-appearance="dark"] input::placeholder,
+.layout--editorial[data-shell-appearance="dark"] textarea::placeholder {
+  color: var(--shell-muted);
 }
 
 .layout--editorial[data-shell-appearance="dark"] button:focus-visible,
@@ -1966,7 +2092,11 @@ a:hover {
   padding: 12px 14px;
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(243, 236, 225, 0.82));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.82),
+    rgba(243, 236, 225, 0.82)
+  );
   color: var(--ink-soft);
   line-height: 1.58;
 }
@@ -2079,8 +2209,16 @@ a:hover {
 
 .workspace-theme-card--recommended {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.14), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(243, 236, 225, 0.78));
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.14),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.74),
+      rgba(243, 236, 225, 0.78)
+    );
 }
 
 .workspace-theme-header {
@@ -2155,7 +2293,11 @@ a:hover {
   border: 1px solid rgba(131, 110, 85, 0.3);
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(247, 240, 230, 0.94)),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.86),
+      rgba(247, 240, 230, 0.94)
+    ),
     var(--panel);
   box-shadow: 0 24px 56px rgba(var(--shadow-tint), 0.28);
   display: grid;
@@ -2273,7 +2415,11 @@ a:hover {
 
 .layout--editorial .workspace-featured-theme {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.16), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.16),
+      transparent 34%
+    ),
     var(--shell-panel-emphasis);
 }
 
@@ -2292,7 +2438,11 @@ a:hover {
 
 .layout--editorial .workspace-theme-card--recommended {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.14), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.14),
+      transparent 34%
+    ),
     var(--shell-panel-alt);
 }
 
@@ -2322,7 +2472,9 @@ a:hover {
   box-shadow: 0 24px 56px rgba(var(--shell-shadow-rgb), 0.22);
 }
 
-.layout--editorial[data-shell-appearance="dark"] .theme-preview-dialog-copy .section-eyebrow,
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-preview-dialog-copy
+  .section-eyebrow,
 .layout--editorial[data-shell-appearance="dark"] .theme-preview-zoom-status {
   color: var(--shell-muted);
 }
@@ -2356,7 +2508,11 @@ a:hover {
 .theme-studio-status-card {
   border: 1px solid rgba(131, 110, 85, 0.24);
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(243, 236, 225, 0.78));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    rgba(243, 236, 225, 0.78)
+  );
   box-shadow: 0 10px 22px rgba(var(--shadow-tint), 0.08);
 }
 
@@ -2386,14 +2542,26 @@ a:hover {
 .theme-studio-note--emphasis,
 .theme-studio-card--emphasis {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.14), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(243, 236, 225, 0.78));
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.14),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.82),
+      rgba(243, 236, 225, 0.78)
+    );
 }
 
 .theme-studio-note--quiet,
 .theme-studio-section--quiet {
   background:
-    linear-gradient(180deg, rgba(250, 245, 237, 0.92), rgba(241, 233, 221, 0.84)),
+    linear-gradient(
+      180deg,
+      rgba(250, 245, 237, 0.92),
+      rgba(241, 233, 221, 0.84)
+    ),
     var(--panel);
 }
 
@@ -2496,7 +2664,11 @@ a:hover {
 .layout--editorial .theme-studio-note--emphasis,
 .layout--editorial .theme-studio-card--emphasis {
   background:
-    radial-gradient(circle at top right, rgba(199, 154, 102, 0.16), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(199, 154, 102, 0.16),
+      transparent 34%
+    ),
     var(--shell-panel-emphasis);
 }
 
@@ -2706,16 +2878,30 @@ a:hover {
 .layout--editorial[data-shell-appearance="dark"] .action-note,
 .layout--editorial[data-shell-appearance="dark"] .page-result-note,
 .layout--editorial[data-shell-appearance="dark"] .muted,
-.layout--editorial[data-shell-appearance="dark"] .theme-studio-note .section-helper,
-.layout--editorial[data-shell-appearance="dark"] .theme-studio-status-card .status-detail,
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-studio-note
+  .section-helper,
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-studio-status-card
+  .status-detail,
 .layout--editorial[data-shell-appearance="dark"] .theme-asset-preview-card span,
 .layout--editorial[data-shell-appearance="dark"] .checklist,
-.layout--editorial[data-shell-appearance="dark"] .tutorial-directory-card .section-helper,
+.layout--editorial[data-shell-appearance="dark"]
+  .tutorial-directory-card
+  .section-helper,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-flow-card .checklist,
-.layout--editorial[data-shell-appearance="dark"] .tutorial-action-panel .section-helper,
-.layout--editorial[data-shell-appearance="dark"] .tutorial-lesson-card .section-helper,
-.layout--editorial[data-shell-appearance="dark"] .tutorial-lesson-card .checklist,
-.layout--editorial[data-shell-appearance="dark"] .tutorial-callout .section-helper,
+.layout--editorial[data-shell-appearance="dark"]
+  .tutorial-action-panel
+  .section-helper,
+.layout--editorial[data-shell-appearance="dark"]
+  .tutorial-lesson-card
+  .section-helper,
+.layout--editorial[data-shell-appearance="dark"]
+  .tutorial-lesson-card
+  .checklist,
+.layout--editorial[data-shell-appearance="dark"]
+  .tutorial-callout
+  .section-helper,
 .layout--editorial[data-shell-appearance="dark"] .page-guidance-list,
 .layout--editorial[data-shell-appearance="dark"] .modal-panel p,
 .layout--editorial[data-shell-appearance="dark"] .modal-panel .muted {
@@ -2745,6 +2931,12 @@ a:hover {
 }
 
 .layout--editorial[data-shell-appearance="dark"] .page-title,
+.layout--editorial[data-shell-appearance="dark"] .panel h2,
+.layout--editorial[data-shell-appearance="dark"] .panel h3,
+.layout--editorial[data-shell-appearance="dark"] .panel h4,
+.layout--editorial[data-shell-appearance="dark"] .advanced-panel h2,
+.layout--editorial[data-shell-appearance="dark"] .advanced-panel h3,
+.layout--editorial[data-shell-appearance="dark"] .advanced-panel h4,
 .layout--editorial[data-shell-appearance="dark"] .advanced-panel summary,
 .layout--editorial[data-shell-appearance="dark"] .workflow-section-heading h2,
 .layout--editorial[data-shell-appearance="dark"] .workspace-section-heading h2,
@@ -2759,7 +2951,9 @@ a:hover {
 .layout--editorial[data-shell-appearance="dark"] .sidebar-entry strong,
 .layout--editorial[data-shell-appearance="dark"] .theme-studio-heading h2,
 .layout--editorial[data-shell-appearance="dark"] .theme-studio-note strong,
-.layout--editorial[data-shell-appearance="dark"] .theme-studio-status-card strong,
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-studio-status-card
+  strong,
 .layout--editorial[data-shell-appearance="dark"] .theme-studio-card h3,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-brand-title,
 .layout--editorial[data-shell-appearance="dark"] .tutorial-hero-title,
@@ -2780,7 +2974,10 @@ a:hover {
 
 .layout--editorial[data-shell-appearance="dark"] .page-link-row a,
 .layout--editorial[data-shell-appearance="dark"] .workflow-compact-block a,
-.layout--editorial[data-shell-appearance="dark"] .theme-studio .page-link-row a {
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-studio
+  .page-link-row
+  a {
   color: var(--shell-highlight);
   text-decoration-color: rgba(248, 216, 182, 0.58);
 }
@@ -2803,10 +3000,20 @@ a:hover {
 
 .layout--editorial[data-shell-appearance="dark"] .page-link-row a:hover,
 .layout--editorial[data-shell-appearance="dark"] .page-link-row a:focus-visible,
-.layout--editorial[data-shell-appearance="dark"] .workflow-compact-block a:hover,
-.layout--editorial[data-shell-appearance="dark"] .workflow-compact-block a:focus-visible,
-.layout--editorial[data-shell-appearance="dark"] .theme-studio .page-link-row a:hover,
-.layout--editorial[data-shell-appearance="dark"] .theme-studio .page-link-row a:focus-visible {
+.layout--editorial[data-shell-appearance="dark"]
+  .workflow-compact-block
+  a:hover,
+.layout--editorial[data-shell-appearance="dark"]
+  .workflow-compact-block
+  a:focus-visible,
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-studio
+  .page-link-row
+  a:hover,
+.layout--editorial[data-shell-appearance="dark"]
+  .theme-studio
+  .page-link-row
+  a:focus-visible {
   color: var(--shell-ink);
   text-decoration-color: rgba(245, 234, 223, 0.72);
 }
@@ -2848,7 +3055,7 @@ a:hover {
   margin: 0;
   padding: 18px 22px 30px;
   display: grid;
-   grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 18px;
   align-content: stretch;
   overflow: hidden;
@@ -2906,7 +3113,9 @@ a:hover {
 
 .layout--editorial[data-shell-appearance="dark"] .shell-topbar .page-kicker,
 .layout--editorial[data-shell-appearance="dark"] .shell-summary .status-label,
-.layout--editorial[data-shell-appearance="dark"] .shell-popup-panel .status-label,
+.layout--editorial[data-shell-appearance="dark"]
+  .shell-popup-panel
+  .status-label,
 .layout--editorial[data-shell-appearance="dark"] .sidebar-entry-label {
   color: var(--shell-highlight);
 }
@@ -3098,7 +3307,9 @@ a:hover {
   overflow-y: auto;
   position: fixed;
   top: var(--shell-popup-top, 24px);
-  left: calc(var(--shell-popup-left, 24px) + var(--shell-popup-width, 0px) + 12px);
+  left: calc(
+    var(--shell-popup-left, 24px) + var(--shell-popup-width, 0px) + 12px
+  );
   border-radius: 16px;
   border: 1px solid var(--shell-line-strong);
   background: var(--shell-panel);

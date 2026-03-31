@@ -16,7 +16,6 @@ import {
 } from "../utils/workflowViewHelpers.mjs";
 
 const USER_PAGES = "user-pages";
-const FIXED_BACKUP_REPO_NAME = "BFE";
 const PUBLISH_OUTCOME_LABELS = {
   deployRepoEnsure: "发布仓库准备",
   backupRepoEnsure: "备份仓库准备",
@@ -28,7 +27,7 @@ const publishForm = reactive({
   siteType: "project-pages",
   login: "",
   deployRepoName: "",
-  backupRepoName: FIXED_BACKUP_REPO_NAME,
+  backupRepoName: "",
   backupDir: "",
   createDeployRepo: true,
   createBackupRepo: true,
@@ -176,7 +175,7 @@ function applyWorkspaceMetadata(workspace, { authLogin = "" } = {}) {
       publishForm.login = "";
     }
     publishForm.deployRepoName = "";
-    publishForm.backupRepoName = FIXED_BACKUP_REPO_NAME;
+    publishForm.backupRepoName = "";
     return;
   }
 
@@ -200,7 +199,7 @@ function applyWorkspaceMetadata(workspace, { authLogin = "" } = {}) {
   if (publishForm.siteType !== USER_PAGES && (!publishForm.deployRepoName || workspaceChanged)) {
     publishForm.deployRepoName = workspace.deployRepo?.name || "";
   }
-  publishForm.backupRepoName = FIXED_BACKUP_REPO_NAME;
+  publishForm.backupRepoName = workspace.backupRepo?.name || "";
 }
 
 function buildPublishSummary(result) {
@@ -445,7 +444,7 @@ function jumpToZone(zoneId) {
           <ul class="checklist">
             <li>用户站点固定命名为 <code>用户名.github.io</code></li>
             <li>项目站点访问地址示例：<code>https://用户名.github.io/仓库名/</code></li>
-            <li>固定备份仓库：BFE</li>
+            <li>备份仓库可沿用工作区元数据，或按团队命名规范填写</li>
             <li>如仓库不存在，可勾选自动创建并在同一次发布中完成</li>
           </ul>
         </div>
@@ -500,8 +499,8 @@ function jumpToZone(zoneId) {
             <p class="muted stack-top">当前仓库：{{ resolvedDeployRepoName || "等待填写" }}</p>
           </div>
           <div>
-            <label>固定备份仓库</label>
-            <input v-model="publishForm.backupRepoName" disabled />
+            <label>备份仓库名称</label>
+            <input v-model="publishForm.backupRepoName" placeholder="例如 blog-backup" />
             <p class="muted stack-top">{{ backupRepoUrl || "等待填写 GitHub 用户名" }}</p>
           </div>
           <div>

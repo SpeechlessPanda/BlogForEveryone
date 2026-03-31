@@ -10,6 +10,12 @@ function assertProjectDir(projectDir) {
   }
 }
 
+function assertWorkspaceId(workspaceId) {
+  if (!workspaceId || !String(workspaceId).trim()) {
+    throw new Error("缺少 workspaceId，无法执行 RSS 操作。");
+  }
+}
+
 function assertUrl(url) {
   if (!url || !String(url).trim()) {
     throw new Error("缺少 url，无法执行 RSS 操作。");
@@ -51,7 +57,8 @@ export function createRssActions(api) {
     },
     async exportSubscriptions(payload) {
       assertProjectDir(payload?.projectDir);
-      return api.exportSubscriptions({ projectDir: payload.projectDir });
+      assertWorkspaceId(payload?.workspaceId);
+      return api.exportSubscriptions({ workspaceId: payload.workspaceId, projectDir: payload.projectDir });
     },
     async getRssUnreadSummary() {
       return api.getRssUnreadSummary();

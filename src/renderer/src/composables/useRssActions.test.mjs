@@ -48,7 +48,7 @@ test("rss actions preserve subscription and export contracts", async () => {
   await actions.syncSubscriptions();
   await actions.markSubscriptionItemRead({ subscriptionId: "sub-1", itemKey: "post-1" });
   await actions.pickDirectory({ title: "选择导出目录", defaultPath: "D:/blogs/demo" });
-  await actions.exportSubscriptions({ projectDir: "D:/blogs/demo" });
+  await actions.exportSubscriptions({ workspaceId: "ws-1", projectDir: "D:/blogs/demo" });
   await actions.getRssUnreadSummary();
 
   assert.deepEqual(calls, [
@@ -58,7 +58,7 @@ test("rss actions preserve subscription and export contracts", async () => {
     ["syncSubscriptions"],
     ["markSubscriptionItemRead", { subscriptionId: "sub-1", itemKey: "post-1" }],
     ["pickDirectory", { title: "选择导出目录", defaultPath: "D:/blogs/demo" }],
-    ["exportSubscriptions", { projectDir: "D:/blogs/demo" }],
+    ["exportSubscriptions", { workspaceId: "ws-1", projectDir: "D:/blogs/demo" }],
     ["getRssUnreadSummary"],
   ]);
 });
@@ -84,5 +84,9 @@ test("rss actions reject missing ids for targeted operations", async () => {
   await assert.rejects(
     () => actions.exportSubscriptions({}),
     /projectDir/,
+  );
+  await assert.rejects(
+    () => actions.exportSubscriptions({ projectDir: "D:/blogs/demo" }),
+    /workspaceId/,
   );
 });

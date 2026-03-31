@@ -123,6 +123,9 @@ function loadMainLifecycleHarness({
                         setWindowOpenHandler(handler) {
                             handlers.windowOpen = handler;
                         },
+                        on(eventName, handler) {
+                            handlers[eventName] = handler;
+                        },
                         openDevTools: () => {}
                     },
                     setIcon: () => {},
@@ -225,7 +228,7 @@ test('main window BrowserWindow options contract is pinned', () => {
     assert.equal(path.basename(options.webPreferences.preload), 'preload.js');
     assert.equal(options.webPreferences.contextIsolation, true);
     assert.equal(options.webPreferences.nodeIntegration, false);
-    assert.equal(options.webPreferences.sandbox, false);
+    assert.equal(options.webPreferences.sandbox, true);
 });
 
 test('main window loading contract uses dev URL and prod file', () => {
@@ -350,6 +353,48 @@ test('window-open handler blocks untrusted urls without opening external browser
         const decision = firstWindow.__handlers.windowOpen({ url: 'https://evil.example.com' });
         assert.deepEqual(decision, { action: 'deny' });
         assert.equal(harness.openExternalCalls.length, 0);
+    } finally {
+        harness.cleanup();
+    }
+});
+
+test('will-navigate blocks unexpected same-window navigation', () => {
+    const harness = loadMainLifecycleHarness({ platform: 'win32' });
+
+    try {
+        harness.readyHandler();
+        const firstWindow = harness.browserWindows[0];
+        const navigateHandler = firstWindow.__handlers['will-navigate'];
+        let prevented = false;
+        const event = {
+            preventDefault() {
+                prevented = true;
+            }
+        };
+
+        navigateHandler(event, 'https://evil.example.com/phishing');
+        assert.equal(prevented, true);
+    } finally {
+        harness.cleanup();
+    }
+});
+
+test('will-navigate allows app-local urls', () => {
+    const harness = loadMainLifecycleHarness({ platform: 'win32' });
+
+    try {
+        harness.readyHandler();
+        const firstWindow = harness.browserWindows[0];
+        const navigateHandler = firstWindow.__handlers['will-navigate'];
+        let prevented = false;
+        const event = {
+            preventDefault() {
+                prevented = true;
+            }
+        };
+
+        navigateHandler(event, 'file:///index.html#/tutorial');
+        assert.equal(prevented, false);
     } finally {
         harness.cleanup();
     }

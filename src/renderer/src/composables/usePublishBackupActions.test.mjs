@@ -23,6 +23,7 @@ test("publish actions preserve the unified publish-plus-backup payload", async (
   const actions = createPublishBackupActions(api);
 
   await actions.publishToGitHub({
+    workspaceId: "ws-1",
     projectDir: "D:/blogs/demo",
     framework: "hexo",
     siteType: "project-pages",
@@ -43,6 +44,7 @@ test("publish actions preserve the unified publish-plus-backup payload", async (
 
   assert.deepEqual(calls, [
     ["publishToGitHub", {
+      workspaceId: "ws-1",
       projectDir: "D:/blogs/demo",
       framework: "hexo",
       siteType: "project-pages",
@@ -73,5 +75,9 @@ test("publish actions reject missing projectDir for workspace work", async () =>
   await assert.rejects(
     () => actions.publishToGitHub({ framework: "hexo", repoUrl: "https://github.com/demo/demo-site.git" }),
     /projectDir/,
+  );
+  await assert.rejects(
+    () => actions.publishToGitHub({ projectDir: "D:/blogs/demo", framework: "hexo", repoUrl: "https://github.com/demo/demo-site.git" }),
+    /workspaceId/,
   );
 });

@@ -9,3 +9,6 @@ coverage/
 .qa/
 e2e-real-workspaces/
 .worktrees/
+.tmp-user-data/
+test-results/
+playwright-report/

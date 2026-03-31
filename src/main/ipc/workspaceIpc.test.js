@@ -162,6 +162,13 @@ function loadWorkspaceIpcModule({
                     },
                     getWorkspacePolicy() {
                         return workspacePolicy || {
+                            getManagedWorkspace(workspaceId) {
+                                const workspace = (state.workspaces || []).find((item) => item.id === workspaceId);
+                                if (!workspace) {
+                                    throw new Error('未找到受管工作区。');
+                                }
+                                return workspace;
+                            },
                             assertPathWithinWorkspace(_id, targetPath) {
                                 return targetPath;
                             }
@@ -432,7 +439,7 @@ test('workspace:importFromGithub delegates to github import workflow and keeps z
             ok: true,
             normalizedPayload: {
                 localDestinationPath: importTargetPath,
-                backupRepo: { owner: 'alice', name: 'BFE', url: 'https://github.com/alice/BFE.git' },
+                backupRepo: { owner: 'alice', name: 'archive-repo', url: 'https://github.com/alice/archive-repo.git' },
                 deployRepo: null
             }
         }
@@ -451,8 +458,8 @@ test('workspace:importFromGithub delegates to github import workflow and keeps z
     );
     assert.deepEqual(moduleRef.workflowGithubImportCalls[0].backupRepo, {
         owner: 'alice',
-        name: 'BFE',
-        url: 'https://github.com/alice/BFE.git'
+        name: 'archive-repo',
+        url: 'https://github.com/alice/archive-repo.git'
     });
     assert.equal(moduleRef.workflowGithubImportCalls[0].deployRepo, null);
     assert.deepEqual(result, workflowGithubImportResult);
@@ -464,14 +471,34 @@ test('workspace backup delegates orchestration to workflow boundary', async () =
         pushResult: ['git push']
     };
 
-    const moduleRef = loadWorkspaceIpcModule({ workflowBackupResult });
+    const moduleRef = loadWorkspaceIpcModule({
+        workflowBackupResult,
+        initialState: {
+            workspaces: [{ id: 'ws-1', projectDir: '/tmp/source-site', framework: 'hugo' }]
+        },
+        workspacePolicy: {
+            getManagedWorkspace(workspaceId) {
+                if (workspaceId !== 'ws-1') {
+                    throw new Error('未找到受管工作区。');
+                }
+                return { id: 'ws-1', projectDir: '/tmp/source-site', framework: 'hugo' };
+            },
+            assertPathWithinWorkspace(workspaceId, targetPath, action) {
+                assert.equal(workspaceId, 'ws-1');
+                assert.equal(targetPath, '/tmp/untrusted-source');
+                assert.equal(action, 'backup');
+                return '/tmp/source-site';
+            }
+        }
+    });
     moduleRef.register();
 
     const handler = moduleRef.handlers.get('workspace:backup');
     assert.equal(typeof handler, 'function');
 
     const payload = {
-        projectDir: '/tmp/source-site',
+        workspaceId: 'ws-1',
+        projectDir: '/tmp/untrusted-source',
         backupDir: '/tmp/backup',
         repoUrl: 'https://example.com/repo.git',
         visibility: 'private'
@@ -479,8 +506,21 @@ test('workspace backup delegates orchestration to workflow boundary', async () =
     const result = await handler({}, payload);
 
     assert.equal(moduleRef.workflowBackupCalls.length, 1);
-    assert.deepEqual(moduleRef.workflowBackupCalls[0], payload);
+    assert.deepEqual(moduleRef.workflowBackupCalls[0], {
+        ...payload,
+        projectDir: '/tmp/source-site',
+        framework: 'hugo'
+    });
     assert.deepEqual(result, workflowBackupResult);
+
+    await assert.rejects(
+        () => handler({}, {
+            workspaceId: 'missing',
+            projectDir: '/tmp/source-site',
+            backupDir: '/tmp/backup'
+        }),
+        /受管工作区/
+    );
 });
 
 test('workspace:list includes localExists flag for each workspace', async (t) => {

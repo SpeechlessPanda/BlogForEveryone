@@ -118,17 +118,17 @@ test("PublishBackupView re-applies workspace-derived metadata after selected wor
 test("PublishBackupView clears stale workspace-derived login and project repo name when selection is cleared before choosing another workspace", async () => {
   const source = await readFile(publishBackupViewPath, "utf8");
 
-  assert.match(source, /if\s*\(!workspace\)\s*\{[\s\S]*lastWorkspaceMetadataId\.value\s*=\s*"";[\s\S]*publishForm\.backupRepoName\s*=\s*FIXED_BACKUP_REPO_NAME;/);
+  assert.match(source, /if\s*\(!workspace\)\s*\{[\s\S]*lastWorkspaceMetadataId\.value\s*=\s*"";[\s\S]*publishForm\.backupRepoName\s*=\s*"";/);
   assert.match(source, /if\s*\(!workspace\)\s*\{[\s\S]*if\s*\(!authLogin\s*&&\s*!publishLoginManuallyEdited\.value\)\s*\{[\s\S]*publishForm\.login\s*=\s*"";/);
   assert.match(source, /if\s*\(!workspace\)\s*\{[\s\S]*publishForm\.deployRepoName\s*=\s*"";/);
 });
 
-test("PublishBackupView keeps backup repo name fixed to BFE instead of workspace metadata", async () => {
+test("PublishBackupView uses workspace backup metadata instead of forcing BFE", async () => {
   const source = await readFile(publishBackupViewPath, "utf8");
 
-  assert.match(source, /const\s+FIXED_BACKUP_REPO_NAME\s*=\s*"BFE"/);
-  assert.match(source, /publishForm\.backupRepoName\s*=\s*FIXED_BACKUP_REPO_NAME;/);
-  assert.doesNotMatch(source, /publishForm\.backupRepoName\s*=\s*workspace\.backupRepo\?\.name/);
+  assert.doesNotMatch(source, /const\s+FIXED_BACKUP_REPO_NAME\s*=\s*"BFE"/);
+  assert.match(source, /publishForm\.backupRepoName\s*=\s*workspace\.backupRepo\?\.name\s*\|\|\s*"";/);
+  assert.doesNotMatch(source, /publishForm\.backupRepoName\s*=\s*FIXED_BACKUP_REPO_NAME;/);
 });
 
 test("PublishBackupView keeps the publish payload unchanged while moving user-pages repo naming into derived UI", async () => {

@@ -86,7 +86,7 @@ function hydrateWorkspaceRemoteMetadata(workspace) {
         ...source,
         siteType: normalizeAllowedValue(source.siteType, Object.values(REMOTE_SITE_TYPES), null),
         deployRepo: hydrateRepoMetadata(source.deployRepo),
-        backupRepo: hydrateRepoMetadata(source.backupRepo, { fixedName: FIXED_BACKUP_REPO_NAME }),
+        backupRepo: hydrateRepoMetadata(source.backupRepo),
         importSource: normalizeAllowedValue(
             source.importSource,
             Object.values(REMOTE_IMPORT_SOURCES),

@@ -4,11 +4,19 @@ function assertProjectDir(projectDir) {
   }
 }
 
+function assertWorkspaceId(workspaceId) {
+  if (!workspaceId || !String(workspaceId).trim()) {
+    throw new Error("缺少 workspaceId，无法执行发布或备份操作。");
+  }
+}
+
 export function createPublishBackupActions(api) {
   return {
     async publishToGitHub(payload) {
       assertProjectDir(payload?.projectDir);
+      assertWorkspaceId(payload?.workspaceId);
       return api.publishToGitHub({
+        workspaceId: payload.workspaceId,
         projectDir: payload.projectDir,
         framework: payload.framework,
         siteType: payload.siteType,

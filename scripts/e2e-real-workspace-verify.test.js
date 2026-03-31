@@ -35,7 +35,7 @@ function loadVerifyModuleForTests({ spawnImpl, platform = 'win32', comspec = 'C:
     const originalPlatform = process.platform;
     const originalComSpec = process.env.ComSpec;
 
-    Module._load = function patchedLoad(request, parent, isMain) {
+    Module._load = function patchedLoad(request) {
         if (request === 'child_process') {
             return { spawn: spawnImpl };
         }
@@ -90,7 +90,7 @@ function loadVerifyMainForTests({
     const originalPlatform = process.platform;
     const originalComSpec = process.env.ComSpec;
 
-    Module._load = function patchedLoad(request, parent, isMain) {
+    Module._load = function patchedLoad(request) {
         if (request === 'child_process') {
             return { spawn: spawnImpl };
         }
@@ -145,7 +145,7 @@ function loadVerifyRealWorkspaceModuleForTests({ spawnSyncImpl } = {}) {
 
     const originalLoad = Module._load;
     const childProcessModule = originalLoad('child_process', module, false);
-    Module._load = function patchedLoad(request, parent, isMain) {
+    Module._load = function patchedLoad(request) {
         if (request === 'child_process') {
             return {
                 ...childProcessModule,

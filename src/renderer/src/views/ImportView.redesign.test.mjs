@@ -73,9 +73,9 @@ test("ImportView guides the user toward choosing only the destination path after
   assert.match(source, /基于当前 GitHub 登录名精确匹配/);
   assert.match(source, /`\$\{login\}\.github\.io`/);
   assert.match(source, /下一步只需选择目标恢复目录/);
-  assert.match(source, /已自动识别发布仓库和 BFE 备份仓库/);
-  assert.match(source, /已自动识别 BFE 备份仓库；如果发布仓库没有唯一精确匹配，可继续手动选择/);
-  assert.match(source, /会基于当前 GitHub 登录名精确匹配 `\$\{login\}\.github\.io` 和 `BFE`；未命中或不唯一时可继续手动选择/);
+  assert.match(source, /已自动识别发布仓库和恢复源仓库/);
+  assert.match(source, /已自动识别恢复源仓库；如果发布仓库没有唯一精确匹配，可继续手动选择/);
+  assert.match(source, /会基于当前 GitHub 登录名精确匹配 `\$\{login\}\.github\.io`；恢复源仓库支持从任意仓库中手动选择/);
 });
 
 test("ImportView keeps a manual recovery path when repo autodetect cannot safely resolve", async () => {
@@ -86,11 +86,11 @@ test("ImportView keeps a manual recovery path when repo autodetect cannot safely
   assert.match(source, /如果 GitHub 仓库列表暂时加载失败，可手动填写恢复仓库地址继续操作/);
   assert.match(source, /v-if="githubRepos.length"/);
   assert.match(source, /v-else[\s\S]*placeholder="https:\/\/github.com\/用户名\/用户名\.github\.io\.git"/);
-  assert.match(source, /v-else[\s\S]*placeholder="https:\/\/github.com\/用户名\/BFE\.git"/);
-  assert.match(source, /已自动识别 BFE 备份仓库；如果发布仓库没有唯一精确匹配，可继续手动选择/);
+  assert.match(source, /v-else[\s\S]*placeholder="https:\/\/github.com\/用户名\/任意仓库\.git"/);
+  assert.match(source, /已自动识别恢复源仓库；如果发布仓库没有唯一精确匹配，可继续手动选择/);
   assert.match(source, /githubBackupRepoChoices/);
   assert.match(source, /v-if="githubBackupRepoChoices.length"/);
   assert.match(source, /v-for="repo in githubBackupRepoChoices"/);
-  assert.match(source, /未在列表中发现 BFE 时，可直接手动填写仓库地址继续恢复/);
-  assert.match(source, /备份仓库必须为 BFE/);
+  assert.match(source, /未读取到仓库列表时，可直接手动填写恢复源仓库地址继续恢复/);
+  assert.doesNotMatch(source, /备份仓库必须为 BFE/);
 });

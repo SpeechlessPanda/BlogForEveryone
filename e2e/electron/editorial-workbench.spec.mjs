@@ -294,7 +294,7 @@ test("editorial workbench journey keeps workspace context across core entry poin
       .locator('label:has-text("发布仓库（可选）")')
       .locator("xpath=following-sibling::select[1]");
     const importBackupRepoSelect = importGithubWorkbench
-      .locator('label:has-text("BFE 备份仓库")')
+      .locator('label:has-text("恢复源仓库")')
       .locator("xpath=following-sibling::select[1]");
     const importDestinationInput = importGithubWorkbench
       .locator('label:has-text("目标恢复目录")')
@@ -536,7 +536,7 @@ test("editorial workbench journey keeps workspace context across core entry poin
     );
     await expect(importSiteTypeSelect).toHaveValue("user-pages");
     await expect(importGithubWorkbench).toContainText(
-      "已自动识别发布仓库和 BFE 备份仓库，下一步只需选择目标恢复目录。",
+      "已自动识别发布仓库和恢复源仓库，下一步只需选择目标恢复目录。",
     );
     await expect(importDestinationInput).toHaveValue("");
 

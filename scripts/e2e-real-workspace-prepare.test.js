@@ -16,7 +16,7 @@ function loadRunNodeCoverageModuleForTests({ spawnSyncImpl } = {}) {
 
     const originalLoad = Module._load;
     const childProcessModule = originalLoad('child_process', module, false);
-    Module._load = function patchedLoad(request, parent, isMain) {
+    Module._load = function patchedLoad(request) {
         if (request === 'child_process') {
             return {
                 ...childProcessModule,
@@ -80,12 +80,12 @@ test('package script contracts include Task 1 gate scripts', () => {
     assert.equal(packageJson.scripts['test:coverage'], 'node scripts/run-node-coverage.js');
     assert.equal(packageJson.scripts['test:e2e:workspace'], 'node scripts/verify-real-workspace.js');
     assert.equal(packageJson.scripts['verify:premerge'], 'pnpm run test:coverage && pnpm exec node --test && pnpm run build:renderer && pnpm run test:e2e:ui');
-    assert.equal(packageJson.scripts['verify:release'], 'pnpm run verify:premerge && pnpm run test:e2e:workspace && pnpm run package:signed');
+    assert.equal(packageJson.scripts['verify:release'], 'pnpm run verify:git-clean && pnpm run verify:premerge && pnpm run test:e2e:workspace && pnpm run package:signed');
 });
 
 test('check-node-coverage parser enforces all files 75/75/75 thresholds', () => {
     const checkCoveragePath = path.join(__dirname, 'check-node-coverage.js');
-    // eslint-disable-next-line global-require, import/no-dynamic-require
+    // eslint-disable-next-line global-require
     const checkCoverage = require(checkCoveragePath);
 
     const coverageText = [

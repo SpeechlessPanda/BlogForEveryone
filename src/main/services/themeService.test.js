@@ -31,7 +31,7 @@ function withThemeServiceMocks({ spawnImpl, platform = 'win32', comspec = 'C:/Wi
     const originalPlatform = process.platform;
     const originalComSpec = process.env.ComSpec;
 
-    Module._load = function patchedLoad(request, parent, isMain) {
+    Module._load = function patchedLoad(request) {
         if (request === 'child_process') {
             return {
                 spawn: spawnImpl

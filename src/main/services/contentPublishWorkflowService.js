@@ -48,15 +48,15 @@ function inspectAutoPublishBackupBinding(payload = {}) {
     if (!backupRepoUrl) {
         return {
             ok: false,
-            message: '自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。'
+            message: '自动发布前需要先在发布与备份页保存备份仓库地址。'
         };
     }
 
     const parsedRepo = parseGithubRepo(backupRepoUrl);
-    if (!parsedRepo || String(parsedRepo.repo || '').trim().toLowerCase() !== 'bfe') {
+    if (!parsedRepo) {
         return {
             ok: false,
-            message: '自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。'
+            message: '自动发布前需要先在发布与备份页保存有效的备份仓库地址。'
         };
     }
 
@@ -122,6 +122,7 @@ function cancelWatchingJobForFile(filePath) {
 
 function watchSaveAndAutoPublish(payload) {
     const {
+        workspaceId,
         filePath,
         projectDir,
         framework,
@@ -166,6 +167,7 @@ function watchSaveAndAutoPublish(payload) {
 
     publishJobs.set(jobId, {
         jobId,
+        workspaceId,
         status: 'watching',
         message: '等待文件保存中...',
         filePath,
@@ -237,6 +239,7 @@ function watchSaveAndAutoPublish(payload) {
 
 function publishSavedContent(payload) {
     const {
+        workspaceId,
         filePath,
         projectDir,
         framework,
@@ -280,6 +283,7 @@ function publishSavedContent(payload) {
 
     publishJobs.set(jobId, {
         jobId,
+        workspaceId,
         status: 'publishing',
         message: '已保存内容，开始自动发布...',
         filePath,

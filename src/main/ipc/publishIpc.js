@@ -17,7 +17,13 @@ function persistWorkspacePublishMetadata({ readStore, updateStore, payload, resu
     }
 
     const workspaces = readStore().workspaces || [];
-    const target = workspaces.find((item) => item.projectDir === payload.projectDir && item.framework === payload.framework);
+    const target = workspaces.find((item) => {
+        if (payload.workspaceId) {
+            return item.id === payload.workspaceId;
+        }
+
+        return item.projectDir === payload.projectDir && item.framework === payload.framework;
+    });
     if (!target) {
         return;
     }
@@ -62,12 +68,20 @@ function registerPublishIpcHandlers({
     validatePublishPayload,
     publishToGitHub,
     normalizePublishResult,
+    getWorkspacePolicy,
     readStore,
     updateStore
 }) {
     ipcMain.handle('publish:github', async (event, payload) => {
+        const policy = getWorkspacePolicy();
+        const workspace = policy.getManagedWorkspace(payload?.workspaceId);
+        const managedPayload = {
+            ...payload,
+            projectDir: workspace.projectDir,
+            framework: workspace.framework
+        };
         const opId = `publish-${Date.now()}`;
-        const validation = validatePublishPayload(payload);
+        const validation = validatePublishPayload(managedPayload);
         if (!validation.ok) {
             const operationResult = validation.operationResult || null;
             const validationMessage = operationResult?.causes?.[0]?.message || validation.errors.join('；');
@@ -89,18 +103,18 @@ function registerPublishIpcHandlers({
             opId,
             scope: 'publish',
             phase: 'started',
-            framework: payload.framework,
-            mode: payload.publishMode || 'actions',
+            framework: managedPayload.framework,
+            mode: managedPayload.publishMode || 'actions',
             message: '开始发布流程。'
         });
 
         try {
-            const publishResult = await publishToGitHub(payload);
+            const publishResult = await publishToGitHub(managedPayload);
             const result = normalizePublishResult(publishResult);
             persistWorkspacePublishMetadata({
                 readStore,
                 updateStore,
-                payload,
+                payload: managedPayload,
                 result
             });
             const eventPhase = result.status === 'partial_success'
@@ -111,8 +125,8 @@ function registerPublishIpcHandlers({
                 scope: 'publish',
                 phase: eventPhase,
                 status: result.status || (result.ok ? 'success' : 'failed'),
-                framework: payload.framework,
-                mode: payload.publishMode || 'actions',
+                framework: managedPayload.framework,
+                mode: managedPayload.publishMode || 'actions',
                 pagesUrl: result.ok ? (result.pagesUrl || '') : '',
                 message: result.status === 'partial_success'
                     ? '发布与备份部分成功。'
@@ -128,8 +142,8 @@ function registerPublishIpcHandlers({
                 opId,
                 scope: 'publish',
                 phase: 'failed',
-                framework: payload.framework,
-                mode: payload.publishMode || 'actions',
+                framework: managedPayload.framework,
+                mode: managedPayload.publishMode || 'actions',
                 message: String(error?.message || error)
             });
             throw error;

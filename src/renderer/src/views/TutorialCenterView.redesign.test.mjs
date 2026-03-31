@@ -128,7 +128,7 @@ test("TutorialCenterView keeps dark-mode tutorial titles and body copy on readab
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-directory-card \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-flow-card \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-action-panel \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-lesson-card \.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.tutorial-callout \.section-helper[\s\S]*color:\s*var\(--shell-muted\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.tutorial-directory-card\s+\.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.tutorial-flow-card\s+\.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.tutorial-action-panel\s+\.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.tutorial-lesson-card\s+\.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.tutorial-lesson-card\s+\.checklist,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.tutorial-callout\s+\.section-helper[\s\S]*color:\s*var\(--shell-muted\);/,
     "expected tutorial body copy and checklist text to use the shell muted token in dark mode",
   );
   assert.match(

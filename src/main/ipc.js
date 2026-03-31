@@ -39,7 +39,61 @@ const { registerRssIpcHandlers } = require('./ipc/rssIpc');
 const { normalizePublishResult } = require('./policies/publishResultPolicy');
 const { evaluatePreviewOpenResult, evaluatePreviewStopResult } = require('./policies/previewStatePolicy');
 
+const TRUSTED_CHANNEL_PREFIXES = [
+    'app:',
+    'env:',
+    'preview:',
+    'publish:',
+    'theme:',
+    'project:',
+    'workspace:',
+    'rss:',
+    'content:',
+    'githubAuth:'
+];
+
+function isTrustedIpcSender(event) {
+    const frameUrl = String(event?.senderFrame?.url || event?.sender?.getURL?.() || '').trim();
+    if (!frameUrl) {
+        return false;
+    }
+
+    if (frameUrl.startsWith('file://')) {
+        return true;
+    }
+
+    if (process.env.NODE_ENV === 'development' && /^https?:\/\/localhost(?::\d+)?\//i.test(frameUrl)) {
+        return true;
+    }
+
+    return false;
+}
+
+function shouldGuardChannel(channel) {
+    return TRUSTED_CHANNEL_PREFIXES.some((prefix) => String(channel || '').startsWith(prefix));
+}
+
+function createTrustedIpcMain(ipcMain) {
+    return {
+        ...ipcMain,
+        handle(channel, handler) {
+            if (!shouldGuardChannel(channel)) {
+                return ipcMain.handle(channel, handler);
+            }
+
+            return ipcMain.handle(channel, async (event, ...args) => {
+                if (!isTrustedIpcSender(event)) {
+                    throw new Error('IPC sender is not trusted');
+                }
+                return handler(event, ...args);
+            });
+        }
+    };
+}
+
 function registerIpcHandlers() {
+    const trustedIpcMain = createTrustedIpcMain(ipcMain);
+
     const getWorkspacePolicy = () => createWorkspacePathPolicy({
         getManagedWorkspaces: () => readStore().workspaces || []
     });
@@ -52,7 +106,7 @@ function registerIpcHandlers() {
     }
 
     registerAppIpcHandlers({
-        ipcMain,
+        ipcMain: trustedIpcMain,
         app,
         dialog,
         checkEnvironment,
@@ -69,20 +123,21 @@ function registerIpcHandlers() {
     });
 
     registerEnvIpcHandlers({
-        ipcMain,
+        ipcMain: trustedIpcMain,
         checkEnvironment,
         openInstaller,
         autoInstallToolWithWinget,
         ensurePnpm,
+        getWorkspacePolicy,
         installDependenciesWithRetry,
         emitOperationEvent
     });
 
-    registerAuthIpcHandlers({ ipcMain });
-    registerWorkspaceIpcHandlers({ ipcMain, getWorkspacePolicy });
+    registerAuthIpcHandlers({ ipcMain: trustedIpcMain });
+    registerWorkspaceIpcHandlers({ ipcMain: trustedIpcMain, getWorkspacePolicy });
 
     registerThemeIpcHandlers({
-        ipcMain,
+        ipcMain: trustedIpcMain,
         getWorkspacePolicy,
         getThemeCatalog,
         readThemeConfig,
@@ -95,17 +150,18 @@ function registerIpcHandlers() {
     });
 
      registerPublishIpcHandlers({
-         ipcMain,
+         ipcMain: trustedIpcMain,
          emitOperationEvent,
          validatePublishPayload,
          publishToGitHub,
          normalizePublishResult,
+         getWorkspacePolicy,
          readStore,
          updateStore
      });
 
     registerPreviewIpcHandlers({
-        ipcMain,
+        ipcMain: trustedIpcMain,
         emitOperationEvent,
         startLocalPreview,
         openLocalPreview,
@@ -114,10 +170,11 @@ function registerIpcHandlers() {
         evaluatePreviewStopResult
     });
 
-    registerContentIpcHandlers({ ipcMain, getWorkspacePolicy });
+    registerContentIpcHandlers({ ipcMain: trustedIpcMain, getWorkspacePolicy });
 
     registerRssIpcHandlers({
-        ipcMain,
+        ipcMain: trustedIpcMain,
+        getWorkspacePolicy,
         listSubscriptions,
         addSubscription,
         removeSubscription,

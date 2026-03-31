@@ -552,7 +552,6 @@ test('special canonical pages ignore slug and fall back to built-in default titl
 test('Hexo listExistingContents includes custom pages outside canonical about/links/announcement paths', () => {
     const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-service-hexo-custom-page-'));
     const sourceRoot = path.join(projectDir, 'source');
-    const allowedRoots = [sourceRoot];
     const customPagePath = path.join(sourceRoot, 'projects', 'index.md');
 
     fs.mkdirSync(path.dirname(customPagePath), { recursive: true });

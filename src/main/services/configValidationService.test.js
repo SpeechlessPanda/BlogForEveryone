@@ -20,17 +20,16 @@ test('validateGithubImportPayload rejects non-absolute destination before clone/
     assert.equal(result.causes[0].key, 'destination_path_invalid');
 });
 
-test('validateGithubImportPayload rejects backup repository URL when repo name is not fixed BFE', () => {
+test('validateGithubImportPayload accepts non-BFE backup repository URL and keeps parsed owner/name', () => {
     const result = validateGithubImportPayload({
         localDestinationPath: '/tmp/import-target',
-        backupRepoUrl: 'https://github.com/alice/not-bfe.git'
+        backupRepoUrl: 'https://github.com/alice/my-archive.git'
     });
 
-    assert.equal(result.ok, false);
-    assert.equal(result.code, RESULT_CODES.validationFailed);
-    assert.equal(result.category, RESULT_CATEGORIES.validation);
-    assert.equal(result.causes.length, 1);
-    assert.equal(result.causes[0].key, 'backup_repo_name_invalid');
+    assert.equal(result.ok, true);
+    assert.equal(result.normalizedPayload.backupRepo.owner, 'alice');
+    assert.equal(result.normalizedPayload.backupRepo.name, 'my-archive');
+    assert.equal(result.normalizedPayload.backupRepo.url, 'https://github.com/alice/my-archive.git');
 });
 
 test('validateGithubImportRepositoryState rejects deploy-exists-but-backup-missing state', () => {

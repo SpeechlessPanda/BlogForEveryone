@@ -7,6 +7,7 @@ function createHarness(overrides = {}) {
   const handlers = new Map();
   const events = [];
   const storeState = overrides.storeState || { workspaces: [] };
+  const publishCalls = [];
 
   registerPublishIpcHandlers({
         ipcMain: {
@@ -19,8 +20,20 @@ function createHarness(overrides = {}) {
             events.push(payload);
         },
     validatePublishPayload: () => ({ ok: true, warnings: [] }),
-    publishToGitHub: () => ({ ok: true, status: 'success' }),
+    publishToGitHub: (payload) => {
+      publishCalls.push(payload);
+      return { ok: true, status: 'success' };
+    },
     normalizePublishResult: (result) => result,
+    getWorkspacePolicy: () => ({
+      getManagedWorkspace(workspaceId) {
+        const workspace = (storeState.workspaces || []).find((item) => item.id === workspaceId);
+        if (!workspace) {
+          throw new Error('未找到受管工作区。');
+        }
+        return workspace;
+      },
+    }),
     readStore: () => storeState,
     updateStore(mutator) {
       const next = mutator(storeState) || storeState;
@@ -33,6 +46,7 @@ function createHarness(overrides = {}) {
     return {
         handlers,
         events,
+        publishCalls,
     invoke(payload) {
             const handler = handlers.get('publish:github');
             return handler({
@@ -47,7 +61,11 @@ function createHarness(overrides = {}) {
 }
 
 test('publish IPC returns combined envelope and surfaces partial_success explicitly', async () => {
+    const storeState = {
+      workspaces: [{ id: 'ws-1', projectDir: 'D:/tmp/project', framework: 'hugo' }],
+    };
     const harness = createHarness({
+        storeState,
         publishToGitHub: () => ({
             ok: false,
             status: 'partial_success',
@@ -59,6 +77,7 @@ test('publish IPC returns combined envelope and surfaces partial_success explici
     });
 
     const response = await harness.invoke({
+        workspaceId: 'ws-1',
         projectDir: 'D:/tmp/project',
         framework: 'hugo',
         siteType: 'project-pages',
@@ -78,7 +97,11 @@ test('publish IPC returns combined envelope and surfaces partial_success explici
 });
 
 test('publish IPC propagates validation failure details', async () => {
+    const storeState = {
+      workspaces: [{ id: 'ws-1', projectDir: 'D:/tmp/project', framework: 'hugo' }],
+    };
     const harness = createHarness({
+        storeState,
         validatePublishPayload: () => ({
             ok: false,
             errors: ['deploy repo invalid'],
@@ -92,7 +115,7 @@ test('publish IPC propagates validation failure details', async () => {
     });
 
     await assert.rejects(
-        harness.invoke({ projectDir: 'D:/tmp/project', framework: 'hugo' }),
+        harness.invoke({ workspaceId: 'ws-1', projectDir: 'D:/tmp/project', framework: 'hugo' }),
         (error) => {
             assert.equal(error.operationResult?.code, 'validation_failed');
             assert.equal(error.operationResult?.causes?.[0]?.key, 'deploy_repo_invalid');
@@ -106,7 +129,11 @@ test('publish IPC propagates validation failure details', async () => {
 });
 
 test('publish IPC keeps child outcomes in success response envelope', async () => {
+    const storeState = {
+      workspaces: [{ id: 'ws-1', projectDir: 'D:/tmp/project', framework: 'hexo' }],
+    };
     const harness = createHarness({
+        storeState,
         publishToGitHub: () => ({
             ok: true,
             status: 'success',
@@ -118,6 +145,7 @@ test('publish IPC keeps child outcomes in success response envelope', async () =
     });
 
     const response = await harness.invoke({
+        workspaceId: 'ws-1',
         projectDir: 'D:/tmp/project',
         framework: 'hexo',
         siteType: 'user-pages',
@@ -138,6 +166,9 @@ test('publish IPC keeps child outcomes in success response envelope', async () =
 test('publish IPC awaits async publishToGitHub before normalizing and emitting final phase', async () => {
     const callOrder = [];
     const harness = createHarness({
+        storeState: {
+          workspaces: [{ id: 'ws-1', projectDir: 'D:/tmp/project', framework: 'hugo' }],
+        },
         publishToGitHub: async () => {
             callOrder.push('publish-start');
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -157,6 +188,7 @@ test('publish IPC awaits async publishToGitHub before normalizing and emitting f
     });
 
     const response = await harness.invoke({
+        workspaceId: 'ws-1',
         projectDir: 'D:/tmp/project',
         framework: 'hugo',
         repoUrl: 'https://github.com/alice/docs-site.git'
@@ -195,6 +227,7 @@ test('publish IPC persists workspace remote metadata after successful publish', 
   });
 
   await harness.invoke({
+    workspaceId: 'ws-1',
     projectDir: 'D:/tmp/project',
     framework: 'hugo',
     siteType: 'user-pages',
@@ -212,4 +245,32 @@ test('publish IPC persists workspace remote metadata after successful publish', 
   assert.equal(storeState.workspaces[0].backupRepo.owner, 'alice');
   assert.equal(storeState.workspaces[0].backupRepo.name, 'BFE');
   assert.equal(storeState.workspaces[0].backupRepo.url, 'https://github.com/alice/BFE.git');
+});
+
+test('publish IPC uses canonical workspace context and rejects unknown workspace', async () => {
+  const storeState = {
+    workspaces: [{ id: 'ws-1', projectDir: 'D:/managed/project', framework: 'hugo' }],
+  };
+  const harness = createHarness({ storeState });
+
+  await harness.invoke({
+    workspaceId: 'ws-1',
+    projectDir: 'D:/untrusted/project',
+    framework: 'hexo',
+    repoUrl: 'https://github.com/alice/docs-site.git',
+  });
+
+  assert.equal(harness.publishCalls.length, 1);
+  assert.equal(harness.publishCalls[0].projectDir, 'D:/managed/project');
+  assert.equal(harness.publishCalls[0].framework, 'hugo');
+
+  await assert.rejects(
+    () => harness.invoke({
+      workspaceId: 'missing',
+      projectDir: 'D:/tmp/project',
+      framework: 'hugo',
+      repoUrl: 'https://github.com/alice/docs-site.git',
+    }),
+    /受管工作区/
+  );
 });

@@ -13,6 +13,7 @@ import ImportView from "./views/ImportView.vue";
 import RssReaderView from "./views/RssReaderView.vue";
 import TutorialCenterView from "./views/TutorialCenterView.vue";
 import ContentEditorView from "./views/ContentEditorView.vue";
+import LoginView from "./views/LoginView.vue";
 
 const {
   activeInfoModal,
@@ -50,7 +51,6 @@ const {
   refreshAuthState,
   refreshEnvStatus,
   rssUnreadTotal,
-  selectedWorkspace,
   setShellScrollRegion,
   setActiveTab,
   shellAppearance,
@@ -137,6 +137,16 @@ const {
       </ShellTopBar>
 
       <div :ref="setShellScrollRegion" class="content-view-scroll" data-shell-scroll-region="workflow-view">
+        <LoginView
+          v-if="!isLoggedIn && activeTab === 'login'"
+          :auth-client-id="authClientId"
+          :auth-log="authLog"
+          :device-flow="deviceFlow"
+          @update:auth-client-id="(value) => (authClientId = value)"
+          @fill-demo-client-id-guide="fillDemoClientIdGuide"
+          @login="handleGithubLogin"
+          @copy-user-code="copyUserCode"
+        />
         <TutorialCenterView v-if="activeTab === 'tutorial'" :tutorial-target="tutorialTarget" />
         <WorkspaceView v-if="activeTab === 'workspace'" />
         <ThemeConfigView v-if="activeTab === 'theme'" />

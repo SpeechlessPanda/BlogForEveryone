@@ -1,5 +1,4 @@
 const path = require('path');
-const { FIXED_BACKUP_REPO_NAME } = require('../../shared/remoteWorkspaceContract');
 const { RESULT_CODES, RESULT_CATEGORIES } = require('../../shared/operationResultContract');
 
 function isNonEmptyString(value) {
@@ -151,13 +150,6 @@ function validateGithubImportPayload(payload = {}) {
         return createValidationFailure('backup_repo_invalid', '备份仓库地址格式错误，无法执行 GitHub 导入。');
     }
 
-    if (String(parsedBackupRepo.repo || '').toLowerCase() !== FIXED_BACKUP_REPO_NAME.toLowerCase()) {
-        return createValidationFailure(
-            'backup_repo_name_invalid',
-            `备份仓库必须为 ${FIXED_BACKUP_REPO_NAME}，无法执行 GitHub 导入。`
-        );
-    }
-
     return {
         ok: true,
         normalizedPayload: {
@@ -167,12 +159,12 @@ function validateGithubImportPayload(payload = {}) {
                 ? {
                     ...backupRepo,
                     owner: parsedBackupRepo.owner,
-                    name: FIXED_BACKUP_REPO_NAME,
+                    name: parsedBackupRepo.repo,
                     url: backupRepoUrl
                 }
                 : {
                     owner: parsedBackupRepo.owner,
-                    name: FIXED_BACKUP_REPO_NAME,
+                    name: parsedBackupRepo.repo,
                     url: backupRepoUrl
                 }
         }

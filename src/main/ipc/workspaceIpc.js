@@ -202,7 +202,17 @@ function registerWorkspaceIpcHandlers({ ipcMain, getWorkspacePolicy }) {
     });
 
     ipcMain.handle('workspace:backup', async (_event, payload) => {
-        return backupWorkspaceWorkflow(payload, {
+        const policy = getWorkspacePolicy();
+        const workspace = policy.getManagedWorkspace(payload?.workspaceId);
+        const candidateProjectDir = payload?.projectDir || workspace.projectDir;
+        const safeProjectDir = policy.assertPathWithinWorkspace(workspace.id, candidateProjectDir, 'backup');
+
+        return backupWorkspaceWorkflow({
+            ...payload,
+            workspaceId: workspace.id,
+            projectDir: safeProjectDir,
+            framework: workspace.framework
+        }, {
             backupWorkspace,
             pushBackupToRepo,
             now: () => new Date().toISOString()

@@ -100,7 +100,7 @@ test("content actions call workspaceId-based IPC contract", async () => {
     backupRepoName: "BFE",
     backupRepoUrl: "https://github.com/demo/BFE.git",
   });
-  await actions.getPublishJobStatus({ jobId: "1" });
+  await actions.getPublishJobStatus({ workspaceId: "ws-1", jobId: "1" });
 
   assert.deepEqual(calls[0][1], {
     workspaceId: "ws-1",
@@ -141,7 +141,7 @@ test("content actions call workspaceId-based IPC contract", async () => {
     backupRepoName: "BFE",
     backupRepoUrl: "https://github.com/demo/BFE.git",
   });
-  assert.deepEqual(calls[7][1], { jobId: "1" });
+  assert.deepEqual(calls[7][1], { workspaceId: "ws-1", jobId: "1" });
 });
 
 test("content actions reject missing workspaceId for workspace-scoped calls", async () => {
@@ -167,6 +167,10 @@ test("content actions reject missing workspaceId for workspace-scoped calls", as
   );
   await assert.rejects(
     () => actions.publishSavedContent({ filePath: "/tmp/a.md", repoUrl: "https://github.com/x/y.git" }),
+    /workspaceId/,
+  );
+  await assert.rejects(
+    () => actions.getPublishJobStatus({ jobId: "1" }),
     /workspaceId/,
   );
 });

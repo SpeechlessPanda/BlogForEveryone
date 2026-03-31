@@ -113,7 +113,13 @@ function registerContentIpcHandlers({ ipcMain, getWorkspacePolicy }) {
     });
 
     ipcMain.handle('content:getPublishJobStatus', async (_event, payload) => {
-        return getPublishJobStatus(payload.jobId);
+        const policy = getWorkspacePolicy();
+        const workspace = resolveWorkspace(policy, payload);
+        const jobStatus = getPublishJobStatus(payload?.jobId);
+        if (!jobStatus || jobStatus.workspaceId !== workspace.id) {
+            return null;
+        }
+        return jobStatus;
     });
 }
 

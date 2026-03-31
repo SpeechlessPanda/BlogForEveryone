@@ -8,7 +8,6 @@ const {
     importWorkspaceFromGithubWorkflow
 } = require('./workspaceWorkflowService');
 const {
-    FIXED_BACKUP_REPO_NAME,
     REMOTE_IMPORT_SOURCES,
     REMOTE_REPO_SOURCE_TYPES,
     REMOTE_SITE_TYPES
@@ -232,8 +231,8 @@ test('github-direct import clones from backup repo as authoritative source and p
             },
             backupRepo: {
                 owner: 'alice',
-                name: FIXED_BACKUP_REPO_NAME,
-                url: 'https://github.com/alice/BFE.git',
+                name: 'my-archive',
+                url: 'https://github.com/alice/my-archive.git',
                 visibility: 'private',
                 sourceType: REMOTE_REPO_SOURCE_TYPES.existing
             }
@@ -257,9 +256,9 @@ test('github-direct import clones from backup repo as authoritative source and p
         }
     );
 
-    assert.deepEqual(cloneCalls, [{ repoUrl: 'https://github.com/alice/BFE.git', destinationPath: '/tmp/import-target' }]);
+    assert.deepEqual(cloneCalls, [{ repoUrl: 'https://github.com/alice/my-archive.git', destinationPath: '/tmp/import-target' }]);
     assert.equal(result.workspace.importSource, REMOTE_IMPORT_SOURCES.githubRemote);
-    assert.equal(result.workspace.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(result.workspace.backupRepo.name, 'my-archive');
     assert.equal(result.workspace.deployRepo.name, 'alice-blog');
     assert.equal(result.workspace.localProjectPath, '/tmp/import-target');
 });
@@ -272,8 +271,8 @@ test('github-direct import succeeds when backup exists even if deploy repo is mi
             deployRepo: null,
             backupRepo: {
                 owner: 'alice',
-                name: FIXED_BACKUP_REPO_NAME,
-                url: 'https://github.com/alice/BFE.git',
+                name: 'backup-only',
+                url: 'https://github.com/alice/backup-only.git',
                 visibility: 'private',
                 sourceType: REMOTE_REPO_SOURCE_TYPES.existing
             }
@@ -296,7 +295,7 @@ test('github-direct import succeeds when backup exists even if deploy repo is mi
 
     assert.equal(result.workspace.importSource, REMOTE_IMPORT_SOURCES.githubRemote);
     assert.equal(result.workspace.deployRepo.name, '');
-    assert.equal(result.workspace.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(result.workspace.backupRepo.name, 'backup-only');
 });
 
 test('github-direct import rejects deploy-exists-but-backup-missing with one-cause failure', async () => {
@@ -346,44 +345,40 @@ test('github-direct import rejects deploy-exists-but-backup-missing with one-cau
     );
 });
 
-test('github-direct import rejects backup repo metadata that is not fixed BFE', async () => {
-    await assert.rejects(
-        importWorkspaceFromGithubWorkflow(
-            {
-                localDestinationPath: '/tmp/invalid-backup-repo',
-                siteType: REMOTE_SITE_TYPES.projectPages,
-                deployRepo: null,
-                backupRepo: {
-                    owner: 'alice',
-                    name: 'not-bfe',
-                    url: 'https://github.com/alice/not-bfe.git',
-                    visibility: 'private',
-                    sourceType: REMOTE_REPO_SOURCE_TYPES.existing
-                }
-            },
-            {
-                readStore: () => ({ workspaces: [] }),
-                updateStore: () => {
-                    throw new Error('updateStore should not run when backup repo metadata is invalid');
-                },
-                normalizePathForCompare: (value) => value,
-                cloneRepositoryToDestination: async () => {
-                    throw new Error('clone should not run when backup repo metadata is invalid');
-                },
-                detectFramework: () => 'hugo',
-                assertSupportedImportedFramework: (framework) => framework,
-                inferRecognizedThemeIdFromProject: () => 'stack',
-                importSubscriptions: () => ({ restored: 0, subscriptions: [] }),
-                getProjectName: () => 'invalid-backup-repo',
-                createWorkspaceId: () => 'ws-never',
-                now: () => '2026-01-01T00:00:00.000Z',
-                validateImportRepositoryState: () => ({ ok: true })
+test('github-direct import accepts non-BFE backup repo metadata and persists parsed repo name', async () => {
+    const cloneCalls = [];
+    const result = await importWorkspaceFromGithubWorkflow(
+        {
+            localDestinationPath: '/tmp/non-bfe-backup',
+            siteType: REMOTE_SITE_TYPES.projectPages,
+            deployRepo: null,
+            backupRepo: {
+                owner: 'alice',
+                name: 'archive-repo',
+                url: 'https://github.com/alice/archive-repo.git',
+                visibility: 'private',
+                sourceType: REMOTE_REPO_SOURCE_TYPES.existing
             }
-        ),
-        (error) => {
-            assert.equal(error.operationResult.causes.length, 1);
-            assert.equal(error.operationResult.causes[0].key, 'backup_repo_name_invalid');
-            return true;
+        },
+        {
+            readStore: () => ({ workspaces: [] }),
+            updateStore: (updater) => updater({ workspaces: [] }),
+            normalizePathForCompare: (value) => value,
+            cloneRepositoryToDestination: async ({ repoUrl, destinationPath }) => {
+                cloneCalls.push({ repoUrl, destinationPath });
+                return { ok: true };
+            },
+            detectFramework: () => 'hugo',
+            assertSupportedImportedFramework: (framework) => framework,
+            inferRecognizedThemeIdFromProject: () => 'stack',
+            importSubscriptions: () => ({ restored: 0, subscriptions: [] }),
+            getProjectName: () => 'non-bfe-backup',
+            createWorkspaceId: () => 'ws-non-bfe',
+            now: () => '2026-01-01T00:00:00.000Z',
+            validateImportRepositoryState: () => ({ ok: true })
         }
     );
+
+    assert.deepEqual(cloneCalls, [{ repoUrl: 'https://github.com/alice/archive-repo.git', destinationPath: '/tmp/non-bfe-backup' }]);
+    assert.equal(result.workspace.backupRepo.name, 'archive-repo');
 });

@@ -42,7 +42,7 @@ test("PublishBackupView refits the page into one coordinated publish-plus-backup
   assert.equal(source.includes('data-workflow-zone="backup-workbench"'), false);
   assert.match(source, /统一发布与备份/);
   assert.match(source, /GitHub Pages 站点类型/);
-  assert.match(source, /固定备份仓库：BFE/);
+  assert.match(source, /备份仓库可沿用工作区元数据，或按团队命名规范填写/);
   assert.match(source, /用户名\.github\.io/);
   assert.match(source, /publish-outcome-list/);
   assert.match(source, /最近结果/);
@@ -70,8 +70,8 @@ test("PublishBackupView removes manual-friction GitHub username copy while keepi
   assert.match(source, /用户站点固定命名为 <code>用户名\.github\.io<\/code>/);
   assert.match(source, /项目站点访问地址示例：<code>https:\/\/用户名\.github\.io\/仓库名\/<\/code>/);
   assert.match(source, /当前仓库：\{\{ resolvedDeployRepoName \|\| "等待填写" \}\}/);
-  assert.match(source, /<label>固定备份仓库<\/label>[\s\S]*<input v-model="publishForm\.backupRepoName" disabled \/>/);
-  assert.match(source, /<label>固定备份仓库<\/label>[\s\S]*<p class="muted stack-top">\{\{ backupRepoUrl \|\| "等待填写 GitHub 用户名" \}\}<\/p>/);
+  assert.match(source, /<label>备份仓库名称<\/label>[\s\S]*<input v-model="publishForm\.backupRepoName" placeholder="例如 blog-backup" \/>/);
+  assert.match(source, /<label>备份仓库名称<\/label>[\s\S]*<p class="muted stack-top">\{\{ backupRepoUrl \|\| "等待填写 GitHub 用户名" \}\}<\/p>/);
 });
 
 test("PublishBackupView trims manual login input before readiness, URL preview, and publish payload use", async () => {

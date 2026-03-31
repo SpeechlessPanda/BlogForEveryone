@@ -151,7 +151,7 @@ test("ThemeConfigView keeps dark editorial studio support copy and page links on
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio \.page-link-row a\s*\{[\s\S]*color:\s*var\(--shell-highlight\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio[\s\S]*\.page-link-row\s+a\s*\{[\s\S]*color:\s*var\(--shell-highlight\);/,
     "expected theme studio links to use the shell highlight token on dark shell surfaces",
   );
 });
@@ -161,12 +161,12 @@ test("ThemeConfigView keeps dark editorial studio titles and primary asset text 
 
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-heading h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-note strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-status-card strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-card h3[\s\S]*color:\s*var\(--shell-ink\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio-heading\s+h2,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio-note\s+strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio-status-card\s+strong,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio-card\s+h3[\s\S]*color:\s*var\(--shell-ink\);/,
     "expected theme studio titles and status-card primary text to use the shell ink token in dark mode",
   );
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-note \.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-studio-status-card \.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-asset-preview-card span[\s\S]*color:\s*var\(--shell-muted\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio-note\s+\.section-helper,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-studio-status-card\s+\.status-detail,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-asset-preview-card\s+span[\s\S]*color:\s*var\(--shell-muted\);/,
     "expected theme studio supporting copy to use the shell muted token in dark mode",
   );
   assert.match(

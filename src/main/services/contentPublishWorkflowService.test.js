@@ -452,7 +452,7 @@ test('publishSavedContent blocks early when user-pages repo binding is not <owne
     }
 });
 
-test('watchSaveAndAutoPublish blocks early when BFE backup repo binding is missing', () => {
+test('watchSaveAndAutoPublish blocks early when backup repo binding is missing', () => {
     const fixture = setupHexoWorkspace();
 
     try {
@@ -478,14 +478,14 @@ test('watchSaveAndAutoPublish blocks early when BFE backup repo binding is missi
         assert.deepEqual(blocked, {
             jobId: '',
             status: 'blocked',
-            message: '自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。'
+            message: '自动发布前需要先在发布与备份页保存备份仓库地址。'
         });
     } finally {
         fs.rmSync(fixture.tmpDir, { recursive: true, force: true });
     }
 });
 
-test('publishSavedContent blocks early when BFE backup repo binding is missing', () => {
+test('publishSavedContent blocks early when backup repo binding is missing', () => {
     const fixture = setupHexoWorkspace();
 
     try {
@@ -510,7 +510,7 @@ test('publishSavedContent blocks early when BFE backup repo binding is missing',
         assert.deepEqual(blocked, {
             jobId: '',
             status: 'blocked',
-            message: '自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。'
+            message: '自动发布前需要先在发布与备份页保存备份仓库地址。'
         });
     } finally {
         fs.rmSync(fixture.tmpDir, { recursive: true, force: true });

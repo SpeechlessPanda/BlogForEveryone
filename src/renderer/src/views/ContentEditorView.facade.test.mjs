@@ -98,7 +98,7 @@ test("ContentEditorView reuses workspace publish repo for auto-publish and skips
   assert.match(source, /const autoPublishSiteType = ws\.siteType \|\| "project-pages";/);
   assert.match(source, /const autoPublishLogin = ws\.deployRepo\?\.owner \|\| ws\.backupRepo\?\.owner \|\| "";/);
   assert.match(source, /const autoPublishDeployRepoName = ws\.deployRepo\?\.name \|\| "";/);
-  assert.match(source, /const autoPublishBackupRepoName = ws\.backupRepo\?\.name \|\| "BFE";/);
+  assert.match(source, /const autoPublishBackupRepoName = ws\.backupRepo\?\.name \|\| "";/);
   assert.match(source, /const autoPublishBackupRepoUrl = ws\.backupRepo\?\.url \|\| "";/);
   assert.match(source, /const autoPublishGitUserName = autoPublishIdentity\.value\.name;/);
   assert.match(source, /const autoPublishGitUserEmail = autoPublishIdentity\.value\.email;/);
@@ -108,9 +108,9 @@ test("ContentEditorView reuses workspace publish repo for auto-publish and skips
   assert.match(source, /siteType:\s*autoPublishSiteType,/);
   assert.doesNotMatch(source, /watchAndAutoPublish\(\{[\s\S]*?repoUrl:\s*ws\.repoUrl/);
   assert.match(source, /保存后自动发布（沿用当前工程已保存的发布与备份仓库信息）/);
-  assert.match(source, /会沿用当前工程已保存的站点类型、发布仓库和 BFE 备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。/);
+  assert.match(source, /会沿用当前工程已保存的站点类型、发布仓库和备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。/);
   assert.match(source, /如果当前工程是用户主页，但保存的发布仓库不是 用户名\.github\.io，自动发布会先提示你回到发布与备份页修正仓库绑定。/);
-  assert.match(source, /保存后自动发布仍会更新 BFE 备份仓库，确保 GitHub 恢复拿到的是最新内容。/);
+  assert.match(source, /保存后自动发布仍会更新备份仓库，确保 GitHub 恢复拿到的是最新内容。/);
   assert.match(source, /未配置发布仓库，已跳过自动发布。/);
 });
 
@@ -127,7 +127,7 @@ test("ContentEditorView reuses workspace publish repo for saving existing conten
   assert.match(block, /const autoPublishSiteType = ws\.siteType \|\| "project-pages";/);
   assert.match(block, /const autoPublishLogin = ws\.deployRepo\?\.owner \|\| ws\.backupRepo\?\.owner \|\| "";/);
   assert.match(block, /const autoPublishDeployRepoName = ws\.deployRepo\?\.name \|\| "";/);
-  assert.match(block, /const autoPublishBackupRepoName = ws\.backupRepo\?\.name \|\| "BFE";/);
+  assert.match(block, /const autoPublishBackupRepoName = ws\.backupRepo\?\.name \|\| "";/);
   assert.match(block, /const autoPublishBackupRepoUrl = ws\.backupRepo\?\.url \|\| "";/);
   assert.match(block, /const autoPublishGitUserName = autoPublishIdentity\.value\.name;/);
   assert.match(block, /const autoPublishGitUserEmail = autoPublishIdentity\.value\.email;/);

@@ -43,7 +43,7 @@ test("workspace actions forward renderer workspace payloads", async () => {
     projectDir: "D:/blogs/demo",
   });
   await actions.removeWorkspace({ id: "ws-1", deleteLocal: true });
-  await actions.installProjectDependencies({ projectDir: "D:/blogs/demo" });
+  await actions.installProjectDependencies({ workspaceId: "ws-1", projectDir: "D:/blogs/demo" });
   await actions.pickDirectory({
     title: "选择博客工程目录",
     defaultPath: "D:/blogs",
@@ -59,7 +59,7 @@ test("workspace actions forward renderer workspace payloads", async () => {
       projectDir: "D:/blogs/demo",
     }],
     ["removeWorkspace", { id: "ws-1", deleteLocal: true }],
-    ["installProjectDependencies", { projectDir: "D:/blogs/demo" }],
+    ["installProjectDependencies", { workspaceId: "ws-1", projectDir: "D:/blogs/demo" }],
     ["pickDirectory", {
       title: "选择博客工程目录",
       defaultPath: "D:/blogs",
@@ -80,6 +80,10 @@ test("workspace actions reject missing projectDir where required", async () => {
   await assert.rejects(
     () => actions.installProjectDependencies({}),
     /projectDir/,
+  );
+  await assert.rejects(
+    () => actions.installProjectDependencies({ projectDir: "D:/blogs/demo" }),
+    /workspaceId/,
   );
   await assert.rejects(
     () => actions.createWorkspace({ name: "Demo", framework: "hexo", theme: "landscape" }),

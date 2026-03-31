@@ -84,7 +84,8 @@ export function createContentActions(api) {
       });
     },
     async getPublishJobStatus(payload) {
-      return api.getPublishJobStatus({ jobId: payload?.jobId });
+      assertWorkspaceId(payload?.workspaceId);
+      return api.getPublishJobStatus({ workspaceId: payload.workspaceId, jobId: payload?.jobId });
     },
   };
 }

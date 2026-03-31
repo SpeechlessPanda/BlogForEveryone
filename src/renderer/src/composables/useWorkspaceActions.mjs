@@ -4,6 +4,12 @@ function assertProjectDir(projectDir) {
   }
 }
 
+function assertWorkspaceId(workspaceId) {
+  if (!workspaceId || !String(workspaceId).trim()) {
+    throw new Error("缺少 workspaceId，无法执行工作区操作。");
+  }
+}
+
 function assertId(id) {
   if (!id || !String(id).trim()) {
     throw new Error("缺少 id，无法执行工作区操作。");
@@ -36,7 +42,9 @@ export function createWorkspaceActions(api) {
     },
     async installProjectDependencies(payload) {
       assertProjectDir(payload?.projectDir);
+      assertWorkspaceId(payload?.workspaceId);
       return api.installProjectDependencies({
+        workspaceId: payload.workspaceId,
         projectDir: payload.projectDir,
       });
     },

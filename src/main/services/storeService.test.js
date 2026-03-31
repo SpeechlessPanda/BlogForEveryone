@@ -33,7 +33,7 @@ function createInMemoryStore(initialState = {}) {
     };
 }
 
-test('shared remote workspace contract fixes backup repo naming to BFE', () => {
+test('shared remote workspace contract keeps backup repo name and url from provided metadata', () => {
     assert.equal(FIXED_BACKUP_REPO_NAME, 'BFE');
     const normalized = hydrateWorkspaceRemoteMetadata({
         backupRepo: {
@@ -45,14 +45,14 @@ test('shared remote workspace contract fixes backup repo naming to BFE', () => {
         }
     });
 
-    assert.equal(normalized.backupRepo.name, FIXED_BACKUP_REPO_NAME);
-    assert.equal(normalized.backupRepo.url, 'https://github.com/alice/BFE');
+    assert.equal(normalized.backupRepo.name, 'custom-backup-repo');
+    assert.equal(normalized.backupRepo.url, 'https://github.com/alice/custom-backup-repo');
     assert.equal(normalized.backupRepo.owner, 'alice');
     assert.equal(normalized.backupRepo.visibility, REMOTE_REPO_VISIBILITY.private);
     assert.equal(normalized.backupRepo.sourceType, REMOTE_REPO_SOURCE_TYPES.existing);
 });
 
-test('shared remote workspace contract preserves unknown backup URL forms while fixing backup name', () => {
+test('shared remote workspace contract preserves unknown backup URL forms and backup name', () => {
     const normalized = hydrateWorkspaceRemoteMetadata({
         backupRepo: {
             owner: 'alice',
@@ -63,11 +63,11 @@ test('shared remote workspace contract preserves unknown backup URL forms while 
         }
     });
 
-    assert.equal(normalized.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(normalized.backupRepo.name, 'custom-backup-repo');
     assert.equal(normalized.backupRepo.url, 'https://git.example.com/alice/custom-backup-repo');
 });
 
-test('shared remote workspace contract canonicalizes common GitHub SSH backup URL forms', () => {
+test('shared remote workspace contract preserves common GitHub SSH backup URL forms', () => {
     const normalized = hydrateWorkspaceRemoteMetadata({
         backupRepo: {
             owner: 'alice',
@@ -76,8 +76,8 @@ test('shared remote workspace contract canonicalizes common GitHub SSH backup UR
         }
     });
 
-    assert.equal(normalized.backupRepo.name, FIXED_BACKUP_REPO_NAME);
-    assert.equal(normalized.backupRepo.url, 'git@github.com:alice/BFE.git');
+    assert.equal(normalized.backupRepo.name, 'wrong-name');
+    assert.equal(normalized.backupRepo.url, 'git@github.com:alice/not-bfe.git');
 });
 
 test('shared operation result contract exposes fixed constants for code/category/combined status', () => {
@@ -133,8 +133,8 @@ test('workspace persistence stores and hydrates remote metadata fields', () => {
     });
     assert.deepEqual(stored.backupRepo, {
         owner: 'alice',
-        name: FIXED_BACKUP_REPO_NAME,
-        url: 'https://github.com/alice/BFE',
+        name: 'ignored-by-contract',
+        url: 'https://github.com/alice/ignored-by-contract',
         visibility: REMOTE_REPO_VISIBILITY.private,
         sourceType: REMOTE_REPO_SOURCE_TYPES.existing
     });
@@ -166,7 +166,7 @@ test('workspace persistence backfills missing remote metadata into contract defa
     });
     assert.deepEqual(stored.backupRepo, {
         owner: '',
-        name: FIXED_BACKUP_REPO_NAME,
+        name: '',
         url: '',
         visibility: REMOTE_REPO_VISIBILITY.public,
         sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
@@ -216,8 +216,8 @@ test('workspace persistence normalizes invalid remote metadata values into contr
     });
     assert.deepEqual(stored.backupRepo, {
         owner: 'alice',
-        name: FIXED_BACKUP_REPO_NAME,
-        url: 'https://github.com/alice/BFE.git',
+        name: 'bad-backup-name',
+        url: 'https://github.com/alice/not-bfe.git',
         visibility: REMOTE_REPO_VISIBILITY.public,
         sourceType: REMOTE_REPO_SOURCE_TYPES.manualEntry
     });
@@ -259,7 +259,7 @@ test('workspace persistence preserves unknown nested repo fields while normalizi
     assert.equal(stored.deployRepo.mirrorStrategy, 'full');
     assert.equal(stored.backupRepo.branch, 'main');
     assert.equal(stored.backupRepo.mirrorStrategy, 'incremental');
-    assert.equal(stored.backupRepo.name, FIXED_BACKUP_REPO_NAME);
+    assert.equal(stored.backupRepo.name, 'custom-backup-repo');
     assert.equal(stored.backupRepo.url, 'https://git.example.com/alice/custom-backup-repo');
 });
 

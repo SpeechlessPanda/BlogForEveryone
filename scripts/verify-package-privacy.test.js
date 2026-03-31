@@ -46,6 +46,15 @@ test('release artifact naming stays explicit and consistent across package metad
     assert.match(guide, /latest\.yml/);
 });
 
+test('windows release flow enforces signed packaging path', () => {
+    assert.equal(packageJson.build?.win?.signAndEditExecutable, true);
+    assert.match(packageJson.scripts['package:signed'], /verify:windows-signing-env/);
+    assert.equal(packageJson.scripts['verify:git-clean'], 'node scripts/verify-git-clean.js');
+    assert.match(packageJson.scripts['verify:release'], /verify:git-clean/);
+    assert.match(packageJson.scripts.release, /verify:release/);
+    assert.match(packageJson.scripts.release, /--publish always/);
+});
+
 test('package privacy verification script exists and reports structured checks', async () => {
     const modulePath = path.join(repoRoot, 'scripts', 'verify-package-privacy.js');
     const privacyModule = require(modulePath);

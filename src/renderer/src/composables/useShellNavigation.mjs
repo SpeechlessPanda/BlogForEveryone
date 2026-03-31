@@ -1,8 +1,17 @@
 import { computed, ref, watchEffect } from "vue";
 
 const AUTH_REQUIRED_TAB_KEYS = new Set(["publish", "import"]);
+const LOGGED_OUT_ONLY_TAB_KEYS = new Set(["login"]);
 
 const tabs = [
+  {
+    key: "login",
+    label: "GitHub 登录",
+    section: "start",
+    step: "STEP 00",
+    note: "先完成账号授权，再解锁发布与导入恢复能力。",
+    summary: "通过设备码完成 GitHub 登录，发布、导入和仓库操作才会可用。",
+  },
   {
     key: "tutorial",
     label: "教程中心",
@@ -110,6 +119,10 @@ export function useShellNavigation(options = {}) {
   }
 
   function isTabAllowed(tabKey) {
+    if (LOGGED_OUT_ONLY_TAB_KEYS.has(tabKey)) {
+      return !resolveIsLoggedIn();
+    }
+
     if (!AUTH_REQUIRED_TAB_KEYS.has(tabKey)) {
       return true;
     }

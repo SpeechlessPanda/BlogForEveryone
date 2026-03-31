@@ -32,8 +32,6 @@ test('Hexo publish path routes commands through safe runCommand contract', () =>
 
     const publishServicePath = require.resolve('./publishService');
     const runCommandPath = require.resolve('./env/runCommand');
-    const childProcessPath = require.resolve('child_process');
-
     const originalPublishServiceCache = require.cache[publishServicePath];
     const originalRunCommandCache = require.cache[runCommandPath];
     const originalSpawnSync = require('child_process').spawnSync;
@@ -669,11 +667,30 @@ test('coordinated publish allows project-pages custom deploy repo names', async 
     }
 });
 
-test('coordinated publish enforces fixed backup repo name BFE', async () => {
+test('coordinated publish allows non-BFE backup repo names and uses parsed backup metadata coherently', async () => {
+    const ensureCalls = [];
     const harness = loadPublishServiceWithMocks({
         normalizePublishResultImpl: (payload) => payload,
-        ensureRemoteRepositoriesImpl: () => {
-            throw new Error('should not run ensure step when backup naming validation fails');
+        ensureRemoteRepositoriesImpl: (payload) => {
+            ensureCalls.push(payload);
+            if (payload.createBackupRepo) {
+                return {
+                    deployRepo: payload.deployRepo,
+                    backupRepo: payload.backupRepo || {
+                        owner: 'alice',
+                        name: 'BACKUP-ALT',
+                        url: 'https://github.com/alice/BACKUP-ALT.git'
+                    }
+                };
+            }
+            return {
+                deployRepo: payload.deployRepo || {
+                    owner: 'alice',
+                    name: 'docs-site',
+                    url: 'https://github.com/alice/docs-site.git'
+                },
+                backupRepo: payload.backupRepo
+            };
         }
     });
 
@@ -684,14 +701,22 @@ test('coordinated publish enforces fixed backup repo name BFE', async () => {
             siteType: 'project-pages',
             login: 'alice',
             deployRepoName: 'docs-site',
-            backupRepoName: 'BACKUP-ALT',
+            backupRepoName: '',
             repoUrl: 'https://github.com/alice/docs-site.git',
-            backupRepoUrl: 'https://github.com/alice/BACKUP-ALT.git'
+            backupRepoUrl: 'https://github.com/alice/BACKUP-ALT.git',
+            gitUserName: 'alice',
+            gitUserEmail: 'alice@example.com'
         });
 
-        assert.equal(result.ok, false);
-        assert.equal(result.backupRepoEnsure?.ok, false);
-        assert.match(result.backupRepoEnsure?.userMessage || '', /BFE/);
+        assert.equal(result.backupRepoEnsure?.ok, true);
+        assert.notEqual(result.backupRepoEnsure?.code, 'validation_failed');
+        assert.equal(result.status, 'success');
+        assert.equal(ensureCalls.length >= 2, true);
+        const backupEnsureCall = ensureCalls.find(
+            (entry) => entry.backupRepo && entry.backupRepo.url === 'https://github.com/alice/BACKUP-ALT.git'
+        );
+        assert.equal(backupEnsureCall.backupRepo.name, 'BACKUP-ALT');
+        assert.equal(backupEnsureCall.backupRepo.url, 'https://github.com/alice/BACKUP-ALT.git');
     } finally {
         harness.cleanup();
     }

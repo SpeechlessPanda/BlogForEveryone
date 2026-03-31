@@ -215,7 +215,7 @@ test("WorkspaceView lightbox gives dark-shell preview secondary text an explicit
 
   assert.match(
     stylesSource,
-    /\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-dialog-copy \.section-eyebrow,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\] \.theme-preview-zoom-status[\s\S]*color:\s*var\(--shell-muted\);/,
+    /\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-preview-dialog-copy\s+\.section-eyebrow,[\s\S]*\.layout--editorial\[data-shell-appearance="dark"\][\s\S]*\.theme-preview-zoom-status[\s\S]*color:\s*var\(--shell-muted\);/,
     "expected dark preview dialog secondary text to use the shell muted token for readability",
   );
 });

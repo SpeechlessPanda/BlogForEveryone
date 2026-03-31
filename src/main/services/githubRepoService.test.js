@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Module = require('module');
 
-const { FIXED_BACKUP_REPO_NAME, REMOTE_SITE_TYPES } = require('../../shared/remoteWorkspaceContract');
+const { REMOTE_SITE_TYPES } = require('../../shared/remoteWorkspaceContract');
 const { RESULT_CODES, RESULT_CATEGORIES } = require('../../shared/operationResultContract');
 
 function loadGithubRepoService({
@@ -80,9 +80,9 @@ test('listUserRepositories returns selectable repositories for authenticated use
                         owner: { login: 'alice' }
                     },
                     {
-                        name: FIXED_BACKUP_REPO_NAME,
+                        name: 'project-backup',
                         private: true,
-                        clone_url: 'https://github.com/alice/BFE.git',
+                        clone_url: 'https://github.com/alice/project-backup.git',
                         owner: { login: 'alice' }
                     }
                 ]
@@ -130,7 +130,7 @@ test('ensureRemoteRepositories optionally creates deploy and backup repos with o
             if (url.includes('/user/repos') && options.method === 'POST') {
                 const requestBody = JSON.parse(options.body);
                 createCalls.push(requestBody.name);
-                if (requestBody.name === FIXED_BACKUP_REPO_NAME) {
+                if (requestBody.name === 'project-backup') {
                     return createJsonResponse({
                         ok: false,
                         status: 422,
@@ -160,6 +160,7 @@ test('ensureRemoteRepositories optionally creates deploy and backup repos with o
             login: 'alice',
             siteType: REMOTE_SITE_TYPES.userPages,
             deployRepoName: '',
+            backupRepoName: 'project-backup',
             createDeployRepo: true,
             createBackupRepo: true
         }),
@@ -172,7 +173,7 @@ test('ensureRemoteRepositories optionally creates deploy and backup repos with o
         }
     );
 
-    assert.deepEqual(createCalls, ['alice.github.io', FIXED_BACKUP_REPO_NAME]);
+    assert.deepEqual(createCalls, ['alice.github.io', 'project-backup']);
 });
 
 test('ensureRemoteRepositories maps deploy creation failure when both create flags are true', async (t) => {

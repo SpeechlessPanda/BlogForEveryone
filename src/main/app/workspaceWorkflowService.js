@@ -1,5 +1,4 @@
 const {
-    FIXED_BACKUP_REPO_NAME,
     REMOTE_IMPORT_SOURCES,
     REMOTE_REPO_VISIBILITY,
     REMOTE_REPO_SOURCE_TYPES
@@ -139,11 +138,8 @@ async function importWorkspaceFromGithubWorkflow(payload, deps) {
     }
 
     const parsedBackupRepo = parseGithubRepo(authoritativeBackupUrl);
-    if (!parsedBackupRepo || String(parsedBackupRepo.repo || '').toLowerCase() !== FIXED_BACKUP_REPO_NAME.toLowerCase()) {
-        throw createValidationOperationError(
-            'backup_repo_name_invalid',
-            `备份仓库必须为 ${FIXED_BACKUP_REPO_NAME}，无法执行 GitHub 导入。`
-        );
+    if (!parsedBackupRepo) {
+        throw createValidationOperationError('backup_repo_invalid', '备份仓库地址格式错误，无法执行 GitHub 导入。');
     }
 
     cloneRepositoryToDestination({
@@ -170,7 +166,7 @@ async function importWorkspaceFromGithubWorkflow(payload, deps) {
         backupRepo: {
             ...(backupRepo || {}),
             owner: parsedBackupRepo.owner,
-            name: FIXED_BACKUP_REPO_NAME
+            name: parsedBackupRepo.repo
         },
         importSource: REMOTE_IMPORT_SOURCES.githubRemote,
         localProjectPath: localDestinationPath

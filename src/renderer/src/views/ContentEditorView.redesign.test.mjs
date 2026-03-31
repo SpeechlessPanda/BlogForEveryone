@@ -131,12 +131,12 @@ test("ContentEditorView explains that auto-publish reuses publish settings and s
   const source = await readFile(contentEditorPath, "utf8");
 
   assert.match(source, /保存后自动发布（沿用当前工程已保存的发布与备份仓库信息）/);
-  assert.match(source, /会沿用当前工程已保存的站点类型、发布仓库和 BFE 备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。/);
+  assert.match(source, /会沿用当前工程已保存的站点类型、发布仓库和备份仓库；不会自动代入备份目录或发布页里的临时建仓选项。/);
   assert.match(source, /如果当前工程还没有已保存的发布仓库地址，自动发布会自动跳过，先完成写作与保存。/);
-  assert.match(source, /如果当前工程还没有已保存的 BFE 备份仓库地址，自动发布会自动跳过，先回到发布与备份页补齐备份仓库。/);
+  assert.match(source, /如果当前工程还没有已保存的备份仓库地址，自动发布会自动跳过，先回到发布与备份页补齐备份仓库。/);
   assert.match(source, /如果当前工程是用户主页，但保存的发布仓库不是 用户名\.github\.io，自动发布会先提示你回到发布与备份页修正仓库绑定。/);
   assert.match(source, /已有内容点击“保存标题与正文”后，会直接触发自动发布，不需要再等下一次文件改动。/);
-  assert.match(source, /保存后自动发布仍会更新 BFE 备份仓库，确保 GitHub 恢复拿到的是最新内容。/);
+  assert.match(source, /保存后自动发布仍会更新备份仓库，确保 GitHub 恢复拿到的是最新内容。/);
   assert.match(source, /未配置发布仓库，已跳过自动发布。/);
 });
 
@@ -160,6 +160,6 @@ test("ContentEditorView keeps existing-content saves on the same auto-publish co
   assert.match(block, /if \(form\.autoPublish\) \{/);
   assert.match(block, /selectedExistingPath\.value/);
   assert.match(block, /publishSavedContent/);
-  assert.match(block, /自动发布前需要先在发布与备份页保存 BFE 备份仓库地址。/);
+  assert.match(block, /自动发布前需要先在发布与备份页保存备份仓库地址。/);
   assert.match(block, /未配置发布仓库，已跳过自动发布。/);
 });

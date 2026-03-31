@@ -51,7 +51,7 @@ function buildMainWindowOptions(resolvedIcon) {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
-            sandbox: false
+            sandbox: true
         }
     };
 }
@@ -64,6 +64,29 @@ function loadMainWindowContent(win, { isDev: shouldUseDevServer }) {
     }
 
     win.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+}
+
+function isAppLocalNavigationUrl(url, { isDev: shouldUseDevServer }) {
+    const value = String(url || '').trim();
+    if (!value) {
+        return false;
+    }
+
+    try {
+        const parsed = new URL(value);
+        if (parsed.protocol === 'file:') {
+            return true;
+        }
+
+        if (!shouldUseDevServer) {
+            return false;
+        }
+
+        const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && isLocalhost;
+    } catch {
+        return false;
+    }
 }
 
 function createMainWindow() {
@@ -80,6 +103,14 @@ function createMainWindow() {
             shell.openExternal(decision.normalizedUrl);
         }
         return { action: 'deny' };
+    });
+
+    win.webContents.on('will-navigate', (event, url) => {
+        if (isAppLocalNavigationUrl(url, { isDev })) {
+            return;
+        }
+
+        event.preventDefault();
     });
 
     loadMainWindowContent(win, { isDev });
@@ -112,5 +143,6 @@ app.on('window-all-closed', () => {
 
 module.exports = {
     buildMainWindowOptions,
-    loadMainWindowContent
+    loadMainWindowContent,
+    isAppLocalNavigationUrl
 };

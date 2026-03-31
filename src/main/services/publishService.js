@@ -12,7 +12,7 @@ const {
     RESULT_CATEGORIES,
     COMBINED_OPERATION_STATUS
 } = require('../../shared/operationResultContract');
-const { FIXED_BACKUP_REPO_NAME, REMOTE_SITE_TYPES } = require('../../shared/remoteWorkspaceContract');
+const { REMOTE_SITE_TYPES } = require('../../shared/remoteWorkspaceContract');
 
 function runGit(projectDir, args) {
     return spawnSync('git', args, {
@@ -610,16 +610,6 @@ function publishToGitHub(payload) {
             }
         }
 
-        if (backupRepoName.toLowerCase() !== FIXED_BACKUP_REPO_NAME.toLowerCase()) {
-            result.backupRepoEnsure = toOutcome({
-                ok: false,
-                code: RESULT_CODES.validationFailed,
-                category: RESULT_CATEGORIES.validation,
-                userMessage: `备份仓库名称必须为 ${FIXED_BACKUP_REPO_NAME}。`
-            });
-            return normalizePublishResult(finalizeCombinedResult(result));
-        }
-
         const parsedDeployRepo = parseGithubRepo(payload.repoUrl);
         const parsedBackupRepo = parseGithubRepo(payload.backupRepoUrl);
 
@@ -633,7 +623,7 @@ function publishToGitHub(payload) {
         let backupRepo = payload.backupRepo || (parsedBackupRepo
             ? {
                 owner: parsedBackupRepo.owner,
-                name: FIXED_BACKUP_REPO_NAME,
+                name: backupRepoName || parsedBackupRepo.repo,
                 url: String(payload.backupRepoUrl || '').trim()
             }
             : null);

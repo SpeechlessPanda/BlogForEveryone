@@ -252,7 +252,6 @@ function createAsyncCommandRunnerTools(options = {}) {
 }
 
 const asyncCommandRunnerTools = createAsyncCommandRunnerTools();
-const runCommandAsync = asyncCommandRunnerTools.runCommandAsync;
 
 async function runPnpmWithMirrorRetry(args, options = {}) {
     return asyncCommandRunnerTools.runPnpmWithMirrorRetry(args, options);

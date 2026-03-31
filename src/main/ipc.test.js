@@ -82,36 +82,44 @@ function loadIpcWithMocks({
         './ipc/workspaceIpc': {
             registerWorkspaceIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'workspace', args });
+                args.ipcMain.handle('workspace:list', async () => ({ ok: true }));
             }
         },
         './ipc/contentIpc': {
             registerContentIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'content', args });
+                args.ipcMain.handle('content:listExisting', async () => ({ ok: true }));
             }
         },
         './ipc/authIpc': {
             registerAuthIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'auth', args });
+                args.ipcMain.handle('githubAuth:getState', async () => ({ ok: true }));
             }
         },
         './ipc/appIpc': {
             registerAppIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'app', args });
+                args.ipcMain.handle('app:getState', async () => ({ ok: true }));
             }
         },
         './ipc/envIpc': {
             registerEnvIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'env', args });
+                args.ipcMain.handle('env:status', async () => ({ ok: true }));
+                args.ipcMain.handle('project:installDependencies', async () => ({ ok: true }));
             }
         },
         './ipc/themeIpc': {
             registerThemeIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'theme', args });
+                args.ipcMain.handle('theme:catalog', async () => ({ ok: true }));
             }
         },
         './ipc/previewIpc': {
             registerPreviewIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'preview', args });
+                args.ipcMain.handle('preview:start', async () => ({ ok: true }));
                 args.ipcMain.handle('preview:open', async (event, payload) => {
                     const opId = `preview-open-${Date.now()}`;
                     const result = args.evaluatePreviewOpenResult(args.openLocalPreview(payload));
@@ -187,6 +195,7 @@ function loadIpcWithMocks({
         './ipc/rssIpc': {
             registerRssIpcHandlers: (args) => {
                 registrarCalls.push({ name: 'rss', args });
+                args.ipcMain.handle('rss:listSubscriptions', async () => ({ ok: true }));
             }
         }
     };
@@ -210,6 +219,10 @@ function loadIpcWithMocks({
         invokePublish: async (payload) => {
             const handler = handlers.get('publish:github');
             const event = {
+                senderFrame: {
+                    url: 'file:///index.html',
+                    top: null
+                },
                 sender: {
                     send(_channel, payloadBody) {
                         events.push(payloadBody);
@@ -222,6 +235,10 @@ function loadIpcWithMocks({
         invokePreviewOpen: async (payload) => {
             const handler = handlers.get('preview:open');
             const event = {
+                senderFrame: {
+                    url: 'file:///index.html',
+                    top: null
+                },
                 sender: {
                     send(_channel, payloadBody) {
                         events.push(payloadBody);
@@ -234,6 +251,10 @@ function loadIpcWithMocks({
         invokePreviewStop: async (payload) => {
             const handler = handlers.get('preview:stop');
             const event = {
+                senderFrame: {
+                    url: 'file:///index.html',
+                    top: null
+                },
                 sender: {
                     send(_channel, payloadBody) {
                         events.push(payloadBody);
@@ -242,6 +263,10 @@ function loadIpcWithMocks({
             };
             const response = await handler(event, payload);
             return { response, events };
+        },
+        invokeChannel: async (channel, payload, event = { senderFrame: { url: 'file:///index.html', top: null } }) => {
+            const handler = handlers.get(channel);
+            return handler(event, payload);
         },
         registrarCalls
     };
@@ -349,4 +374,67 @@ test('preview:stop emits failed event when no running preview process exists', a
     assert.equal(events[0].scope, 'preview');
     assert.equal(events[0].phase, 'failed');
     assert.equal(events[0].message, '当前没有正在运行的预览进程。');
+});
+
+test('ipc trust guard blocks untrusted sender frames for privileged channels', async () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: { ok: true, url: 'http://localhost:4000/' }
+    });
+
+    const untrustedEvent = {
+        senderFrame: {
+            url: 'https://evil.example/app',
+            top: null
+        }
+    };
+
+    const channels = [
+        'app:getState',
+        'env:status',
+        'githubAuth:getState',
+        'theme:catalog',
+        'preview:start',
+        'workspace:list',
+        'project:installDependencies',
+        'content:listExisting',
+        'publish:github',
+        'rss:listSubscriptions'
+    ];
+
+    for (const channel of channels) {
+        await assert.rejects(
+            () => harness.invokeChannel(channel, {}, untrustedEvent),
+            /IPC sender is not trusted/
+        );
+    }
+});
+
+test('ipc trust guard allows trusted file sender frame for privileged channels', async () => {
+    const harness = loadIpcWithMocks({
+        openLocalPreviewResult: { ok: true, url: 'http://localhost:4000/' }
+    });
+
+    const trustedEvent = {
+        senderFrame: {
+            url: 'file:///index.html',
+            top: null
+        }
+    };
+
+    const channels = [
+        'app:getState',
+        'env:status',
+        'githubAuth:getState',
+        'theme:catalog',
+        'preview:start',
+        'workspace:list',
+        'project:installDependencies',
+        'content:listExisting',
+        'rss:listSubscriptions'
+    ];
+
+    for (const channel of channels) {
+        const response = await harness.invokeChannel(channel, {}, trustedEvent);
+        assert.deepEqual(response, { ok: true });
+    }
 });

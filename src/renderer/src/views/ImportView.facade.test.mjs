@@ -133,21 +133,20 @@ test("ImportView keeps manual repo URL fallback usable when repo list cannot be 
   assert.match(source, /selectedGithubDeployRepo\s*=\s*computed\([\s\S]*parseGithubRepo\(githubImportForm\.deployRepoUrl\)/);
   assert.match(source, /selectedGithubBackupRepo\s*=\s*computed\([\s\S]*parseGithubRepo\(githubImportForm\.backupRepoUrl\)/);
   assert.match(source, /const githubRepoLoadFailed = ref\(false\)/);
-  assert.match(source, /const githubBackupRepoChoices = computed\([\s\S]*githubRepos\.value\.filter\(\(repo\)\s*=>\s*repo\.name === "BFE"\)[\s\S]*\)/);
+  assert.match(source, /const githubBackupRepoChoices = computed\(\(\) => githubRepos\.value\)/);
   assert.match(source, /githubRepoLoadFailed\.value = false[\s\S]*githubRepos\.value = Array\.isArray\(repos\)/);
   assert.match(source, /catch\s*\(error\)\s*\{[\s\S]*githubRepoLoadFailed\.value = true;[\s\S]*githubRepos\.value = \[\];[\s\S]*syncExactGithubRepoAutodetect\(\);[\s\S]*githubRepoSummary\.value/);
   assert.match(source, /if \(githubRepoLoadFailed\.value\) \{[\s\S]*可手动填写恢复仓库地址继续操作/);
   assert.match(source, /hasExactBackupRepoAutodetect\.value[\s\S]*发布仓库没有唯一精确匹配[\s\S]*可继续手动选择/);
-  assert.match(source, /!githubBackupRepoChoices\.value\.length[\s\S]*未在列表中发现 BFE 时，可直接手动填写仓库地址继续恢复/);
+  assert.match(source, /!githubBackupRepoChoices\.value\.length[\s\S]*未读取到仓库列表时，可直接手动填写恢复源仓库地址继续恢复/);
   assert.match(source, /@input="markGithubDeployRepoManual"/);
   assert.match(source, /@input="markGithubBackupRepoManual"/);
-  assert.match(source, /selectedGithubBackupRepo\.value[\s\S]*String\(selectedGithubBackupRepo\.value\.name \|\| ""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"bfe"/);
-  assert.match(source, /setStructuredError\([\s\S]*"GitHub 直接恢复失败"[\s\S]*备份仓库必须为 BFE，当前为 \$\{selectedGithubBackupRepo\.value\.name\}[\s\S]*\)/);
+  assert.doesNotMatch(source, /备份仓库必须为 BFE/);
 });
 
-test("ImportView treats manually entered BFE backup URLs case-insensitively before submit", async () => {
+test("ImportView does not hard-block manually entered non-BFE backup repo before submit", async () => {
   const source = await readFile(importViewPath, "utf8");
 
-  assert.match(source, /String\(selectedGithubBackupRepo\.value\.name \|\| ""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"bfe"/);
-  assert.match(source, /备份仓库必须为 BFE，当前为 \$\{selectedGithubBackupRepo\.value\.name\}/);
+  assert.doesNotMatch(source, /String\(selectedGithubBackupRepo\.value\.name \|\| ""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"bfe"/);
+  assert.match(source, /backupRepo:\s*selectedGithubBackupRepo\.value/);
 });

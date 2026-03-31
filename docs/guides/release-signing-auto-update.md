@@ -38,6 +38,16 @@ pnpm run release
 2. `CSC_KEY_PASSWORD`：证书密码。
 3. `GH_TOKEN`：用于发布 Release（当使用 `pnpm run release` 时）。
 
+在 CI（GitHub Actions）中，推荐使用 `production-release` 环境下的环境级 Secrets：
+
+- `BFE_CODESIGN_PFX_B64`：PFX 证书文件的 Base64 内容
+- `BFE_CODESIGN_PFX_PASSWORD`：PFX 证书密码
+
+工作流会在 Runner 临时目录还原证书，并映射为：
+
+- `CSC_LINK`
+- `CSC_KEY_PASSWORD`
+
 ### 3.2 签名打包（已强制校验）
 
 ```bash
@@ -66,6 +76,10 @@ pnpm run release
    - `BlogForEveryone-Setup x.y.z.exe.blockmap`
    - `latest.yml`
 
+4. 推荐启用分支与标签保护：
+   - `main` 开启 PR 评审和状态检查
+   - `v*` 标签开启保护规则（限制创建/更新/删除）
+
 ## 5. 与博客发布仓库的区别
 
 1. 应用发布仓库：SpeechlessPanda/BlogForEveryone（用于安装包与自动更新）。
@@ -85,3 +99,32 @@ pnpm run release
 2. 保持稳定下载渠道（优先 GitHub Release 官方资产链接）。
 3. 证书签名时启用时间戳（RFC3161）以保证证书过期后签名仍可验证。
 4. 只发布签名构建（`package:signed` / `release`），不要把本地未签名包用于正式分发。
+
+## 8. CI 自动发布流程（推荐）
+
+仓库当前采用两条工作流：
+
+1. `.github/workflows/ci.yml`
+   - 触发：`main` 的 push / pull_request
+   - 核心命令：`pnpm run verify:premerge`
+   - 目的：合并前持续验证（lint/test/build/UI e2e）
+
+2. `.github/workflows/release-windows.yml`
+   - 触发：`v*` tag push，或手动 `workflow_dispatch`
+   - 环境：`production-release`（可配置审批）
+   - 核心流程：
+     - 校验 tag 与 `package.json` 版本一致
+     - 还原签名证书并校验 `verify:windows-signing-env`
+     - 执行 `pnpm run release`（内含 `verify:release`）
+     - 对产物执行 `signtool verify`
+     - 上传产物并生成 provenance attestation
+
+发布前脚本链路（当前）：
+
+- `release` -> `verify:release` -> `verify:git-clean` + `verify:premerge` + `test:e2e:workspace` + `package:signed`
+
+这意味着：
+
+1. 工作区不干净会直接阻断发布。
+2. 未配置签名变量会直接阻断发布。
+3. 未通过测试/构建会直接阻断发布。

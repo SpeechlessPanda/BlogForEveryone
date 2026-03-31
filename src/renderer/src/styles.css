@@ -3376,6 +3376,21 @@ a:hover {
   margin-left: auto;
 }
 
+.rss-post-item {
+  list-style: none;
+}
+
+.rss-post-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rss-post-row button.secondary {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+
 .layout--editorial .shell-summary-chip {
   min-width: 180px;
   flex: 1 1 180px;

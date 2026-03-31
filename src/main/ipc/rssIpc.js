@@ -8,7 +8,10 @@ function registerRssIpcHandlers({
     markItemRead,
     getUnreadSummary,
     exportSubscriptions,
-    importSubscriptions
+    importSubscriptions,
+    evaluateExternalUrl,
+    openExternal,
+    externalUrlRule
 }) {
     ipcMain.handle('rss:listSubscriptions', async () => listSubscriptions());
     ipcMain.handle('rss:addSubscription', async (_event, payload) => addSubscription(payload));
@@ -28,6 +31,18 @@ function registerRssIpcHandlers({
             projectDir: workspace.projectDir,
             strategy: payload?.strategy
         });
+    });
+    ipcMain.handle('rss:openArticle', async (_event, payload) => {
+        const decision = evaluateExternalUrl(payload?.url, externalUrlRule);
+        if (!decision.allowed) {
+            throw new Error(`外部链接不受信任：${decision.reason || 'UNKNOWN'}`);
+        }
+
+        await openExternal(decision.normalizedUrl);
+        return {
+            opened: true,
+            url: decision.normalizedUrl
+        };
     });
 }
 

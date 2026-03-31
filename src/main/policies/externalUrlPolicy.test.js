@@ -37,3 +37,15 @@ test('blocks arbitrary explicit preview url while still allowing local preview h
     const allowedLocal = evaluateExternalUrl('http://127.0.0.1:1313/', EXTERNAL_URL_RULES.preview);
     assert.equal(allowedLocal.allowed, true);
 });
+
+test('rss article rule allows both http and https while still rejecting credential urls', () => {
+    const httpDecision = evaluateExternalUrl('http://example.com/post/1', EXTERNAL_URL_RULES.rssArticle);
+    assert.equal(httpDecision.allowed, true);
+
+    const httpsDecision = evaluateExternalUrl('https://example.com/post/2', EXTERNAL_URL_RULES.rssArticle);
+    assert.equal(httpsDecision.allowed, true);
+
+    const credentialDecision = evaluateExternalUrl('https://user:pass@example.com/post/3', EXTERNAL_URL_RULES.rssArticle);
+    assert.equal(credentialDecision.allowed, false);
+    assert.equal(credentialDecision.reason, 'CREDENTIALS_NOT_ALLOWED');
+});

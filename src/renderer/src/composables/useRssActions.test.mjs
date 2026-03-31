@@ -22,6 +22,10 @@ test("rss actions preserve subscription and export contracts", async () => {
       calls.push(["syncSubscriptions"]);
       return [];
     },
+    openRssArticle: async (payload) => {
+      calls.push(["openRssArticle", payload]);
+      return { opened: true, url: payload.url };
+    },
     markSubscriptionItemRead: async (payload) => {
       calls.push(["markSubscriptionItemRead", payload]);
       return [];
@@ -46,6 +50,7 @@ test("rss actions preserve subscription and export contracts", async () => {
   await actions.addSubscription({ url: "https://example.com/rss.xml", title: "Example" });
   await actions.removeSubscription({ id: "sub-1" });
   await actions.syncSubscriptions();
+  await actions.openRssArticle({ url: "https://example.com/posts/1" });
   await actions.markSubscriptionItemRead({ subscriptionId: "sub-1", itemKey: "post-1" });
   await actions.pickDirectory({ title: "选择导出目录", defaultPath: "D:/blogs/demo" });
   await actions.exportSubscriptions({ workspaceId: "ws-1", projectDir: "D:/blogs/demo" });
@@ -56,6 +61,7 @@ test("rss actions preserve subscription and export contracts", async () => {
     ["addSubscription", { url: "https://example.com/rss.xml", title: "Example" }],
     ["removeSubscription", { id: "sub-1" }],
     ["syncSubscriptions"],
+    ["openRssArticle", { url: "https://example.com/posts/1" }],
     ["markSubscriptionItemRead", { subscriptionId: "sub-1", itemKey: "post-1" }],
     ["pickDirectory", { title: "选择导出目录", defaultPath: "D:/blogs/demo" }],
     ["exportSubscriptions", { workspaceId: "ws-1", projectDir: "D:/blogs/demo" }],
@@ -69,6 +75,7 @@ test("rss actions reject missing ids for targeted operations", async () => {
     addSubscription: async () => [],
     removeSubscription: async () => [],
     syncSubscriptions: async () => [],
+    openRssArticle: async () => ({}),
     markSubscriptionItemRead: async () => [],
     pickDirectory: async () => ({}),
     exportSubscriptions: async () => "",
@@ -81,6 +88,7 @@ test("rss actions reject missing ids for targeted operations", async () => {
     () => actions.markSubscriptionItemRead({ subscriptionId: "sub-1" }),
     /itemKey/,
   );
+  await assert.rejects(() => actions.openRssArticle({}), /url/);
   await assert.rejects(
     () => actions.exportSubscriptions({}),
     /projectDir/,

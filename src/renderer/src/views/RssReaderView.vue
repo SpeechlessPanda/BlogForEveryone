@@ -18,6 +18,7 @@ const {
   addSubscription,
   removeSubscription,
   syncSubscriptions,
+  openRssArticle,
   markSubscriptionItemRead,
   pickDirectory,
   exportSubscriptions,
@@ -41,6 +42,16 @@ const rssResultSummary = computed(() => {
 
 function getItemKey(post) {
   return post?.key || post?.guid || post?.id || post?.link || post?.title || "";
+}
+
+function isUnreadPost(subscription, post) {
+  const itemKey = getItemKey(post);
+  if (!itemKey) {
+    return false;
+  }
+  return Array.isArray(subscription?.unreadItemKeys)
+    ? subscription.unreadItemKeys.includes(itemKey)
+    : false;
 }
 
 function emitRssUpdated() {
@@ -124,10 +135,19 @@ async function markPostAsRead(subscription, post) {
 }
 
 async function openPost(subscription, post) {
-  await markPostAsRead(subscription, post);
-  if (post?.link) {
-    window.open(post.link, "_blank");
+  if (!post?.link) {
+    message.value = "该文章缺少可打开的链接。";
+    return;
   }
+
+  try {
+    await openRssArticle({ url: post.link });
+  } catch (error) {
+    message.value = `打开文章失败：${String(error?.message || error)}`;
+    return;
+  }
+
+  await markPostAsRead(subscription, post);
 }
 
 async function pickExportDirectory() {
@@ -315,10 +335,21 @@ onMounted(refresh);
                 <li
                   v-for="post in item.latestItems.slice(0, 3)"
                   :key="post.link || post.title"
+                  class="rss-post-item"
                 >
-                  <a href="#" @click.prevent="openPost(item, post)">{{
-                    post.title
-                  }}</a>
+                  <div class="rss-post-row">
+                    <a href="#" @click.prevent="openPost(item, post)">{{
+                      post.title
+                    }}</a>
+                    <button
+                      class="secondary"
+                      type="button"
+                      v-if="isUnreadPost(item, post)"
+                      @click.stop="markPostAsRead(item, post)"
+                    >
+                      已读
+                    </button>
+                  </div>
                 </li>
               </ul>
             </div>

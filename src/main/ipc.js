@@ -1,4 +1,4 @@
-const { app, ipcMain, dialog } = require('electron');
+const { app, ipcMain, dialog, shell } = require('electron');
 const { readStore, updateStore } = require('./services/storeService');
 const { getThemeCatalog, readThemeConfig, saveThemeConfig, saveLocalAssetToBlog, applyPreviewOverrides } = require('./services/themeService');
 const { validateThemeSettings, validatePublishPayload } = require('./services/configValidationService');
@@ -38,6 +38,7 @@ const { registerPreviewIpcHandlers } = require('./ipc/previewIpc');
 const { registerRssIpcHandlers } = require('./ipc/rssIpc');
 const { normalizePublishResult } = require('./policies/publishResultPolicy');
 const { evaluatePreviewOpenResult, evaluatePreviewStopResult } = require('./policies/previewStatePolicy');
+const { evaluateExternalUrl, EXTERNAL_URL_RULES } = require('./policies/externalUrlPolicy');
 
 const TRUSTED_CHANNEL_PREFIXES = [
     'app:',
@@ -183,6 +184,9 @@ function registerIpcHandlers() {
         getUnreadSummary,
         exportSubscriptions,
         importSubscriptions,
+        evaluateExternalUrl,
+        openExternal: (url) => shell.openExternal(url),
+        externalUrlRule: EXTERNAL_URL_RULES.rssArticle,
         emitOperationEvent
     });
 }

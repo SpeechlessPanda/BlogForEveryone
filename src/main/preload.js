@@ -70,6 +70,7 @@ function createBfeApi({ ipcRenderer: shellIpcRenderer }) {
         addSubscription: (payload) => shellIpcRenderer.invoke('rss:addSubscription', payload),
         removeSubscription: (payload) => shellIpcRenderer.invoke('rss:removeSubscription', payload),
         syncSubscriptions: () => shellIpcRenderer.invoke('rss:syncSubscriptions'),
+        openRssArticle: (payload) => shellIpcRenderer.invoke('rss:openArticle', payload),
         markSubscriptionItemRead: (payload) => shellIpcRenderer.invoke('rss:markItemRead', payload),
         getRssUnreadSummary: () => shellIpcRenderer.invoke('rss:getUnreadSummary'),
         exportSubscriptions: (payload) => shellIpcRenderer.invoke('rss:exportSubscriptions', payload),

@@ -60,6 +60,8 @@ function createEnvironmentDetector(options = {}) {
             }
         };
 
+        addCandidate(processImpl.env.HUGO_EXTENDED_EXECUTABLE);
+        addCandidate(processImpl.env.HUGO_EXECUTABLE);
         addCandidate('hugo_extended');
         addCandidate('hugo');
 

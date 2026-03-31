@@ -104,6 +104,53 @@ test('getHugoVersionInfo recognizes extended marker without plus sign', () => {
     }
 });
 
+test('resolveHugoExecutable honors explicit HUGO_EXECUTABLE env override', () => {
+    const originalLoad = Module._load;
+    const modulePath = require.resolve('./detectEnvironment');
+
+    Module._load = function patchedLoad(request, parent, isMain) {
+        if (request === 'child_process') {
+            return {
+                spawnSync(executablePath) {
+                    return {
+                        status: 0,
+                        stdout: executablePath === 'C:\\tools\\hugo\\hugo.exe'
+                            ? 'hugo v0.147.0 windows/amd64 BuildDate=2026-03-29 extended'
+                            : 'hugo v0.147.0 windows/amd64 BuildDate=2026-03-29',
+                        stderr: ''
+                    };
+                }
+            };
+        }
+        return originalLoad.call(this, request, parent, isMain);
+    };
+
+    try {
+        delete require.cache[modulePath];
+        const mod = require('./detectEnvironment');
+        const detector = mod.createEnvironmentDetector({
+            fsImpl: {
+                existsSync: (target) => target === 'C:\\tools\\hugo\\hugo.exe',
+                readdirSync: () => []
+            },
+            pathImpl: { join: (...parts) => parts.join('\\') },
+            processImpl: {
+                platform: 'win32',
+                env: {
+                    HUGO_EXECUTABLE: 'C:\\tools\\hugo\\hugo.exe',
+                    LOCALAPPDATA: 'C:\\Users\\ming\\AppData\\Local'
+                }
+            },
+            commandExistsImpl: () => false
+        });
+
+        assert.equal(detector.resolveHugoExecutable({ requireExtended: true }), 'C:\\tools\\hugo\\hugo.exe');
+    } finally {
+        Module._load = originalLoad;
+        delete require.cache[modulePath];
+    }
+});
+
 test('resolveHugoExecutable prefers extended candidates and checks version when required', () => {
     const localAppData = 'C:\\Users\\ming\\AppData\\Local';
     const linksDir = `${localAppData}\\Microsoft\\WinGet\\Links`;

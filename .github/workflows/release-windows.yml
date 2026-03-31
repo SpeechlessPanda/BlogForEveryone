@@ -136,6 +136,10 @@ jobs:
             throw 'Failed to install Hugo Extended via Chocolatey, Winget, or direct ZIP download.'
           }
 
+          $hugoCommand = Get-Command hugo -ErrorAction Stop
+          "HUGO_EXECUTABLE=$($hugoCommand.Source)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Pinned HUGO_EXECUTABLE to $($hugoCommand.Source)"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

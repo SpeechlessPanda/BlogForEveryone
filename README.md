@@ -14,7 +14,7 @@ GitHub 登录配置：[docs/guides/github-oauth-app-setup.md](docs/guides/github
 
 ## 当前版本与交接状态
 
-1. 当前版本：v0.1.5。
+1. 当前版本：v0.1.6。
 2. 当前支持框架：Hexo、Hugo。
 3. 当前支持主题（10 个）：
    - Hexo：Landscape、Next、Butterfly、Fluid、Volantis。

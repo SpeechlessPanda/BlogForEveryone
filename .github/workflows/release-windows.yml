@@ -146,15 +146,38 @@ jobs:
       - name: Setup Dart Sass
         shell: pwsh
         run: |
-          pnpm add -g sass
+          $installed = $false
+          try {
+            choco install sass --yes --no-progress
+            $installed = $true
+          } catch {
+            Write-Warning "Chocolatey Sass install failed: $($_.Exception.Message)"
+          }
+
+          if (-not $installed) {
+            Write-Host "Falling back to pnpm global sass install"
+            pnpm add -g sass
+          }
+
           $sassCommand = Get-Command sass -ErrorAction Stop
           $sassExecutable = $sassCommand.Source
           if ($sassExecutable -match '\.ps1$') {
             $cmdCandidate = [IO.Path]::ChangeExtension($sassExecutable, '.cmd')
             if (Test-Path $cmdCandidate) {
               $sassExecutable = $cmdCandidate
+            } else {
+              $batCandidate = [IO.Path]::ChangeExtension($sassExecutable, '.bat')
+              if (Test-Path $batCandidate) {
+                $sassExecutable = $batCandidate
+              }
             }
           }
+
+          if (-not (Test-Path $sassExecutable)) {
+            throw "Resolved Sass executable does not exist: $sassExecutable"
+          }
+
+          & $sassExecutable --version
           "SASS_EXECUTABLE=$sassExecutable" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Pinned SASS_EXECUTABLE to $sassExecutable"
 

@@ -424,6 +424,7 @@ test('workspace:importFromGithub rejects new destination when parent directory i
 
 test('workspace:importFromGithub delegates to github import workflow and keeps zip fallback out of IPC surface', async () => {
     const importTargetPath = path.join(os.tmpdir(), 'import-target');
+    const normalizedImportTargetPath = path.join(fs.realpathSync.native(os.tmpdir()), 'import-target');
     const workflowGithubImportResult = {
         workspace: {
             id: 'ws-github-1',
@@ -455,7 +456,7 @@ test('workspace:importFromGithub delegates to github import workflow and keeps z
     assert.equal(path.isAbsolute(moduleRef.workflowGithubImportCalls[0].localDestinationPath), true);
     assert.equal(
         path.normalize(moduleRef.workflowGithubImportCalls[0].localDestinationPath),
-        path.normalize(importTargetPath)
+        path.normalize(normalizedImportTargetPath)
     );
     assert.deepEqual(moduleRef.workflowGithubImportCalls[0].backupRepo, {
         owner: 'alice',

@@ -33,6 +33,7 @@ test('createBfeApi routes auth channels and listener cleanup through injected ip
     api.githubLoginWithDeviceCode({ userCode: 'ghi' });
     api.getGithubAuthState();
     api.githubLogout();
+    api.openRssArticle({ url: 'https://example.com/post' });
 
     assert.deepEqual(
         invokeCalls.map(({ channel }) => channel),
@@ -41,7 +42,8 @@ test('createBfeApi routes auth channels and listener cleanup through injected ip
             'githubAuth:completeDeviceLogin',
             'githubAuth:loginWithDeviceCode',
             'githubAuth:getState',
-            'githubAuth:logout'
+            'githubAuth:logout',
+            'rss:openArticle'
         ]
     );
 
@@ -86,4 +88,5 @@ test('exposeBfeApi publishes the generated API on window.bfeApi', () => {
     assert.equal(typeof exposed[0].value.createAndOpenContent, 'function');
     assert.equal(typeof exposed[0].value.publishSavedContent, 'function');
     assert.equal(typeof exposed[0].value.listSubscriptions, 'function');
+    assert.equal(typeof exposed[0].value.openRssArticle, 'function');
 });

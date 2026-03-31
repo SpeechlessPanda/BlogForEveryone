@@ -7,7 +7,9 @@ function createHarness() {
     const handlers = new Map();
     const calls = {
         exportSubscriptions: [],
-        importSubscriptions: []
+        importSubscriptions: [],
+        evaluateExternalUrl: [],
+        openExternal: []
     };
 
     registerRssIpcHandlers({
@@ -40,7 +42,18 @@ function createHarness() {
         importSubscriptions: async (payload) => {
             calls.importSubscriptions.push(payload);
             return { restored: 1, subscriptions: [] };
-        }
+        },
+        evaluateExternalUrl(url) {
+            calls.evaluateExternalUrl.push(url);
+            if (String(url).includes('denied.example')) {
+                return { allowed: false, reason: 'HOST_NOT_ALLOWED' };
+            }
+            return { allowed: true, normalizedUrl: String(url) };
+        },
+        openExternal: async (url) => {
+            calls.openExternal.push(url);
+        },
+        externalUrlRule: { allowedProtocols: ['https:'] }
     });
 
     return { handlers, calls };
@@ -75,4 +88,28 @@ test('rss export/import reject unknown or missing managed workspace context', as
     await assert.rejects(() => importHandler({}, { workspaceId: 'missing' }), /受管工作区/);
     assert.deepEqual(harness.calls.exportSubscriptions, []);
     assert.deepEqual(harness.calls.importSubscriptions, []);
+});
+
+test('rss openArticle validates and opens via main-process guard', async () => {
+    const harness = createHarness();
+    const openHandler = harness.handlers.get('rss:openArticle');
+
+    const result = await openHandler({}, { url: 'https://example.com/posts/1' });
+
+    assert.deepEqual(result, { opened: true, url: 'https://example.com/posts/1' });
+    assert.deepEqual(harness.calls.evaluateExternalUrl, ['https://example.com/posts/1']);
+    assert.deepEqual(harness.calls.openExternal, ['https://example.com/posts/1']);
+});
+
+test('rss openArticle rejects urls blocked by guard policy', async () => {
+    const harness = createHarness();
+    const openHandler = harness.handlers.get('rss:openArticle');
+
+    await assert.rejects(
+        () => openHandler({}, { url: 'https://denied.example/posts/2' }),
+        /外部链接不受信任/
+    );
+
+    assert.deepEqual(harness.calls.evaluateExternalUrl, ['https://denied.example/posts/2']);
+    assert.deepEqual(harness.calls.openExternal, []);
 });

@@ -41,6 +41,12 @@ export function createRssActions(api) {
     async syncSubscriptions() {
       return api.syncSubscriptions();
     },
+    async openRssArticle(payload) {
+      assertUrl(payload?.url);
+      return api.openRssArticle({
+        url: payload.url,
+      });
+    },
     async markSubscriptionItemRead(payload) {
       assertId(payload?.subscriptionId, "subscriptionId");
       assertId(payload?.itemKey, "itemKey");

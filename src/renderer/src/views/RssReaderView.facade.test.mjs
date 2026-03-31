@@ -13,7 +13,7 @@ test("RssReaderView uses rss facade instead of raw window.bfeApi rss calls", asy
   );
   assert.match(
     source,
-    /const\s*\{[\s\S]*listSubscriptions\s*,[\s\S]*addSubscription\s*,[\s\S]*removeSubscription\s*,[\s\S]*syncSubscriptions\s*,[\s\S]*markSubscriptionItemRead\s*,[\s\S]*pickDirectory\s*,[\s\S]*exportSubscriptions\s*,?[\s\S]*\}\s*=\s*useRssActions\(\)/,
+    /const\s*\{[\s\S]*listSubscriptions\s*,[\s\S]*addSubscription\s*,[\s\S]*removeSubscription\s*,[\s\S]*syncSubscriptions\s*,[\s\S]*openRssArticle\s*,[\s\S]*markSubscriptionItemRead\s*,[\s\S]*pickDirectory\s*,[\s\S]*exportSubscriptions\s*,?[\s\S]*\}\s*=\s*useRssActions\(\)/,
   );
 
   const requiredFacadeCalls = [
@@ -21,6 +21,7 @@ test("RssReaderView uses rss facade instead of raw window.bfeApi rss calls", asy
     "addSubscription(",
     "removeSubscription(",
     "syncSubscriptions(",
+    "openRssArticle(",
     "markSubscriptionItemRead(",
     "pickDirectory(",
     "exportSubscriptions(",
@@ -45,6 +46,12 @@ test("RssReaderView uses rss facade instead of raw window.bfeApi rss calls", asy
     source,
     /markSubscriptionItemRead\(\s*\{[\s\S]*subscriptionId:\s*subscription\.id,[\s\S]*itemKey,[\s\S]*\}\s*\)/,
   );
+  assert.match(source, /function\s+isUnreadPost\(subscription,\s*post\)/);
+  assert.match(source, /openRssArticle\(\{\s*url:\s*post\.link\s*\}\)/);
+  assert.match(
+    source,
+    /<button\s+class="secondary"\s+type="button"\s+v-if="isUnreadPost\(item,\s*post\)"\s+@click\.stop="markPostAsRead\(item,\s*post\)"\s*>\s*已读\s*<\/button>/,
+  );
   assert.match(
     source,
     /pickDirectory\(\s*\{[\s\S]*title:\s*["']选择导出订阅所对应的博客目录["'],[\s\S]*defaultPath:\s*form\.exportProjectDir\s*\|\|\s*undefined,[\s\S]*\}\s*\)/,
@@ -59,6 +66,7 @@ test("RssReaderView uses rss facade instead of raw window.bfeApi rss calls", asy
     "addSubscription",
     "removeSubscription",
     "syncSubscriptions",
+    "openRssArticle",
     "markSubscriptionItemRead",
     "pickDirectory",
     "exportSubscriptions",
@@ -71,6 +79,8 @@ test("RssReaderView uses rss facade instead of raw window.bfeApi rss calls", asy
       `expected RssReaderView.vue to stop calling window.bfeApi.${method}`,
     );
   }
+
+  assert.doesNotMatch(source, /window\.open\(post\.link,\s*"_blank"\)/);
 
   assert.match(source, /useShellActions/);
   assert.doesNotMatch(source, /new CustomEvent\("bfe:open-tutorial"\)/);

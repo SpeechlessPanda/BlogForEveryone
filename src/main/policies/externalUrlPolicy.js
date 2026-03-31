@@ -16,6 +16,9 @@ const EXTERNAL_URL_RULES = {
         allowedProtocols: ['https:'],
         allowedHosts: ['github.com'],
         allowedPathPrefixes: ['/login/device']
+    },
+    rssArticle: {
+        allowedProtocols: ['http:', 'https:']
     }
 };
 

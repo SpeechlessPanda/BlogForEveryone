@@ -61,10 +61,28 @@ jobs:
           cache: pnpm
 
       - name: Setup Hugo Extended
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: latest
-          extended: true
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command hugo -ErrorAction SilentlyContinue) {
+            $version = & hugo version
+            if ($version -match 'extended') {
+              Write-Host "Hugo Extended already available: $version"
+              exit 0
+            }
+          }
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install hugo-extended -y --no-progress
+          } elseif (Get-Command winget -ErrorAction SilentlyContinue) {
+            winget install --id Hugo.Hugo.Extended --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+          } else {
+            throw "Neither choco nor winget is available to install Hugo Extended."
+          }
+          $version = & hugo version
+          if ($version -notmatch 'extended') {
+            throw "Installed Hugo is not an extended build: $version"
+          }
+          Write-Host "Hugo Extended ready: $version"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

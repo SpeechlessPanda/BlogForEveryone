@@ -116,7 +116,7 @@ pnpm run release
      - 校验 tag 与 `package.json` 版本一致
      - 还原签名证书并校验 `verify:windows-signing-env`
      - 执行 `pnpm run release`（内含 `verify:release`）
-     - 对产物执行 `signtool verify`
+   - 对产物执行 `signtool verify`（自签名 CI 证书触发“不受信任根证书”时降级为 warning，不阻断发布）
      - 上传产物并生成 provenance attestation
 
 发布前脚本链路（当前）：

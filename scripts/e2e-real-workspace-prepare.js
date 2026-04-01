@@ -227,13 +227,64 @@ function ensureHexoDependenciesReady(projectDir, options = {}) {
     };
 }
 
+function hasHexoProjectScaffold(projectDir, options = {}) {
+    const existsSync = options.existsSync || fs.existsSync;
+    return existsSync(path.join(projectDir, '_config.yml'))
+        && existsSync(path.join(projectDir, 'package.json'))
+        && existsSync(path.join(projectDir, 'scaffolds'))
+        && existsSync(path.join(projectDir, 'source'));
+}
+
+function shouldRecoverFromHexoInitFailure({ framework, projectDir, initResult }, options = {}) {
+    if (framework !== 'hexo') {
+        return false;
+    }
+
+    const status = typeof initResult?.status === 'number' ? initResult.status : 1;
+    if (status === 0) {
+        return false;
+    }
+
+    const stderr = String(initResult?.stderr || '');
+    if (!/not empty|target not empty/i.test(stderr)) {
+        return false;
+    }
+
+    return hasHexoProjectScaffold(projectDir, options);
+}
+
+function isHexoNonEmptyInitError({ framework, initResult }) {
+    if (framework !== 'hexo') {
+        return false;
+    }
+
+    const stderr = String(initResult?.stderr || '');
+    return /not empty|target not empty/i.test(stderr);
+}
+
 async function prepareTheme(row) {
-    const projectDir = path.join(E2E_ROOT, 'runs', RUN_ID, row.dir);
+    let projectDir = path.join(E2E_ROOT, 'runs', RUN_ID, row.dir);
     fs.mkdirSync(projectDir, { recursive: true });
 
-    const initResult = await initProject({ framework: row.framework, projectDir });
+    let initResult = await initProject({ framework: row.framework, projectDir });
+    if (initResult.status !== 0 && isHexoNonEmptyInitError({ framework: row.framework, initResult })) {
+        const retryProjectDir = `${projectDir}-retry`;
+        fs.rmSync(retryProjectDir, { recursive: true, force: true });
+        fs.mkdirSync(retryProjectDir, { recursive: true });
+        projectDir = retryProjectDir;
+        initResult = await initProject({ framework: row.framework, projectDir });
+    }
+
     if (initResult.status !== 0) {
-        throw new Error(`init failed: ${row.framework}/${row.themeId}\n${initResult.stderr || initResult.stdout}`);
+        if (shouldRecoverFromHexoInitFailure({ framework: row.framework, projectDir, initResult })) {
+            const recoverDeps = ensureHexoDependenciesReady(projectDir);
+            if (!recoverDeps.ok) {
+                throw new Error(`init failed: ${row.framework}/${row.themeId}\n${initResult.stderr || initResult.stdout}`);
+            }
+            console.warn(`hexo init recovered from non-empty target: ${row.framework}/${row.themeId}`);
+        } else {
+            throw new Error(`init failed: ${row.framework}/${row.themeId}\n${initResult.stderr || initResult.stdout}`);
+        }
     }
 
     const themeResult = await installAndApplyTheme({

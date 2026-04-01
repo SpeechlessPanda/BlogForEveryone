@@ -42,7 +42,7 @@ function loadPrepareModuleForTests() {
     const original = fs.readFileSync(filePath, 'utf8');
     const instrumented = original.replace(
         /main\(\)\.catch\([\s\S]*?\);\s*$/,
-        'module.exports = { applyThemeSpecificConfig, hasLocalHexoExecutable, ensureHexoDependenciesReady };\n'
+        'module.exports = { applyThemeSpecificConfig, hasLocalHexoExecutable, ensureHexoDependenciesReady, hasHexoProjectScaffold, shouldRecoverFromHexoInitFailure, isHexoNonEmptyInitError };\n'
     );
 
     const mod = new Module(filePath, module);
@@ -51,6 +51,75 @@ function loadPrepareModuleForTests() {
     mod._compile(instrumented, filePath);
     return mod.exports;
 }
+
+test('shouldRecoverFromHexoInitFailure returns true for hexo non-empty init with scaffold', () => {
+    const { shouldRecoverFromHexoInitFailure } = loadPrepareModuleForTests();
+
+    const result = shouldRecoverFromHexoInitFailure(
+        {
+            framework: 'hexo',
+            projectDir: 'D:/tmp/hexo-site',
+            initResult: {
+                status: 1,
+                stderr: 'FATAL target not empty\nError: target not empty'
+            }
+        },
+        {
+            existsSync: (target) => {
+                const normalized = String(target).replace(/\\/g, '/');
+                return normalized.endsWith('/_config.yml')
+                    || normalized.endsWith('/package.json')
+                    || normalized.endsWith('/scaffolds')
+                    || normalized.endsWith('/source');
+            }
+        }
+    );
+
+    assert.equal(result, true);
+});
+
+test('shouldRecoverFromHexoInitFailure returns false when scaffold is incomplete', () => {
+    const { shouldRecoverFromHexoInitFailure } = loadPrepareModuleForTests();
+
+    const result = shouldRecoverFromHexoInitFailure(
+        {
+            framework: 'hexo',
+            projectDir: 'D:/tmp/hexo-site',
+            initResult: {
+                status: 1,
+                stderr: 'FATAL target not empty\nError: target not empty'
+            }
+        },
+        {
+            existsSync: (target) => {
+                const normalized = String(target).replace(/\\/g, '/');
+                return normalized.endsWith('/_config.yml') || normalized.endsWith('/package.json');
+            }
+        }
+    );
+
+    assert.equal(result, false);
+});
+
+test('isHexoNonEmptyInitError detects hexo target-not-empty failures', () => {
+    const { isHexoNonEmptyInitError } = loadPrepareModuleForTests();
+
+    assert.equal(isHexoNonEmptyInitError({
+        framework: 'hexo',
+        initResult: {
+            status: 1,
+            stderr: 'FATAL target not empty\nError: target not empty'
+        }
+    }), true);
+
+    assert.equal(isHexoNonEmptyInitError({
+        framework: 'hugo',
+        initResult: {
+            status: 1,
+            stderr: 'FATAL target not empty\nError: target not empty'
+        }
+    }), false);
+});
 
 test('landscape prepare config uses theme-specific banner and favicon keys', () => {
     const { applyThemeSpecificConfig } = loadPrepareModuleForTests();
@@ -117,7 +186,8 @@ test('package script contracts include Task 1 gate scripts', () => {
     assert.equal(packageJson.scripts['test:coverage'], 'node scripts/run-node-coverage.js');
     assert.equal(packageJson.scripts['test:e2e:workspace'], 'node scripts/verify-real-workspace.js');
     assert.equal(packageJson.scripts['verify:premerge'], 'pnpm run test:coverage && pnpm exec node --test && pnpm run build:renderer && pnpm run test:e2e:ui');
-    assert.equal(packageJson.scripts['verify:release'], 'pnpm run verify:git-clean && pnpm run verify:premerge && pnpm run test:e2e:workspace && pnpm run package:signed');
+    assert.equal(packageJson.scripts['verify:release'], 'pnpm run verify:git-clean && pnpm run verify:premerge && pnpm run package:signed');
+    assert.equal(packageJson.scripts['verify:release:full'], 'pnpm run verify:release && pnpm run test:e2e:workspace');
 });
 
 test('check-node-coverage parser enforces all files 75/75/75 thresholds', () => {

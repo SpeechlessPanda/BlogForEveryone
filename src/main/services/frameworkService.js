@@ -3,6 +3,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { ensureFrameworkEnvironment, runPnpmDlxWithRetry, resolveExecutable, installDependenciesWithRetry } = require('./envService');
 
+const HEXO_INIT_TIMEOUT_MS = 600000;
+
 function detectFramework(projectDir) {
     const hasHexoConfig = fs.existsSync(path.join(projectDir, '_config.yml'));
     const hasHugoConfig = ['hugo.toml', 'config.toml', 'config.yaml', 'config.yml', 'config.json']
@@ -78,7 +80,8 @@ async function initProject({ framework, projectDir }) {
 
     if (framework === 'hexo') {
         const execute = await runPnpmDlxWithRetry(['hexo', 'init', projectDir], {
-            cwd: process.cwd()
+            cwd: process.cwd(),
+            timeout: HEXO_INIT_TIMEOUT_MS
         });
 
         if (shouldRecoverHexoInit(execute, projectDir)) {

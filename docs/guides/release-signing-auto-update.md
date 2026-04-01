@@ -121,10 +121,12 @@ pnpm run release
 
 发布前脚本链路（当前）：
 
-- `release` -> `verify:release` -> `verify:git-clean` + `verify:premerge` + `test:e2e:workspace` + `package:signed`
+- `release` -> `verify:release` -> `verify:git-clean` + `verify:premerge` + `package:signed`
+- 可选完整验证：`verify:release:full` -> `verify:release` + `test:e2e:workspace`
 
 这意味着：
 
 1. 工作区不干净会直接阻断发布。
 2. 未配置签名变量会直接阻断发布。
-3. 未通过测试/构建会直接阻断发布。
+3. 未通过 premerge 测试/构建会直接阻断发布。
+4. 真实工作区验证建议在发布前单独执行 `pnpm run verify:release:full`，但不再作为发布强门禁，避免外部网络/工具波动反复阻断正式发版。

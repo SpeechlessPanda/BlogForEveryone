@@ -331,9 +331,11 @@ test('ensureFrameworkEnvironment covers hexo/hugo success and failure branches',
 
 test('installDependenciesWithRetry covers success and retry paths', () => {
     const calls = [];
+    const optionsByCall = [];
     const svc = createInstallToolingService({
-        runCommandImpl: (command, args) => {
+        runCommandImpl: (command, args, options) => {
             calls.push(`${command} ${args.join(' ')}`);
+            optionsByCall.push(options || {});
             if (calls.length === 1) {
                 return { status: 1, stdout: '', stderr: 'first fail' };
             }
@@ -349,6 +351,8 @@ test('installDependenciesWithRetry covers success and retry paths', () => {
     assert.equal(retried.ok, true);
     assert.equal(retried.retried, true);
     assert.equal(retried.logs.some((entry) => entry.event === 'mirror-fallback'), true);
+    assert.equal(optionsByCall[0].timeout, 600000);
+    assert.equal(optionsByCall[2].timeout, 600000);
 
     const immediateSvc = createInstallToolingService({
         runCommandImpl: () => ({ status: 0, stdout: 'ok', stderr: '' }),

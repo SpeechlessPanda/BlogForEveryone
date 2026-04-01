@@ -6,6 +6,8 @@ const { MIRROR_REGISTRY, getWingetPackageIds } = require('./registryPolicy');
 const { runCommand } = require('./runCommand');
 const { checkEnvironment, resolveExecutable, resolveHugoExecutable } = require('./detectEnvironment');
 
+const INSTALL_DEPENDENCIES_TIMEOUT_MS = 600000;
+
 function createInstallToolingService(options = {}) {
     const checkEnvironmentImpl = options.checkEnvironmentImpl || checkEnvironment;
     const resolveExecutableImpl = options.resolveExecutableImpl || resolveExecutable;
@@ -401,7 +403,10 @@ function createInstallToolingService(options = {}) {
     function installDependenciesWithRetry(projectDir) {
         const logs = [];
 
-        const firstTry = runCommandImpl('pnpm', ['install'], { cwd: projectDir });
+        const firstTry = runCommandImpl('pnpm', ['install'], {
+            cwd: projectDir,
+            timeout: INSTALL_DEPENDENCIES_TIMEOUT_MS
+        });
         logs.push({ command: 'pnpm install', status: firstTry.status, stdout: firstTry.stdout, stderr: firstTry.stderr });
 
         if (firstTry.status === 0) {
@@ -422,7 +427,10 @@ function createInstallToolingService(options = {}) {
             stderr: setMirror.stderr
         });
 
-        const secondTry = runCommandImpl('pnpm', ['install'], { cwd: projectDir });
+        const secondTry = runCommandImpl('pnpm', ['install'], {
+            cwd: projectDir,
+            timeout: INSTALL_DEPENDENCIES_TIMEOUT_MS
+        });
         logs.push({ command: 'pnpm install (retry)', status: secondTry.status, stdout: secondTry.stdout, stderr: secondTry.stderr });
 
         return {

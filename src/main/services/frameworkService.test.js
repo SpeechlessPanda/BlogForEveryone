@@ -86,6 +86,38 @@ test('initProject recovers hexo partial init when retry hits non-empty directory
     fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('initProject uses extended timeout for hexo init command', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'framework-service-hexo-timeout-'));
+    const projectDir = path.join(tmpDir, 'hexo-site');
+    let receivedOptions = null;
+
+    const { initProject } = loadFrameworkServiceWithMocks({
+        ensureFrameworkEnvironment: () => ({ ok: true, logs: [] }),
+        runPnpmDlxWithRetry: (args, options) => {
+            receivedOptions = options;
+            return {
+                retried: false,
+                result: {
+                    status: 0,
+                    stdout: 'hexo ok',
+                    stderr: ''
+                },
+                logs: []
+            };
+        },
+        installDependenciesWithRetry: () => ({ ok: true, logs: [] }),
+        resolveExecutable: () => 'hugo'
+    });
+
+    const result = await initProject({ framework: 'hexo', projectDir });
+
+    assert.equal(result.status, 0);
+    assert.equal(receivedOptions.cwd, process.cwd());
+    assert.equal(receivedOptions.timeout, 600000);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('detectFramework recognizes Hugo projects using YAML/YML/JSON config files', (t) => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'framework-service-detect-hugo-'));
     t.after(() => {

@@ -12,6 +12,7 @@ test("SystemStatusPanel becomes a popup-based utility surface", async () => {
     'data-shell-surface="user-popup"',
     'data-popup-block="account"',
     'data-popup-block="appearance"',
+    'data-popup-block="startup"',
     'data-popup-block="updates"',
     'data-popup-block="environment"',
     'shell-popup-actions',
@@ -50,6 +51,9 @@ test("SystemStatusPanel preserves auth-required and environment-required flows i
   assert.match(source, /!envStatus\.ready/);
   assert.match(source, /shellAppearanceToggleLabel/);
   assert.match(source, /toggle-shell-appearance/);
+  assert.match(source, /launchAtStartupEnabled/);
+  assert.match(source, /toggle-launch-at-startup/);
+  assert.match(source, /开机自启动/);
 });
 
 test("SystemStatusPanel targets the requested popup block with active marker, scroll alignment, and first-control focus", async () => {

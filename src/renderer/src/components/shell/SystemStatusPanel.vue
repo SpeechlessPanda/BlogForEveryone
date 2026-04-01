@@ -22,6 +22,7 @@ const props = defineProps({
   envActionLog: { type: String, required: true },
   envStatus: { type: Object, required: true },
   isLoggedIn: { type: Boolean, required: true },
+  launchAtStartupEnabled: { type: Boolean, required: true },
   isShellPopupOpen: { type: Boolean, required: true },
   pnpmInstalling: { type: Boolean, required: true },
   pnpmProgress: { type: Array, required: true },
@@ -92,6 +93,7 @@ defineEmits([
   "install-pnpm",
   "refresh-env",
   "toggle-shell-appearance",
+  "toggle-launch-at-startup",
 ]);
 </script>
 
@@ -154,6 +156,17 @@ defineEmits([
       <div class="actions shell-popup-actions">
         <button class="secondary" @click="$emit('toggle-shell-appearance')">
           {{ shellAppearanceToggleLabel }}
+        </button>
+      </div>
+    </section>
+
+    <section class="shell-popup-block" data-popup-block="startup">
+      <p class="status-label">开机自启动</p>
+      <strong>{{ launchAtStartupEnabled ? "已开启" : "默认关闭" }}</strong>
+      <p class="muted shell-popup-log">默认关闭；需要时你可以手动开启。</p>
+      <div class="actions shell-popup-actions">
+        <button class="secondary" @click="$emit('toggle-launch-at-startup')">
+          {{ launchAtStartupEnabled ? "关闭开机自启动" : "开启开机自启动" }}
         </button>
       </div>
     </section>

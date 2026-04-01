@@ -18,6 +18,7 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /:data-shell-appearance="shellAppearance"/);
   assert.match(source, /:is-shell-popup-open="isShellPopupOpen"/);
   assert.match(source, /:shell-appearance="shellAppearance"/);
+  assert.match(source, /:launch-at-startup-enabled="launchAtStartupEnabled"/);
   assert.match(source, /:shell-popup-anchor-style="shellPopupAnchorStyle"/);
   assert.match(source, /:active-popup-section="shellPopupSectionKey"/);
   assert.match(source, /:shell-user-entry-label="shellUserEntryLabel"/);
@@ -25,6 +26,7 @@ test("App uses shell composable and thin shell components instead of raw window.
   assert.match(source, /@open-shell-popup="openShellPopup"/);
   assert.match(source, /@close-shell-popup="closeShellPopup"/);
   assert.match(source, /@toggle-shell-appearance="toggleShellAppearance"/);
+  assert.match(source, /@toggle-launch-at-startup="handleToggleLaunchAtStartup"/);
   assert.match(source, /<LoginView[\s\S]*v-if="!isLoggedIn && activeTab === 'login'"/);
 
   const forbiddenInlineShellPresentation = [

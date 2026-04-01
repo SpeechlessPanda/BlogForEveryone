@@ -41,9 +41,11 @@ const {
   handleInstallPnpm,
   handleInstallUpdateNow,
   handleOpenInstaller,
+  handleToggleLaunchAtStartup,
   infoModal,
   isShellPopupOpen,
   isLoggedIn,
+  launchAtStartupEnabled,
   nextStep,
   openShellPopup,
   pnpmInstalling,
@@ -118,6 +120,7 @@ const {
           :pnpm-installing="pnpmInstalling"
           :pnpm-progress="pnpmProgress"
           :shell-appearance="shellAppearance"
+          :launch-at-startup-enabled="launchAtStartupEnabled"
           :shell-appearance-toggle-label="shellAppearanceToggleLabel"
           :update-state="updateState"
           @update:auth-client-id="(value) => (authClientId = value)"
@@ -133,6 +136,7 @@ const {
           @install-pnpm="handleInstallPnpm"
           @refresh-env="refreshEnvStatus"
           @toggle-shell-appearance="toggleShellAppearance"
+          @toggle-launch-at-startup="handleToggleLaunchAtStartup"
         />
       </ShellTopBar>
 

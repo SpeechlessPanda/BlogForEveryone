@@ -12,6 +12,8 @@ GitHub 登录配置：[docs/guides/github-oauth-app-setup.md](docs/guides/github
 
 发布与自动更新指南：[docs/guides/release-signing-auto-update.md](docs/guides/release-signing-auto-update.md)
 
+项目有关博客:  [vibe_coding 开发 BFE 后的反思与总结](https://speechlesspanda.github.io/2026/04/06/vibe_coding%E5%BC%80%E5%8F%91BFE%E5%90%8E%E7%9A%84%E5%8F%8D%E6%80%9D%E4%B8%8E%E6%80%BB%E7%BB%93/)
+
 ## 当前版本与交接状态
 
 1. 当前版本：v0.2.1。
@@ -168,3 +170,7 @@ pnpm run release
 1. 新功能必须同步更新 README 与项目计划书。
 2. README 用于说明已实现能力与使用路径；详细设计放在 docs/plans 和 docs/guides。
 3. .qa 与 e2e-real-workspaces 目录默认不纳入代码版本追踪。
+
+## 许可
+
+MIT.

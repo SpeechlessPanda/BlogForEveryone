@@ -12,7 +12,7 @@ GitHub 登录配置：[docs/guides/github-oauth-app-setup.md](docs/guides/github
 
 发布与自动更新指南：[docs/guides/release-signing-auto-update.md](docs/guides/release-signing-auto-update.md)
 
-项目有关博客:  [vibe_coding 开发 BFE 后的反思与总结](https://speechlesspanda.github.io/2026/04/06/vibe_coding%E5%BC%80%E5%8F%91BFE%E5%90%8E%E7%9A%84%E5%8F%8D%E6%80%9D%E4%B8%8E%E6%80%BB%E7%BB%93/)
+项目有关博客:  [vibe coding 开发 BFE 后的反思与总结](https://speechlesspanda.github.io/2026/04/06/vibe%20coding%20%E5%BC%80%E5%8F%91%20BFE%20%E5%90%8E%E7%9A%84%E5%8F%8D%E6%80%9D%E4%B8%8E%E6%80%BB%E7%BB%93/)
 
 ## 当前版本与交接状态
 

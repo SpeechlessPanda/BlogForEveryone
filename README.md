@@ -195,11 +195,5 @@ flowchart LR
 2. README 用于说明已实现能力与使用路径；详细设计放在 docs/plans 和 docs/guides。
 3. .qa 与 e2e-real-workspaces 目录默认不纳入代码版本追踪。
 
-## 相关项目
-
-- [learncpp-projrct](https://github.com/SpeechlessPanda/learncpp-projrct)：LearnCpp 教程的控制台小项目集（C++17）。
-- **rustbook-project**（本机同级目录，尚未推送远程）：《Rust 程序设计语言》教程项目集，含 minigrep 与多线程 Web 服务器。
-- 三个仓库的 README 互相参考、徽章风格一致。
-
 ## 许可
 [MIT](LICENSE)。

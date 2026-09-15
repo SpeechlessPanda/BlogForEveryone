@@ -1,5 +1,13 @@
 # BlogForEveryone
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Electron-37-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
+  <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Platform Windows" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License MIT" />
+</p>
+
 BlogForEveryone 是一个面向新手的博客搭建与管理桌面应用，目标是用全可视化流程替代命令行操作，让用户可以完成从创建到发布再到迁移恢复的完整链路。
 
 当前技术栈：Electron + Vue 3 + JavaScript（Windows 优先）。
@@ -147,6 +155,22 @@ pnpm run release
 
 补充说明：仓库当前默认使用 npm 官方源；如果你的 shell 显式设置了代理或自定义 registry，请先确认它不会覆盖 `.npmrc`。
 
+## 架构概览
+
+```mermaid
+flowchart LR
+    subgraph App[Electron 应用]
+        R["src/renderer<br>Vue 3 前端"] <-->|IPC| M["src/main<br>主进程 · 服务层"]
+        S["src/shared/data<br>主题配置元数据"] --> R
+        S --> M
+    end
+    M -->|脚手架 / 本地预览| W["本地工作区<br>Hexo · Hugo 工程"]
+    M -->|OAuth Device Flow| G[GitHub 登录]
+    M -->|发布 / 备份 / 恢复| P["GitHub Pages<br>与备份仓库"]
+```
+
+主进程承载全部副作用（进程管理、Git、网络、文件写入），渲染进程只通过 IPC 驱动；`src/shared/data` 是两端共享的主题配置元数据来源。
+
 ## 目录结构
 
 1. src/main：Electron 主进程、IPC、服务层。
@@ -171,6 +195,11 @@ pnpm run release
 2. README 用于说明已实现能力与使用路径；详细设计放在 docs/plans 和 docs/guides。
 3. .qa 与 e2e-real-workspaces 目录默认不纳入代码版本追踪。
 
-## 许可
+## 相关项目
 
-MIT.
+- [learncpp-projrct](https://github.com/SpeechlessPanda/learncpp-projrct)：LearnCpp 教程的控制台小项目集（C++17）。
+- **rustbook-project**（本机同级目录，尚未推送远程）：《Rust 程序设计语言》教程项目集，含 minigrep 与多线程 Web 服务器。
+- 三个仓库的 README 互相参考、徽章风格一致。
+
+## 许可
+[MIT](LICENSE)。

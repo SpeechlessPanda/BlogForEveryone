@@ -1,4 +1,4 @@
-# BlogForEveryone
+<h1 align="center">BlogForEveryone</h1>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Electron-37-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
